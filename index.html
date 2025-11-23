@@ -3,341 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StreamVerse - Inicio</title>
-    <!-- Incluye Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Mi Página de Inicio</title>
     <style>
-        /* Configuración de color para el tema oscuro */
-        :root {
-            --color-primary: #e50914; /* Rojo de acento */
-            --color-dark: #141414; /* Fondo principal */
-            --color-darker: #0c0c0c; /* Fondo más oscuro para elementos */
-            --color-text: #e5e5e5;
-        }
-
+        /* Estilos Generales y Tema Oscuro */
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--color-dark);
-            color: var(--color-text);
+            margin: 0;
+            padding: 0;
+            background-color: #121212; /* Fondo oscuro casi negro */
+            color: #e0e0e0; /* Texto gris claro para buen contraste */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Ocupa toda la altura de la pantalla */
         }
 
-        /* Estilo para los contenedores de filas de contenido (scroll horizontal) */
-        .content-row-container {
-            /* Permite el desplazamiento horizontal y oculta la barra de desplazamiento */
-            overflow-x: auto;
-            white-space: nowrap;
-            padding-bottom: 1rem; /* Espacio para que no se corte la sombra si la hubiera */
-            -webkit-overflow-scrolling: touch; /* Suavizado en iOS */
-            scrollbar-width: none;  /* Oculta la barra de desplazamiento en Firefox */
+        /* Contenedor principal */
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background-color: #1e1e1e; /* Un tono ligeramente más claro para la tarjeta */
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            max-width: 400px;
+            width: 90%;
         }
 
-        /* Oculta la barra de desplazamiento en Chrome/Safari */
-        .content-row-container::-webkit-scrollbar {
-            display: none;
+        h1 {
+            margin-bottom: 10px;
+            color: #ffffff;
         }
 
-        /* Estilo para las tarjetas de contenido */
-        .card {
+        p {
+            margin-bottom: 30px;
+            line-height: 1.5;
+            color: #b0b0b0;
+        }
+
+        /* Estilos del Botón */
+        .boton-enlace {
             display: inline-block;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            cursor: pointer;
-            margin-right: 0.75rem; /* Espacio entre tarjetas */
+            background-color: #007bff; /* Azul vibrante */
+            color: #ffffff;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
         }
 
-        .card:hover {
-            transform: scale(1.05); /* Efecto de zoom al pasar el ratón */
-            z-index: 10;
-        }
-
-        /* Estilo para el botón de reproducción en el Hero */
-        .play-button {
-            background-color: white;
-            color: var(--color-dark);
-            transition: background-color 0.2s;
-        }
-
-        .play-button:hover {
-            background-color: #f3f4f6;
+        /* Efecto al pasar el mouse por encima */
+        .boton-enlace:hover {
+            background-color: #0056b3; /* Azul más oscuro */
+            transform: translateY(-2px); /* Pequeña elevación */
         }
     </style>
 </head>
-<body class="antialiased">
+<body>
 
-    <!-- Navbar/Header Fijo -->
-    <header class="sticky top-0 z-50 bg-black bg-opacity-70 backdrop-blur-sm shadow-lg">
-        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <!-- Logo -->
-            <div class="flex items-center space-x-8">
-                <a href="#" class="text-3xl font-extrabold text-white tracking-wider hover:text-red-600 transition duration-300">
-                    <span class="text-red-600">S</span>tream<span class="text-red-600">V</span>erse
-                </a>
-                <!-- Navegación Principal (Solo en Desktop) -->
-                <div class="hidden md:flex space-x-6 text-sm">
-                    <a href="#" class="text-white font-semibold hover:text-red-500 transition duration-150">Inicio</a>
-                    <a href="#" class="text-gray-300 hover:text-red-500 transition duration-150">Series</a>
-                    <a href="#" class="text-gray-300 hover:text-red-500 transition duration-150">Películas</a>
-                    <a href="#" class="text-gray-300 hover:text-red-500 transition duration-150">Mi Lista</a>
-                </div>
-            </div>
-
-            <!-- Menú de Usuario y Búsqueda -->
-            <div class="flex items-center space-x-4">
-                <button class="text-white hover:text-red-500 p-2 rounded-full transition duration-150">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                </button>
-                <div class="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white font-bold text-sm">
-                    JD
-                </div>
-            </div>
-        </nav>
-    </header>
-
-    <!-- Contenido Principal -->
-    <main class="min-h-screen">
+    <div class="container">
+        <h1>Bienvenido</h1>
         
-        <!-- Sección Destacada (Hero) -->
-        <section id="hero" class="relative h-[60vh] md:h-[90vh] overflow-hidden">
-            <!-- Imagen de fondo usando un placeholder oscuro -->
-            <div class="absolute inset-0 bg-cover bg-center" 
-                 style="background-image: url('https://placehold.co/1600x900/1e1e1e/ffffff?text=TITULO+DESTACADO');">
-                <!-- Gradiente oscuro para mejorar la legibilidad del texto -->
-                <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
-            </div>
-
-            <!-- Contenido del Hero -->
-            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-end pb-12 md:pb-20">
-                <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-4 drop-shadow-lg">Aventura en la Sombra</h1>
-                <p class="text-base md:text-xl text-gray-300 max-w-2xl mb-6 drop-shadow-md">
-                    Una épica historia de intriga y traición ambientada en un futuro distópico. Descubre el secreto antes de que sea demasiado tarde.
-                </p>
-                <div class="flex space-x-4">
-                    <button class="play-button px-6 py-3 rounded-xl font-bold text-lg flex items-center shadow-lg hover:shadow-xl transition-all">
-                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
-                        Reproducir
-                    </button>
-                    <button class="bg-gray-700 bg-opacity-70 text-white px-6 py-3 rounded-xl font-bold text-lg flex items-center shadow-lg hover:bg-gray-600 transition-all">
-                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Más Información
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- Contenedor de Filas de Contenido -->
-        <section class="py-12 space-y-10">
-            
-            <!-- Fila de Contenido: Tendencias Ahora -->
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h2 class="text-2xl font-bold mb-4">Tendencias Ahora</h2>
-                <div class="content-row-container">
-                    <div class="flex space-x-4">
-                        <!-- Tarjeta de Contenido (Placeholder) -->
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/383838/ffffff?text=SERIE+1" 
-                                 alt="Contenido Tendencia 1" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/383838/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">El Legado Perdido</p>
-                        </div>
-                        
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/4c4c4c/ffffff?text=PELI+2" 
-                                 alt="Contenido Tendencia 2" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/4c4c4c/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">Código Cero</p>
-                        </div>
-                        
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/383838/ffffff?text=DOCU+3" 
-                                 alt="Contenido Tendencia 3" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/383838/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">Planeta Vivo</p>
-                        </div>
-
-                        <!-- Repite más tarjetas para el desplazamiento -->
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/5a5a5a/ffffff?text=SERIE+4" 
-                                 alt="Contenido Tendencia 4" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/5a5a5a/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">Máscara del Silencio</p>
-                        </div>
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/383838/ffffff?text=PELI+5" 
-                                 alt="Contenido Tendencia 5" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/383838/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">Viaje al Centro</p>
-                        </div>
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/4c4c4c/ffffff?text=SERIE+6" 
-                                 alt="Contenido Tendencia 6" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/4c4c4c/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">La Fortaleza</p>
-                        </div>
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/5a5a5a/ffffff?text=PELI+7" 
-                                 alt="Contenido Tendencia 7" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/5a5a5a/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">El Guardián</p>
-                        </div>
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/383838/ffffff?text=SERIE+8" 
-                                 alt="Contenido Tendencia 8" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/383838/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">Ciudad Oculta</p>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-
-            <!-- Fila de Contenido: Nuevos Lanzamientos -->
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h2 class="text-2xl font-bold mb-4">Nuevos Lanzamientos</h2>
-                <div class="content-row-container">
-                    <div class="flex space-x-4">
-                        <!-- Tarjetas (usando diferentes placeholders para variar visualmente) -->
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/4c4c4c/ffffff?text=ESTRENO+A" 
-                                 alt="Contenido Nuevo 1" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/4c4c4c/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">Misión Delta</p>
-                        </div>
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/5a5a5a/ffffff?text=ESTRENO+B" 
-                                 alt="Contenido Nuevo 2" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/5a5a5a/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">Historias del Desierto</p>
-                        </div>
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/383838/ffffff?text=ESTRENO+C" 
-                                 alt="Contenido Nuevo 3" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/383838/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">El Laberinto</p>
-                        </div>
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/4c4c4c/ffffff?text=ESTRENO+D" 
-                                 alt="Contenido Nuevo 4" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/4c4c4c/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">Bajo Cero</p>
-                        </div>
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/5a5a5a/ffffff?text=ESTRENO+E" 
-                                 alt="Contenido Nuevo 5" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/5a5a5a/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">La Última Danza</p>
-                        </div>
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0">
-                            <img src="https://placehold.co/400x600/383838/ffffff?text=ESTRENO+F" 
-                                 alt="Contenido Nuevo 6" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/383838/ffffff?text=Error';"
-                            >
-                            <p class="mt-2 text-sm truncate font-medium">Sueños Rotos</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Fila de Contenido: Continúa Viendo (Personalizado) -->
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h2 class="text-2xl font-bold mb-4">Continúa Viendo</h2>
-                <div class="content-row-container">
-                    <div class="flex space-x-4">
-                        <!-- Tarjeta con barra de progreso -->
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0 relative">
-                            <img src="https://placehold.co/400x600/4c4c4c/ffffff?text=Cap+4" 
-                                 alt="Contenido Continuar 1" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/4c4c4c/ffffff?text=Error';"
-                            >
-                            <!-- Barra de progreso -->
-                            <div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 rounded-b-lg">
-                                <div class="bg-red-600 h-full rounded-b-lg" style="width: 75%;"></div>
-                            </div>
-                            <p class="mt-2 text-sm truncate font-medium">La Conspiración (Epi 4)</p>
-                        </div>
-                        
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0 relative">
-                            <img src="https://placehold.co/400x600/383838/ffffff?text=Cap+2" 
-                                 alt="Contenido Continuar 2" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/383838/ffffff?text=Error';"
-                            >
-                            <div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 rounded-b-lg">
-                                <div class="bg-red-600 h-full rounded-b-lg" style="width: 30%;"></div>
-                            </div>
-                            <p class="mt-2 text-sm truncate font-medium">Guardianes (Epi 2)</p>
-                        </div>
-
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0 relative">
-                            <img src="https://placehold.co/400x600/5a5a5a/ffffff?text=Pelicula" 
-                                 alt="Contenido Continuar 3" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/5a5a5a/ffffff?text=Error';"
-                            >
-                            <div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 rounded-b-lg">
-                                <div class="bg-red-600 h-full rounded-b-lg" style="width: 90%;"></div>
-                            </div>
-                            <p class="mt-2 text-sm truncate font-medium">Frontera Final</p>
-                        </div>
-
-                        <div class="card w-36 sm:w-48 lg:w-60 flex-shrink-0 relative">
-                            <img src="https://placehold.co/400x600/4c4c4c/ffffff?text=Cap+1" 
-                                 alt="Contenido Continuar 4" 
-                                 class="w-full h-auto object-cover rounded-lg shadow-xl"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/400x600/4c4c4c/ffffff?text=Error';"
-                            >
-                            <div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 rounded-b-lg">
-                                <div class="bg-red-600 h-full rounded-b-lg" style="width: 15%;"></div>
-                            </div>
-                            <p class="mt-2 text-sm truncate font-medium">Leyendas del Mar (Epi 1)</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </section>
-
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-gray-900 mt-12 py-10">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-400">
-            <div class="flex justify-center space-x-6 mb-6">
-                <a href="#" class="hover:text-red-500 transition duration-150 text-sm">Términos de Uso</a>
-                <a href="#" class="hover:text-red-500 transition duration-150 text-sm">Política de Privacidad</a>
-                <a href="#" class="hover:text-red-500 transition duration-150 text-sm">Ayuda</a>
-                <a href="#" class="hover:text-red-500 transition duration-150 text-sm">Contáctanos</a>
-            </div>
-            <p class="text-xs">&copy; 2024 StreamVerse. Todos los derechos reservados.</p>
-        </div>
-    </footer>
+        <p>Haz clic en el botón de abajo para acceder al contenido principal.</p>
+        
+        <a href="https://www.google.com" class="boton-enlace" target="_blank">
+            Ir al Sitio Web
+        </a>
+    </div>
 
 </body>
 </html>
