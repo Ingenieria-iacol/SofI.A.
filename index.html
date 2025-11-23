@@ -3,73 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Página de Inicio</title>
+    <title>Ingeni-Flix | Hub de Ingeniería</title>
     <style>
-        /* Estilos Generales y Tema Oscuro */
+        /* ESTILOS (CSS) - El Look de Netflix */
+        :root {
+            --bg-color: #141414;
+            --card-bg: #2f2f2f;
+            --text-color: #ffffff;
+            --primary-color: #e50914; /* Rojo tipo Netflix */
+        }
+
         body {
             margin: 0;
-            padding: 0;
-            background-color: #121212; /* Fondo oscuro casi negro */
-            color: #e0e0e0; /* Texto gris claro para buen contraste */
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        /* Cabecera */
+        header {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            height: 100vh; /* Ocupa toda la altura de la pantalla */
+            padding: 20px 40px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
-        /* Contenedor principal */
-        .container {
-            text-align: center;
-            padding: 2rem;
-            background-color: #1e1e1e; /* Un tono ligeramente más claro para la tarjeta */
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-            max-width: 400px;
-            width: 90%;
-        }
-
-        h1 {
-            margin-bottom: 10px;
-            color: #ffffff;
-        }
-
-        p {
-            margin-bottom: 30px;
-            line-height: 1.5;
-            color: #b0b0b0;
-        }
-
-        /* Estilos del Botón */
-        .boton-enlace {
-            display: inline-block;
-            background-color: #007bff; /* Azul vibrante */
-            color: #ffffff;
-            padding: 12px 24px;
-            text-decoration: none;
-            border-radius: 6px;
+        .logo {
+            color: var(--primary-color);
+            font-size: 1.8rem;
             font-weight: bold;
-            transition: background-color 0.3s ease, transform 0.2s ease;
+            text-transform: uppercase;
         }
 
-        /* Efecto al pasar el mouse por encima */
-        .boton-enlace:hover {
-            background-color: #0056b3; /* Azul más oscuro */
-            transform: translateY(-2px); /* Pequeña elevación */
+        .btn-add {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
         }
+
+        .btn-add:hover {
+            background-color: #c2c2c2;
+        }
+
+        /* Contenedor Principal */
+        .container {
+            padding: 20px 40px;
+        }
+
+        h2 {
+            margin-bottom: 15px;
+        }
+
+        /* Grilla de Herramientas */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 4px;
+            overflow: hidden;
+            transition: transform 0.3s;
+            cursor: pointer;
+            position: relative;
+            height: 120px; /* Altura de la tarjeta */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .card-title {
+            padding: 10px;
+            font-weight: bold;
+        }
+
+        /* El Visor (Overlay) */
+        #viewer {
+            display: none; /* Oculto por defecto */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            z-index: 200;
+            flex-direction: column;
+        }
+
+        #viewer-header {
+            padding: 10px 20px;
+            background-color: #000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-btn {
+            color: white;
+            background: transparent;
+            border: 1px solid white;
+            padding: 5px 15px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        /* Aquí es donde se proyecta la herramienta */
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: white; /* Fondo blanco para las herramientas */
+        }
+
     </style>
 </head>
 <body>
 
+    <header>
+        <div class="logo">INGENI-FLIX</div>
+        <button class="btn-add" onclick="agregarNuevaHerramienta()">+ Nueva Herramienta</button>
+    </header>
+
     <div class="container">
-        <h1>Bienvenido</h1>
-        
-        <p>Haz clic en el botón de abajo para acceder al contenido principal.</p>
-        
-        <a href="https://www.google.com" class="boton-enlace" target="_blank">
-            Ir al Sitio Web
-        </a>
+        <h2>Herramientas Populares</h2>
+        <div class="grid" id="tools-grid">
+            </div>
     </div>
 
+    <div id="viewer">
+        <div id="viewer-header">
+            <span id="viewer-title">Nombre Herramienta</span>
+            <button class="close-btn" onclick="cerrarHerramienta()">Cerrar X</button>
+        </div>
+        <iframe id="app-frame" src=""></iframe>
+    </div>
+
+    <script>
+        // LÓGICA (JavaScript)
+
+        // 1. Nuestra "Base de Datos" inicial (Array de objetos)
+        // Aquí debes poner las URLs de tus herramientas creadas con Gemini
+        let herramientas = [
+            { 
+                nombre: "Calculadora de Vigas", 
+                url: "https://www.google.com" // Ejemplo: Cambia esto por la ruta de tu archivo local o URL
+            },
+            { 
+                nombre: "Convertidor de Unidades", 
+                url: "https://bing.com" // Ejemplo
+            },
+            { 
+                nombre: "Simulador de Circuitos", 
+                url: "about:blank" // Ejemplo
+            }
+        ];
+
+        // 2. Función para dibujar las tarjetas en la pantalla
+        function renderizarGrid() {
+            const grid = document.getElementById('tools-grid');
+            grid.innerHTML = ""; // Limpiar contenido actual
+
+            herramientas.forEach((tool, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `<div class="card-title">${tool.nombre}</div>`;
+                
+                // Al hacer clic, abrimos el visor pasando la URL
+                card.onclick = () => abrirHerramienta(tool.nombre, tool.url);
+                
+                grid.appendChild(card);
+            });
+        }
+
+        // 3. Funciones del Visor (Abrir y Cerrar)
+        function abrirHerramienta(titulo, url) {
+            const viewer = document.getElementById('viewer');
+            const frame = document.getElementById('app-frame');
+            const titleSpan = document.getElementById('viewer-title');
+
+            titleSpan.textContent = titulo;
+            frame.src = url; // Aquí sucede la magia: carga la otra app
+            viewer.style.display = 'flex';
+        }
+
+        function cerrarHerramienta() {
+            const viewer = document.getElementById('viewer');
+            const frame = document.getElementById('app-frame');
+            
+            frame.src = ""; // Limpiamos para detener la ejecución
+            viewer.style.display = 'none';
+        }
+
+        // 4. Función para agregar herramienta (Simulación)
+        function agregarNuevaHerramienta() {
+            const nombre = prompt("Nombre de la herramienta:");
+            const url = prompt("URL o ruta del archivo (ej: ./mi-herramienta.html):");
+
+            if (nombre && url) {
+                herramientas.push({ nombre: nombre, url: url });
+                renderizarGrid(); // Volvemos a pintar la grilla
+            }
+        }
+
+        // Inicializar la app al cargar
+        renderizarGrid();
+
+    </script>
 </body>
 </html>
