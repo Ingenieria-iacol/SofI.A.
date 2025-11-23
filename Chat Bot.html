@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso al Ingeniero Chatbot</title>
+    <!-- Incluye Tailwind CSS para un diseño moderno y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Configuración de fuente y fondo */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        /* Estilos personalizados para el botón */
+        .btn-primary {
+            background-color: #4f46e5; /* Índigo */
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+
+        .btn-primary:hover {
+            background-color: #4338ca;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary:active {
+            background-color: #3730a3;
+            transform: translateY(0);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body>
+    <div class="p-8 bg-white rounded-xl shadow-2xl max-w-sm w-full text-center">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Ingeniero Chatbot</h1>
+        <h2 class="text-lg font-semibold text-indigo-600 mb-4">Redes de Gas y Sistemas de Combustión</h2>
+        <p class="text-gray-600 mb-6">Esta plataforma es un chatbot especializado, su "ingeniero virtual". Haz clic para iniciar la conversación y obtener asistencia técnica en redes y combustión.</p>
+
+        <button id="openLinkButton"
+                class="btn-primary w-full text-white font-semibold py-3 px-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 flex items-center justify-center">
+            <!-- Icono usando SVG (de lucide-react, simulado) -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            Acceder al Ingeniero
+        </button>
+
+        <!-- Contenedor para mensajes de estado/error (reemplaza alert()) -->
+        <div id="messageBox" class="mt-6 hidden p-3 text-sm rounded-lg" role="alert"></div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const button = document.getElementById('openLinkButton');
+            const messageBox = document.getElementById('messageBox');
+            // El enlace que se abre
+            const targetUrl = "https://agent.jotform.com/0194945d264575588fc0009752c4437f4c57";
+
+            function showMessage(message, isError = false) {
+                messageBox.textContent = message;
+                messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+
+                if (isError) {
+                    messageBox.classList.add('bg-red-100', 'text-red-700');
+                } else {
+                    messageBox.classList.add('bg-green-100', 'text-green-700');
+                }
+            }
+
+            button.addEventListener('click', () => {
+                try {
+                    // Abrir el enlace en una nueva pestaña (_blank)
+                    const newWindow = window.open(targetUrl, '_blank');
+
+                    if (newWindow) {
+                        // Si la ventana se abrió con éxito (puede ser un pop-up o una pestaña nueva)
+                        showMessage('El Ingeniero Chatbot se está abriendo en una nueva pestaña.', false);
+                    } else {
+                        // Manejo de bloqueo de pop-ups del navegador
+                        showMessage('Parece que tu navegador ha bloqueado la apertura de la nueva pestaña. Por favor, revisa la configuración de pop-ups o haz clic de nuevo.', true);
+                    }
+                } catch (error) {
+                    console.error('Error al intentar abrir el enlace:', error);
+                    showMessage('Ocurrió un error inesperado al intentar abrir el enlace.', true);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

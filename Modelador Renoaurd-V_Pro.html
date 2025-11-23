@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Líneas de Gas - Renouard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f9;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .input-field {
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .input-field:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+            outline: none;
+        }
+        .btn-primary {
+            background-color: #10b981;
+            color: white;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #059669;
+        }
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.2s;
+        }
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+        .btn-secondary {
+            background-color: #6b7280;
+            color: white;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+        .btn-gas-type {
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: 1px solid #d1d5db;
+        }
+        .btn-gas-gn {
+            background-color: #a7f3d0; /* Verde claro */
+            color: #065f46;
+        }
+        .btn-gas-lp {
+            background-color: #fce7f3; /* Rosa claro */
+            color: #9d174d;
+        }
+        .btn-gas-type:hover {
+            opacity: 0.8;
+        }
+        /* Estilo para campos de solo lectura (read-only) */
+        .input-field[readonly] {
+            background-color: #f0f4f7; 
+            cursor: default;
+            font-weight: 600;
+        }
+
+        table th, table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        table th {
+            background-color: #f9fafb;
+            font-weight: 600;
+            color: #1f2937;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+        /* Estilos específicos para la nueva tabla */
+        .input-header {
+            background-color: #eef2ff; /* Azul claro para la entrada */
+            color: #4338ca; 
+        }
+        .calc-header {
+            background-color: #f0fff4; /* Verde claro para el cálculo */
+            color: #047857; 
+        }
+        .input-cell {
+            background-color: #fefefe;
+        }
+        .calc-cell {
+            background-color: #fafff7; /* Fondo diferente para los cálculos */
+            font-weight: 500;
+        }
+
+        .image-container {
+            max-height: 50vh; /* Limita la altura máxima del contenedor de la imagen */
+            overflow: auto; /* Permite desplazamiento si la imagen es muy grande */
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #fcfcfc;
+            min-height: 150px;
+        }
+        .image-container img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+        #file-drop-area {
+            border: 2px dashed #9ca3af;
+            background-color: #f9fafb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #file-drop-area.dragover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        
+        /* Estilo para la notificación Toast */
+        #toast-message {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            transform: translateX(120%);
+            opacity: 0;
+        }
+        #toast-message.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        /* Estilos del Modal (Base) */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none; /* Oculto por defecto */
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .modal.open {
+            display: flex;
+        }
+        
+        /* Estilos para impresión */
+        @media print {
+            body {
+                background-color: white !important;
+                color: black !important;
+                padding: 0 !important;
+            }
+            #app {
+                box-shadow: none !important;
+                margin: 0 !important;
+                max-width: none !important;
+            }
+            /* Ocultar elementos no necesarios para el informe */
+            .btn-primary, .btn-secondary, #guidance-modal, #diameter-modal, #city-modal, #file-drop-area, #diagramUrl, .input-field, .btn-danger, .toggle-btn, .hidden-print {
+                display: none !important;
+            }
+            /* Mostrar secciones colapsadas */
+            #params-content, #consumption-content {
+                display: block !important;
+            }
+            /* Restaurar bordes de tablas */
+            table th, table td {
+                border: 1px solid #000 !important;
+            }
+            table {
+                border-collapse: collapse !important;
+            }
+            /* Asegurar que los campos readonly se vean como texto */
+            .input-field[readonly] {
+                background-color: transparent !important;
+                border: none !important;
+                padding: 0 !important;
+            }
+            /* Evitar saltos de página dentro de las tablas si es posible */
+            .card {
+                page-break-inside: avoid;
+            }
+            /* Asegurar que el diagrama se imprima si existe */
+            #diagram-display {
+                display: block !important;
+                max-height: none !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Modal de Orientación (Guía de Uso) -->
+    <div id="guidance-modal" class="modal hidden">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-8 m-4">
+            <h3 class="text-2xl font-bold text-indigo-700 mb-4">👋 ¡Bienvenido a la Calculadora Renouard!</h3>
+            <p class="text-gray-700 mb-4">Esta aplicación te ayudará a diseñar redes de gas de baja presión siguiendo un flujo lógico:</p>
+            
+            <ul class="list-disc list-inside space-y-2 text-gray-600">
+                <li><span class="font-semibold text-gray-800">1. Parámetros de Diseño:</span> Verifica o ajusta la Presión Inicial/Final y selecciona si trabajas con Gas Natural (GN) o GLP (LP).</li>
+                <li><span class="font-semibold text-gray-800">2. Puntos de Consumo (KW):</span> Define cada punto (A, B, C...) y su consumo acumulado. ¡Puedes añadir o eliminar puntos!</li>
+                <li><span class="font-semibold text-gray-800">Configuración (Diámetros):</span> Si necesitas modificar los diámetros de tubería por defecto, usa el botón **Configurar Diámetros**.</li>
+                <li><span class="font-semibold text-gray-800">3. Definición de Tramos:</span> Usa la **Tabla 3** para definir cada tramo (Inicio, Fin, Longitud) y la tubería. Los cálculos aparecerán en la **Tabla 3.1**.</li>
+                <li><span class="font-semibold text-gray-800">4. Resumen de Diseño:</span> Revisa si tu diseño cumple con la pérdida de presión total y la velocidad máxima permitida.</li>
+                <li><span class="font-semibold text-gray-800">5. Diagrama de la Red:</span> Sube o pega la imagen de tu diagrama como referencia visual.</li>
+            </ul>
+            
+            <p class="text-sm text-gray-500 mt-4 italic">
+                Usa los botones de flecha en los encabezados (1 y 2) para colapsar y organizar la vista. ¡Comencemos!
+            </p>
+
+            <button onclick="hideGuidanceModal()" class="mt-6 w-full btn-primary bg-indigo-600 hover:bg-indigo-700">
+                Entendido, iniciar diseño
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de Configuración de Diámetros -->
+    <div id="diameter-modal" class="modal hidden">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 m-4">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="text-xl font-semibold text-gray-700">⚙️ Configuración de Diámetros Internos (DI) de Tubería (mm)</h3>
+                <button onclick="hideDiameterModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Ajusta los diámetros internos de las tuberías disponibles. Estos valores se usan para todos los cálculos.</p>
+            
+            <div id="diameter-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                <!-- Diámetros generados aquí -->
+            </div>
+            
+            <button onclick="addDiameter()" class="mt-4 w-full btn-primary bg-indigo-500 hover:bg-indigo-600 text-sm">
+                + Añadir Nuevo Diámetro
+            </button>
+            
+            <button onclick="hideDiameterModal()" class="mt-4 w-full btn-secondary bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm">
+                Cerrar y Recalcular
+            </button>
+        </div>
+    </div>
+    
+    <!-- Modal de Configuración de Ciudades (NUEVO) -->
+    <div id="city-modal" class="modal hidden">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 m-4">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="text-xl font-semibold text-gray-700">🗺️ Configuración de Ciudades de Instalación</h3>
+                <button onclick="hideCityModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Añade o modifica ciudades, altitudes (msnm) y presiones atmosféricas (mbar).</p>
+            
+            <!-- Formulario para añadir nueva ciudad -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-gray-100 p-4 rounded-lg mb-6">
+                <input type="text" id="newCityName" placeholder="Nombre Ciudad" class="input-field col-span-1" required>
+                <input type="number" id="newCityAltitude" placeholder="Altitud (mts)" class="input-field col-span-1" min="0" step="1" required>
+                <input type="number" id="newCityPressure" placeholder="Presión (mbar)" class="input-field col-span-1" min="0" step="0.01" required>
+                <button onclick="addCity()" class="btn-primary col-span-1 bg-green-500 hover:bg-green-600 text-sm">
+                    + Añadir Ciudad
+                </button>
+            </div>
+
+            <!-- Lista de ciudades existentes -->
+            <div id="city-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                <div class="flex space-x-2 items-center font-bold text-xs text-gray-600 border-b pb-1">
+                    <span class="flex-grow">Ciudad</span>
+                    <span class="w-24 text-center">Altitud (mts)</span>
+                    <span class="w-24 text-center">Presión (mbar)</span>
+                    <span class="w-10"></span>
+                </div>
+                <!-- Las ciudades se renderizarán aquí -->
+            </div>
+            
+            <button onclick="hideCityModal()" class="mt-4 w-full btn-secondary bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm">
+                Cerrar y Actualizar
+            </button>
+        </div>
+    </div>
+    
+    <!-- Notificación Toast (Mensaje emergente) -->
+    <div id="toast-message" class="p-4 rounded-lg shadow-lg text-white font-semibold flex items-center space-x-2">
+        <!-- Contenido del mensaje -->
+    </div>
+
+    <div id="app" class="max-w-7xl mx-auto space-y-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-3 md:space-y-0">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2 md:mb-0">Calculadora de Diseño de Red de Gas (Renouard)</h1>
+            <div class="flex space-x-3 no-print">
+                 <!-- BOTÓN PARA CONFIGURAR CIUDADES (NUEVO) -->
+                <button onclick="showCityModal()" class="btn-secondary text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.828 0l-4.243-4.243m10.121-6.121a1.998 1.998 0 00-2.828 0L7.414 11.9a1.998 1.998 0 002.828 2.828l3.182-3.182a1.998 1.998 0 000-2.828z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Configurar Ciudades
+                </button>
+                 <!-- BOTÓN PARA EL MODAL DE DIÁMETROS -->
+                <button onclick="showDiameterModal()" class="btn-secondary text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35-.426.427-.66 1.05-.66 1.724s.234 1.3.66 1.725c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35.427-.427.66-1.05.66-1.724s-.234-1.3-.66-1.725c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.94.573 1.625.592 1.942.592z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Configurar Diámetros
+                </button>
+                <button onclick="resetApp()" class="btn-secondary text-sm">
+                    Limpiar Datos y Reiniciar
+                </button>
+                <!-- BOTONES DE EXPORTACIÓN ELIMINADOS -->
+            </div>
+        </div>
+        
+        <!-- Parámetros de Diseño (Sección 1) -->
+        <div class="card p-6">
+             <!-- CABECERA CON BOTÓN PARA COLAPSAR -->
+            <button onclick="toggleParamsSection()" class="flex justify-between items-center w-full focus:outline-none toggle-btn">
+                <h2 class="text-xl font-semibold text-gray-700 m-0 p-0">1. Parámetros de Diseño</h2>
+                <!-- Icono de flecha (Chevron) -->
+                <svg id="toggle-icon-params" class="w-6 h-6 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            
+            <!-- CONTENIDO COLAPSABLE -->
+            <div id="params-content" class="space-y-4 mt-4">
+                
+                <!-- BLOQUE 1: Datos Editables (Presiones y Velocidad) -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-4">
+                    <label class="block">
+                        <span class="text-gray-700 text-sm">Presión Inicial (mbar)</span>
+                        <input type="number" id="P_in" value="23" min="0" class="input-field mt-1" onchange="calculateAll()">
+                    </label>
+                    <label class="block">
+                        <span class="text-gray-700 text-sm">Presión Final Mínima (mbar)</span>
+                        <input type="number" id="P_out" value="18" min="0" class="input-field mt-1" onchange="calculateAll()">
+                    </label>
+                    <label class="block">
+                        <span class="text-gray-700 text-sm">Velocidad Máx. Gas (V/s)</span>
+                        <input type="number" id="MaxVelocity" value="20" min="0" step="1" class="input-field mt-1" onchange="calculateAll()">
+                    </label>
+                </div>
+
+                <!-- BLOQUE 2: Ubicación (Selección y Automático) -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-4">
+                     <!-- CAMPO DE SELECCIÓN DE CIUDAD -->
+                    <label class="block">
+                        <span class="text-gray-700 text-sm">Ciudad de Instalación</span>
+                        <select id="CitySelector" class="input-field mt-1" onchange="updateAltitude(this.value)">
+                            <!-- Opciones generadas por JS -->
+                        </select>
+                    </label>
+
+                    <!-- CAMPO DE ALTURA (AUTOMÁTICO) -->
+                    <label class="block">
+                        <span class="text-gray-700 text-sm">Altura Ciudad (mts)</span>
+                        <input type="number" id="CityAltitude" value="995" min="0" step="1" class="input-field mt-1" readonly>
+                    </label>
+
+                    <!-- Campo de Presión Atmosférica (AUTOMÁTICO) -->
+                    <label class="block">
+                        <span class="text-gray-700 text-sm">Presión Atmosférica (mbar)</span>
+                        <input type="number" id="AtmosphericPressure" value="907.00" min="0" step="0.01" class="input-field mt-1" readonly>
+                    </label>
+                </div>
+                
+                <!-- BLOQUE 3: Propiedades del Gas (Automático por Botón) -->
+                <div class="space-y-3 pt-2">
+                    <div class="flex flex-wrap gap-4 p-3 bg-gray-50 rounded-lg no-print">
+                        <span class="text-sm font-medium text-gray-700 self-center">Seleccionar Tipo de Gas:</span>
+                        <button onclick="setGasType('GN')" class="btn-gas-type btn-gas-gn">
+                            Gas Natural (GN)
+                        </button>
+                        <button onclick="setGasType('LP')" class="btn-gas-type btn-gas-lp">
+                            Gas Licuado de Petróleo (LP)
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <label class="block">
+                            <span class="text-gray-700 text-sm">Densidad del Gas (G)</span>
+                            <input type="number" id="GasDensity" value="0.67" min="0" step="0.01" class="input-field mt-1" onchange="calculateAll()" readonly>
+                        </label>
+                        <label class="block">
+                            <span class="text-gray-700 text-sm">Poder Calorífico (Kw/h)</span>
+                            <input type="number" id="CalorificValue" value="11.73" min="0" step="0.01" class="input-field mt-1" onchange="calculateAll()" readonly>
+                        </label>
+                        <!-- Dejar una columna vacía o usarla para la Constante Renouard oculta -->
+                         <label class="hidden">
+                            <span class="text-gray-700 text-sm">Constante Renouard (K)</span>
+                            <input type="number" id="RenouardConstant" value="3.65" min="0" step="0.01" class="input-field mt-1" onchange="calculateAll()">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Puntos de Consumo (Sección 2) -->
+        <div class="card p-6">
+            <!-- CABECERA CON BOTÓN PARA COLAPSAR -->
+            <button onclick="toggleConsumptionSection()" class="flex justify-between items-center w-full focus:outline-none toggle-btn">
+                <h2 class="text-xl font-semibold text-gray-700 m-0 p-0">2. Puntos de Consumo (KW)</h2>
+                <!-- Icono de flecha (Chevron) -->
+                <svg id="toggle-icon-consumption" class="w-6 h-6 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            
+            <!-- CONTENIDO COLAPSABLE -->
+            <div id="consumption-content" class="space-y-3 mt-4 hidden">
+                <div id="consumption-list" class="space-y-3">
+                    <!-- Puntos generados aquí -->
+                </div>
+                <button onclick="addConsumptionPoint()" class="mt-4 w-full btn-primary bg-indigo-500 hover:bg-indigo-600">
+                    + Añadir Punto de Consumo
+                </button>
+            </div>
+        </div>
+        
+        <!-- Tabla 3: Definición de Tramos (Entrada de Datos) -->
+        <div class="card p-6 overflow-x-auto">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">3. Definición de Tramos (Entrada de Datos)</h2>
+            <p class="text-sm text-gray-600 mb-4 border-l-4 border-indigo-500 pl-3 py-1 bg-indigo-50 rounded-r-md">
+                Selecciona los puntos de inicio y fin, la longitud, el diámetro nominal y verifica el KW acumulado del punto de inicio.
+            </p>
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr>
+                        <th class="input-header">Inicio</th>
+                        <th class="input-header">Fin</th>
+                        <th class="input-header">Longitud Real (m)</th>
+                        <th class="input-header">Tubería Nominal</th>
+                        <th class="input-header">Caudal Acumulado (KW)</th>
+                        <th class="input-header">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="segment-input-list" class="bg-white divide-y divide-gray-200">
+                    <!-- Tramos de entrada generados aquí -->
+                </tbody>
+            </table>
+            <button onclick="addSegment()" class="mt-6 w-full btn-primary">
+                + Añadir Tramo de Tubería
+            </button>
+        </div>
+
+        <!-- Tabla 3.1: Resultados de Cálculo -->
+        <div class="card p-6 overflow-x-auto">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">3.1. Resultados de Cálculo</h2>
+            <p class="text-sm text-gray-600 mb-4 border-l-4 border-green-500 pl-3 py-1 bg-green-50 rounded-r-md">
+                Resultados automáticos basados en la fórmula de Renouard y los parámetros de diseño.
+            </p>
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr>
+                        <th class="calc-header">Tramo</th>
+                        <th class="calc-header">Longitud Calc (m)</th>
+                        <th class="calc-header">DI (mm)</th>
+                        <th class="calc-header">Caudal Acumulado (m3/h)</th>
+                        <th class="calc-header">Delta P / m (mbar/m)</th>
+                        <th class="calc-header">Delta P Tramo (mbar)</th>
+                        <th class="calc-header">Velocidad (m/s)</th>
+                    </tr>
+                </thead>
+                <tbody id="segment-result-list" class="bg-white divide-y divide-gray-200">
+                    <!-- Tramos de resultado generados aquí -->
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5" class="text-right font-bold text-gray-800">Pérdida de Presión Total:</td>
+                        <td id="total-delta-p" class="font-bold text-lg text-red-600" colspan="2">0.00 mbar</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        <!-- Resumen de Diseño (Sección 4) - CONSOLIDADO -->
+        <div id="summary-section" class="card p-6 border-l-4 border-blue-500">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">4. Resumen de Diseño y Conclusiones</h2>
+            <div id="summary-content" class="space-y-4">
+                <!-- El contenido se generará aquí por JS -->
+            </div>
+            <div id="design-status" class="mt-4 p-3 rounded-lg font-semibold text-sm"></div>
+        </div>
+
+        <!-- Sección de Imagen de Referencia (Diagrama) - AHORA AL FINAL (Sección 5) -->
+        <div class="card p-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">5. Diagrama de la Red (Referencia Visual)</h2>
+            
+            <input type="file" id="diagramFileInput" accept="image/png, image/jpeg" class="hidden" onchange="handleFileSelect(event)">
+            
+            <div id="file-drop-area" onclick="document.getElementById('diagramFileInput').click()">
+                <p class="text-gray-600 font-medium">Arrastra y suelta tu imagen aquí, o haz clic para seleccionar (PNG/JPG)</p>
+                <p id="fileNameDisplay" class="text-sm text-gray-500 mt-1"></p>
+            </div>
+
+            <p class="text-center text-sm text-gray-500 my-4">--- O ---</p>
+            
+            <label class="block mb-4">
+                <span class="text-gray-700 text-sm">Pegar URL de la Imagen de Internet (Recomendado solo para URLs estables)</span>
+                <input type="text" id="diagramUrl" placeholder="Ej: https://ejemplo.com/mi-diagrama-gas.png" 
+                       class="input-field mt-1" onchange="updateDiagramImage(this.value)">
+            </label>
+            
+            <div id="diagram-display" class="image-container mt-4">
+                <p class="text-gray-500 text-center p-4">La imagen de referencia aparecerá aquí.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Estructuras de Datos Iniciales ---
+        // Valores predefinidos para Gas Natural (GN) y Gas Licuado de Petróleo (LP)
+        const GAS_PRESETS = {
+            'GN': {
+                GasDensity: 0.67,
+                CalorificValue: 11.73,
+                GasType: 'Gas Natural (GN)'
+            },
+            'LP': {
+                GasDensity: 1.65,
+                CalorificValue: 25.60,
+                GasType: 'Gas Licuado de Petróleo (LP)'
+            }
+        };
+
+        // Lista de ciudades y municipios importantes de Colombia con su altitud (mts)
+        let CITIES = [ // Cambiado a 'let' para permitir adición de nuevas ciudades
+            { name: "Armenia", altitude: 1480, pressure: 855.0 },
+            { name: "Barranquilla", altitude: 18, pressure: 1011.0 },
+            { name: "Bello", altitude: 1450, pressure: 858.0 },
+            { name: "Bogotá", altitude: 2640, pressure: 749.0 },
+            { name: "Bucaramanga", altitude: 959, pressure: 911.0 },
+            { name: "Cali", altitude: 995, pressure: 907.0 },
+            { name: "Cartagena", altitude: 2, pressure: 1013.0 },
+            { name: "Chía", altitude: 2560, pressure: 757.0 },
+            { name: "Cúcuta", altitude: 320, pressure: 974.0 },
+            { name: "Envigado", altitude: 1575, pressure: 843.0 },
+            { name: "Floridablanca", altitude: 925, pressure: 914.0 },
+            { name: "Girardot", altitude: 289, pressure: 981.0 },
+            { name: "Ibagué", altitude: 1285, pressure: 874.0 },
+            { name: "Itagüí", altitude: 1550, pressure: 846.0 },
+            { name: "Manizales", altitude: 2200, pressure: 789.0 },
+            { name: "Medellín", altitude: 1495, pressure: 852.0 },
+            { name: "Montería", altitude: 18, pressure: 1011.0 },
+            { name: "Neiva", altitude: 442, pressure: 963.0 },
+            { name: "Pasto", altitude: 2527, pressure: 759.0 },
+            { name: "Pereira", altitude: 1411, pressure: 863.0 },
+            { name: "Popayán", altitude: 1760, pressure: 828.0 },
+            { name: "Santa Marta", altitude: 6, pressure: 1012.0 },
+            { name: "Soacha", altitude: 2566, pressure: 757.0 },
+            { name: "Tunja", altitude: 2782, pressure: 736.0 },
+            { name: "Valledupar", altitude: 168, pressure: 995.0 },
+            { name: "Villavicencio", altitude: 467, pressure: 959.0 },
+        ];
+        
+        // Función auxiliar para encontrar la presión atmosférica por altitud (aproximación)
+        // Ya no se usa para las ciudades predefinidas, pero se mantiene como fallback
+        function getPressureByAltitude(altitude) {
+            const city = CITIES.find(c => c.altitude === altitude);
+            if (city) return city.pressure;
+            return (1013.25 - (altitude / 8.5)).toFixed(2); 
+        }
+
+        // Definición de valores por defecto para reinicio
+        const DEFAULT_PARAMS = {
+            P_in: 23,
+            P_out: 18,
+            GasDensity: GAS_PRESETS.GN.GasDensity, // Usar GN como predeterminado
+            CalorificValue: GAS_PRESETS.GN.CalorificValue, // Usar GN como predeterminado
+            GasType: GAS_PRESETS.GN.GasType, // Tipo de gas por defecto
+            MaxVelocity: 20,
+            RenouardConstant: 3.65,
+            CitySelector: 'Cali', // Nuevo valor por defecto
+            CityAltitude: 995,
+            AtmosphericPressure: 907.0 // Ajustado a 907.0 para Cali (Valor más preciso)
+        };
+
+        // NOTA: Se deja vacío para que al limpiar/reiniciar, el usuario deba agregar puntos nuevos.
+        const DEFAULT_CONSUMPTION_POINTS = []; 
+
+        const DEFAULT_PIPE_DIAMETERS = [
+            { nominal: 'PE 1/2"', di: 13.843 },
+            { nominal: 'PE 3/4"', di: 19.939 },
+            { nominal: 'PE 1"', di: 26.035 },
+            { nominal: 'PE 1 1/4"', di: 32.131 },
+            { nominal: 'PE 1 1/2"', di: 38.227 },
+            { nominal: 'PE 2"', di: 50.419 },
+            { nominal: 'PE 3"', di: 74.803 },
+            { nominal: 'PE 4"', di: 99.187 }
+        ];
+
+        let consumptionPoints = [];
+        let pipeDiameters = [];
+        let segments = [];
+        let nextSegmentId = 1;
+        let diagramFileUrl = null; // Para almacenar la URL temporal del archivo cargado
+
+        // --- Funciones de Utilidad ---
+
+        function getVal(id) {
+            // Se usa el operador de encadenamiento opcional (?) para evitar TypeError si el elemento no existe 
+            return parseFloat(document.getElementById(id)?.value) || 0;
+        }
+
+        function getConsumptionKw(pointId) {
+            const point = consumptionPoints.find(p => p.id === pointId);
+            return point ? point.kw : 0;
+        }
+
+        function getPipeDI(nominal) {
+            const pipe = pipeDiameters.find(p => p.nominal === nominal);
+            return pipe ? pipe.di : 0;
+        }
+
+        function getGasType() {
+            const density = getVal('GasDensity');
+            if (density.toFixed(2) === GAS_PRESETS.GN.GasDensity.toFixed(2)) return GAS_PRESETS.GN.GasType;
+            if (density.toFixed(2) === GAS_PRESETS.LP.GasDensity.toFixed(2)) return GAS_PRESETS.LP.GasType;
+            return 'Personalizado';
+        }
+
+        /**
+         * Muestra una notificación temporal (Toast)
+         */
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast-message');
+            if (!toast) return;
+
+            let bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+            let icon = type === 'success' ? '✅' : '❌';
+
+            toast.className = `p-4 rounded-lg shadow-lg text-white font-semibold flex items-center space-x-2 ${bgColor}`;
+            toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+            
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        /**
+         * Manejo de Modales
+         */
+        function showGuidanceModal() {
+            document.getElementById('guidance-modal')?.classList.add('open');
+        }
+
+        function hideGuidanceModal() {
+            document.getElementById('guidance-modal')?.classList.remove('open');
+        }
+        
+        // Modal de Diámetros
+        function showDiameterModal() {
+            renderPipeDiameters();
+            document.getElementById('diameter-modal')?.classList.add('open');
+        }
+
+        function hideDiameterModal() {
+            document.getElementById('diameter-modal')?.classList.remove('open');
+            calculateAll();
+        }
+        
+        // Modal de Ciudades (NUEVO)
+        function showCityModal() {
+            renderCityList();
+            document.getElementById('city-modal')?.classList.add('open');
+        }
+        
+        function hideCityModal() {
+            document.getElementById('city-modal')?.classList.remove('open');
+            populateCitySelector(); // Recarga el selector principal con la lista actualizada
+            
+            // Forzar actualización de altitud/presión si la ciudad actual fue editada o eliminada
+            const selectedAltitude = document.getElementById('CitySelector').value;
+            updateAltitude(selectedAltitude);
+        }
+
+        // --- Lógica de Cálculo (Fórmulas) ---
+
+        function calculateSegment(segment) {
+            const G = getVal('GasDensity');
+            const PC = getVal('CalorificValue'); // Kw/h
+            const V_max = getVal('MaxVelocity'); // m/s
+            const K_Renouard_x5 = getVal('RenouardConstant'); // Factor K * 10^5
+
+            const DI_mm = getPipeDI(segment.nominal);
+
+            // 1. Caudal (Q)
+            const Q_m3h = segment.accumulatedKw / PC;
+            segment.Q_m3h = isFinite(Q_m3h) ? Q_m3h : 0;
+
+            // 2. Longitud Calculada
+            segment.L_calc = segment.L_real * 1.2;
+
+            // 3. Pérdida de Presión por metro ($\Delta P/m$) (Fórmula de Renouard)
+            const C_Renouard = K_Renouard_x5 * 100000; // Constante real
+            let deltaP_per_m = 0;
+            let deltaP_segment = 0;
+            
+            if (DI_mm > 0 && G > 0 && Q_m3h > 0) {
+                const Q_pow = Math.pow(Q_m3h, 1.82);
+                const DI_pow = Math.pow(DI_mm, 4.82);
+                
+                // Formula: Delta P/m = C_Renouard * (G * Q^1.82 / DI^4.82)
+                deltaP_per_m = C_Renouard * (G * Q_pow / DI_pow);
+                deltaP_segment = deltaP_per_m * segment.L_calc;
+            }
+            
+            segment.DeltaP_per_m = isFinite(deltaP_per_m) ? deltaP_per_m : 0;
+            segment.DeltaP_segment = isFinite(deltaP_segment) ? deltaP_segment : 0;
+
+            // 4. Velocidad del Gas (V)
+            // V (m/s) = (Q_m3h * 353.677) / DI_mm^2
+            let velocity = 0;
+            if (DI_mm > 0 && Q_m3h > 0) {
+                velocity = (Q_m3h * 353.677) / (DI_mm * DI_mm);
+            }
+            segment.Velocity = isFinite(velocity) ? velocity : 0;
+
+            // 5. Verificaciones
+            segment.isSpeedValid = segment.Velocity <= V_max;
+
+            return segment;
+        }
+
+        function calculateAll() {
+            updateConsumptionModelFromUI();
+            
+            let totalDeltaP = 0;
+            const P_in = getVal('P_in');
+            const P_final_min = getVal('P_out');
+            const DeltaP_max = P_in - P_final_min;
+
+            segments.forEach(seg => {
+                const kwInput = document.getElementById(`kw-${seg.start}`); 
+                
+                if(kwInput) {
+                    seg.accumulatedKw = parseFloat(kwInput.value) || 0;
+                } else {
+                    seg.accumulatedKw = 0;
+                }
+            });
+            
+            segments = segments.map(seg => {
+                const calculatedSeg = calculateSegment(seg);
+                totalDeltaP += calculatedSeg.DeltaP_segment;
+                return calculatedSeg;
+            });
+
+            renderSegments();
+            renderSummary(totalDeltaP, DeltaP_max);
+        }
+
+        // --- Manejo de la Ciudad y Altitud ---
+
+        /**
+         * Rellena el dropdown de ciudades al iniciar o al actualizar la lista.
+         */
+        function populateCitySelector() {
+            const selector = document.getElementById('CitySelector');
+            if (!selector) return;
+
+            // Ordenar ciudades alfabéticamente
+            const sortedCities = [...CITIES].sort((a, b) => a.name.localeCompare(b.name));
+
+            let options = sortedCities.map(city => 
+                `<option value="${city.altitude}" data-pressure="${city.pressure}" data-name="${city.name}">${city.name}</option>`
+            ).join('');
+            
+            // Reestablecer las opciones
+            selector.innerHTML = `<option value="">--- Seleccione Ciudad ---</option>` + options;
+            
+            // Intentar reseleccionar el valor actual
+            const currentAltitude = getVal('CityAltitude');
+            if (currentAltitude !== 0) {
+                 const currentCity = CITIES.find(c => c.altitude === currentAltitude);
+                 if (currentCity) {
+                     selector.value = currentCity.altitude;
+                 }
+            }
+        }
+
+        /**
+         * Actualiza el campo de Altitud y Presión al seleccionar una ciudad.
+         */
+        function updateAltitude(altitudeValue) {
+            const altitudeInput = document.getElementById('CityAltitude');
+            const pressureInput = document.getElementById('AtmosphericPressure');
+            
+            if (!altitudeValue) {
+                // Si no hay valor seleccionado
+                if (altitudeInput) altitudeInput.value = 0;
+                if (pressureInput) pressureInput.value = 1013.25; // Presión a nivel del mar por defecto
+                return;
+            }
+            
+            const altitude = parseFloat(altitudeValue);
+            
+            if (altitudeInput) altitudeInput.value = altitude.toFixed(0);
+            
+            // Obtener la presión atmosférica del atributo data-pressure de la opción seleccionada
+            const selectedOption = document.querySelector(`#CitySelector option[value="${altitudeValue}"]:checked`);
+            let pressure = 0;
+
+            if (selectedOption) {
+                 // Usamos el valor data-pressure que está asociado a la ciudad
+                pressure = parseFloat(selectedOption.getAttribute('data-pressure')) || getPressureByAltitude(altitude);
+            } else {
+                // Si no se encuentra, busca en la lista de CITIES
+                const cityData = CITIES.find(c => c.altitude === altitude);
+                pressure = cityData ? cityData.pressure : getPressureByAltitude(altitude);
+            }
+            
+            if (pressureInput) pressureInput.value = pressure.toFixed(2);
+
+            calculateAll(); // Recalcular al cambiar parámetros
+        }
+
+        /**
+         * Renderiza la lista de ciudades en el modal de configuración.
+         */
+        function renderCityList() {
+            const container = document.getElementById('city-list');
+            if (!container) return; 
+            
+            // Ordenar ciudades alfabéticamente para el modal
+            const sortedCities = [...CITIES].sort((a, b) => a.name.localeCompare(b.name));
+
+            let html = `
+                <div class="flex space-x-2 items-center font-bold text-xs text-gray-600 border-b pb-1">
+                    <span class="flex-grow">Ciudad</span>
+                    <span class="w-24 text-center">Altitud (mts)</span>
+                    <span class="w-24 text-center">Presión (mbar)</span>
+                    <span class="w-10"></span>
+                </div>
+            `;
+            
+            sortedCities.forEach(city => {
+                // Usamos el nombre como identificador único
+                const cityId = city.name.replace(/\s/g, '_'); 
+                
+                html += `
+                    <div class="flex space-x-2 items-center text-sm p-1 rounded hover:bg-gray-50">
+                        <span class="flex-grow font-medium">${city.name}</span>
+                        <span class="w-24 text-center">${city.altitude}</span>
+                        <span class="w-24 text-center">${city.pressure.toFixed(2)}</span>
+                        <button onclick="removeCity('${city.name}')" class="btn-danger p-2 text-xs w-10">X</button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        /**
+         * Agrega una nueva ciudad a la lista CITIES.
+         */
+        function addCity() {
+            const name = document.getElementById('newCityName').value.trim();
+            const altitude = parseFloat(document.getElementById('newCityAltitude').value);
+            const pressure = parseFloat(document.getElementById('newCityPressure').value);
+
+            if (!name || isNaN(altitude) || isNaN(pressure) || altitude < 0 || pressure < 0) {
+                showToast('Por favor, complete todos los campos de ciudad con valores válidos.', 'error');
+                return;
+            }
+
+            if (CITIES.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+                showToast(`Error: La ciudad "${name}" ya existe.`, 'error');
+                return;
+            }
+
+            CITIES.push({ name: name, altitude: altitude, pressure: pressure });
+            
+            // Limpiar campos del formulario
+            document.getElementById('newCityName').value = '';
+            document.getElementById('newCityAltitude').value = '';
+            document.getElementById('newCityPressure').value = '';
+            
+            showToast(`Ciudad "${name}" añadida con éxito.`, 'success');
+            renderCityList();
+            populateCitySelector(); // Actualiza el selector principal
+        }
+
+        /**
+         * Elimina una ciudad de la lista CITIES.
+         */
+        function removeCity(name) {
+             // Mantener al menos una ciudad en la lista si es la última
+            if (CITIES.length <= 1) {
+                showToast('Debe haber al menos una ciudad en la lista.', 'error');
+                return;
+            }
+            
+            CITIES = CITIES.filter(c => c.name !== name);
+            
+            // Si la ciudad eliminada era la seleccionada actualmente, seleccionar la primera de la lista
+            const currentSelectedCity = document.querySelector('#CitySelector option:checked')?.getAttribute('data-name');
+            if (currentSelectedCity === name) {
+                document.getElementById('CitySelector').value = CITIES[0].altitude;
+                updateAltitude(CITIES[0].altitude);
+            }
+            
+            showToast(`Ciudad "${name}" eliminada.`, 'success');
+            renderCityList();
+            populateCitySelector();
+        }
+        
+        // --- Otras funciones de Renderizado y UI ---
+        
+        function displayDiagram(url, filename) {
+            const displayDiv = document.getElementById('diagram-display');
+            const fileNameDisplay = document.getElementById('fileNameDisplay');
+            if (!displayDiv || !fileNameDisplay) return;
+
+            if (url && url.trim() !== '') {
+                displayDiv.innerHTML = `<img src="${url.trim()}" alt="Diagrama de Red de Gas" 
+                                            onerror="this.onerror=null; this.src='https://placehold.co/600x400/FF0000/FFFFFF?text=Error+al+cargar+imagen';" 
+                                            style="max-height: 50vh; object-fit: contain;">`;
+                fileNameDisplay.textContent = filename || 'Imagen cargada desde URL.';
+            } else {
+                displayDiv.innerHTML = `<p class="text-gray-500 text-center p-4">La imagen de referencia aparecerá aquí.</p>`;
+                fileNameDisplay.textContent = '';
+            }
+        }
+
+        function updateDiagramImage(url) {
+            if (diagramFileUrl) {
+                URL.revokeObjectURL(diagramFileUrl);
+                diagramFileUrl = null;
+            }
+            document.getElementById('diagramFileInput').value = ''; 
+            displayDiagram(url);
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (diagramFileUrl) {
+                    URL.revokeObjectURL(diagramFileUrl);
+                }
+                
+                diagramFileUrl = URL.createObjectURL(file);
+                document.getElementById('diagramUrl').value = '';
+                displayDiagram(diagramFileUrl, file.name);
+            }
+        }
+        
+        function setupDragAndDrop() {
+            const dropArea = document.getElementById('file-drop-area');
+            const fileInput = document.getElementById('diagramFileInput');
+
+            if (!dropArea) return;
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => dropArea.classList.add('dragover'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => dropArea.classList.remove('dragover'), false);
+            });
+
+            dropArea.addEventListener('drop', handleDrop, false);
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            function handleDrop(e) {
+                let dt = e.dataTransfer;
+                let files = dt.files;
+
+                if (files.length > 0) {
+                    fileInput.files = files; 
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            }
+        }
+
+        function toggleParamsSection() {
+            const content = document.getElementById('params-content');
+            const icon = document.getElementById('toggle-icon-params');
+            if (content && icon) {
+                const isHidden = content.classList.toggle('hidden');
+                icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+            }
+        }
+
+        function toggleConsumptionSection() {
+            const content = document.getElementById('consumption-content');
+            const icon = document.getElementById('toggle-icon-consumption');
+            if (content && icon) {
+                const isHidden = content.classList.toggle('hidden');
+                icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+            }
+        }
+
+        function renderConsumptionPoints() {
+            const container = document.getElementById('consumption-list');
+            if (!container) return; 
+            container.innerHTML = `
+                <div class="flex space-x-2 items-center font-bold text-xs text-gray-600 border-b pb-1">
+                    <span class="w-16 text-center">Punto</span>
+                    <span class="flex-grow">Artefacto (Equipo)</span>
+                    <span class="flex-grow">Consumo KW Acumulado</span>
+                    <span class="w-10"></span>
+                </div>
+            `;
+            
+            consumptionPoints.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'flex space-x-2 items-center';
+                
+                div.innerHTML = `
+                    <input type="text" id="label-${p.id}" value="${p.label}" class="input-field w-16 text-center" onchange="updateConsumptionLabel('${p.id}', this.value)">
+                    <input type="text" id="artifact-${p.id}" value="${p.artifact}" class="input-field flex-grow" placeholder="Ej: Estufa, Caldera, etc." onchange="updateConsumptionArtifact('${p.id}', this.value)">
+                    <input type="number" id="kw-${p.id}" value="${p.kw}" min="0" step="0.01" class="input-field flex-grow" onchange="updateConsumptionKw('${p.id}', parseFloat(this.value) || 0); calculateAll()">
+                    <button onclick="removeConsumptionPoint('${p.id}')" class="btn-danger p-2 text-xs w-10">X</button>
+                `;
+                container.appendChild(div);
+            });
+
+            const content = document.getElementById('consumption-content');
+            const icon = document.getElementById('toggle-icon-consumption');
+            if (content && icon) {
+                if (content.classList.contains('hidden')) {
+                    icon.style.transform = 'rotate(0deg)';
+                } else {
+                    icon.style.transform = 'rotate(180deg)';
+                }
+            }
+        }
+
+        function renderPipeDiameters() {
+            const container = document.getElementById('diameter-list');
+            if (!container) return; 
+            container.innerHTML = '';
+            
+            container.innerHTML = `
+                <div class="flex space-x-2 items-center font-bold text-xs text-gray-600 border-b pb-1">
+                    <span class="w-24">Nominal</span>
+                    <span class="flex-grow">Nombre</span>
+                    <span class="w-24">DI (mm)</span>
+                    <span class="w-10"></span>
+                </div>
+            `;
+
+            pipeDiameters.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'flex space-x-2 items-center';
+                div.innerHTML = `
+                    <span class="text-gray-700 w-24 text-sm font-medium">${p.nominal}</span>
+                    <input type="text" id="pipe-nominal-${p.nominal}" value="${p.nominal}" class="input-field flex-grow" onchange="updatePipeDiameter('${p.nominal}', 'nominal', this.value)">
+                    <input type="number" id="pipe-di-${p.nominal}" value="${p.di}" min="0" step="0.001" class="input-field w-24" onchange="updatePipeDiameter('${p.nominal}', 'di', parseFloat(this.value) || 0)">
+                    <button onclick="removeDiameter('${p.nominal}')" class="btn-danger p-2 text-xs w-10">X</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderSegments() {
+            const tbodyInput = document.getElementById('segment-input-list');
+            const tbodyResult = document.getElementById('segment-result-list');
+            
+            if (!tbodyInput || !tbodyResult) return; 
+            
+            tbodyInput.innerHTML = '';
+            tbodyResult.innerHTML = '';
+
+            const availablePoints = consumptionPoints.map(p => `<option value="${p.id}">${p.label}</option>`).join('');
+            const availablePipes = pipeDiameters.map(p => `<option value="${p.nominal}">${p.nominal}</option>`).join('');
+
+
+            segments.forEach(seg => {
+                const speedClass = seg.isSpeedValid ? 'text-green-600' : 'text-red-600 font-bold';
+                const trInput = document.createElement('tr');
+                trInput.className = 'hover:bg-gray-50';
+
+                // --- Fila de ENTRADA DE DATOS (Tabla 3) ---
+                trInput.innerHTML = `
+                    <td class="input-cell">
+                        <select id="start-${seg.id}" class="input-field" onchange="updateSegmentProp(${seg.id}, 'start', this.value); calculateAll()">
+                            ${consumptionPoints.map(p => `<option value="${p.id}" ${seg.start === p.id ? 'selected' : ''}>${p.label}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td class="input-cell">
+                        <select id="end-${seg.id}" class="input-field" onchange="updateSegmentProp(${seg.id}, 'end', this.value); calculateAll()">
+                            ${consumptionPoints.map(p => `<option value="${p.id}" ${seg.end === p.id ? 'selected' : ''}>${p.label}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td class="input-cell"><input type="number" id="l_real-${seg.id}" value="${seg.L_real}" min="0" step="0.1" class="input-field" onchange="updateSegmentProp(${seg.id}, 'L_real', parseFloat(this.value) || 0); calculateAll()"></td>
+                    <td class="input-cell">
+                        <select id="nominal-${seg.id}" class="input-field" onchange="updateSegmentProp(${seg.id}, 'nominal', this.value); calculateAll()">
+                            ${pipeDiameters.map(p => `<option value="${p.nominal}" ${seg.nominal === p.nominal ? 'selected' : ''}>${p.nominal}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td class="input-cell font-bold text-gray-800">${seg.accumulatedKw.toFixed(2)}</td>
+                    <td class="input-cell"><button onclick="removeSegment(${seg.id})" class="btn-danger">Eliminar</button></td>
+                `;
+                tbodyInput.appendChild(trInput);
+                
+                // --- Fila de RESULTADOS DE CÁLCULO (Tabla 3.1) ---
+                const trResult = document.createElement('tr');
+                trResult.className = 'hover:bg-gray-50';
+                
+                trResult.innerHTML = `
+                    <td class="calc-cell font-bold">${seg.start}-${seg.end}</td>
+                    <td class="calc-cell">${seg.L_calc.toFixed(2)}</td>
+                    <td class="calc-cell font-medium">${getPipeDI(seg.nominal).toFixed(3)}</td>
+                    <td class="calc-cell font-medium">${seg.Q_m3h.toFixed(4)}</td>
+                    <td class="calc-cell">${seg.DeltaP_per_m.toFixed(5)}</td>
+                    <td class="calc-cell font-bold text-red-700">${seg.DeltaP_segment.toFixed(3)}</td>
+                    <td class="${speedClass} font-bold calc-cell">${seg.Velocity.toFixed(2)}</td>
+                `;
+                tbodyResult.appendChild(trResult);
+            });
+        }
+
+        function renderSummary(totalDeltaP, DeltaP_max) {
+            const totalDeltaPElement = document.getElementById('total-delta-p');
+            if (totalDeltaPElement) {
+                totalDeltaPElement.setAttribute('colspan', '2'); 
+                totalDeltaPElement.textContent = `${totalDeltaP.toFixed(3)} mbar`;
+            }
+            
+            const totalKw = consumptionPoints.reduce((sum, p) => sum + p.kw, 0);
+            
+            const maxVelocitySegment = segments.length > 0 ? segments.reduce((maxSeg, seg) => seg.Velocity > maxSeg.Velocity ? seg : maxSeg, segments[0]) : null;
+            const maxVelocity = maxVelocitySegment ? maxVelocitySegment.Velocity : 0;
+            const V_max_input = getVal('MaxVelocity');
+
+            const summaryContent = document.getElementById('summary-content');
+            const statusDiv = document.getElementById('design-status');
+            
+            if (!summaryContent || !statusDiv) return;
+
+            // 1. GENERAR EL CONTENIDO CONSOLIDADO
+            const gasType = getGasType();
+            const citySelector = document.getElementById('CitySelector');
+            const cityName = citySelector.options[citySelector.selectedIndex]?.text.replace('--- Seleccione Ciudad ---', 'No seleccionada') || 'No seleccionada';
+            
+            let summaryHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Columna de Parámetros de Criterio -->
+                    <div class="space-y-2 p-3 bg-blue-50 rounded-lg">
+                        <h4 class="font-bold text-blue-800 border-b pb-1">CRITERIOS DE DISEÑO</h4>
+                        <p class="text-sm">Tipo de Gas: <span class="font-semibold">${gasType}</span></p>
+                        <!-- Título ajustado: Eliminado caracter especial -->
+                        <p class="text-sm">Pérdida de Presión Máxima (Delta P Max): <span class="font-semibold text-blue-600">${DeltaP_max.toFixed(2)} mbar</span> (P. Inicial ${getVal('P_in')} - P. Final ${getVal('P_out')})</p>
+                        <p class="text-sm">Velocidad Máxima Permitida (Vmax): <span class="font-semibold">${V_max_input.toFixed(0)} m/s</span></p>
+                        <p class="text-sm">Consumo Total (KW): <span class="font-semibold">${totalKw.toFixed(2)} KW</span></p>
+                    </div>
+
+                    <!-- Columna de Resultados Clave -->
+                    <div class="space-y-2 p-3 bg-green-50 rounded-lg">
+                        <h4 class="font-bold text-green-800 border-b pb-1">RESULTADOS CLAVE</h4>
+                        <!-- Título ajustado: Eliminado caracter especial -->
+                        <p class="text-sm">Pérdida de Presión Total Calculada (Sumatoria Delta P): <span class="font-bold text-red-700">${totalDeltaP.toFixed(3)} mbar</span></p>
+                        <p class="text-sm">Presión Mínima al Consumidor Final: <span class="font-bold">${(getVal('P_in') - totalDeltaP).toFixed(3)} mbar</span></p>
+                        ${maxVelocitySegment ? 
+                            `<p class="text-sm">Velocidad Máx. en Red (Tramo ${maxVelocitySegment.start}-${maxVelocitySegment.end}): <span class="font-bold text-red-700">${maxVelocity.toFixed(2)} m/s</span></p>`
+                            : `<p class="text-sm">Velocidad Máx. en Red: N/A</p>`
+                        }
+                        <p class="text-sm">Ciudad de Diseño: <span class="font-semibold">${cityName}</span> (${getVal('CityAltitude')} mts)</p>
+                    </div>
+                </div>
+            `;
+            summaryContent.innerHTML = summaryHTML;
+
+
+            // 2. GENERAR LA CONCLUSIÓN DE VIABILIDAD
+            let conclusionText = '';
+            let allSpeedValid = segments.every(s => s.isSpeedValid);
+            let overallPass = true;
+            
+            if (totalDeltaP > DeltaP_max) {
+                // Falla de Presión
+                statusDiv.className = 'mt-4 p-3 rounded-lg font-semibold text-sm bg-red-100 text-red-800';
+                conclusionText = `**CONCLUSIÓN: DISEÑO NO VIABLE (PRESIÓN)**
+                    La Pérdida de Presión Total calculada (${totalDeltaP.toFixed(3)} mbar) es **MAYOR** a la máxima disponible (${DeltaP_max.toFixed(2)} mbar).
+                    **ACCIÓN REQUERIDA:** Aumentar el diámetro nominal en los tramos principales o verificar la Longitud Calculada.`;
+                overallPass = false;
+            } else if (!allSpeedValid) {
+                // Advertencia de Velocidad
+                statusDiv.className = 'mt-4 p-3 rounded-lg font-semibold text-sm bg-yellow-100 text-yellow-800';
+                conclusionText = `**CONCLUSIÓN: VIABLE CON ADVERTENCIA (VELOCIDAD)**
+                    El diseño cumple con el criterio de Presión, pero la Velocidad del Gas en el Tramo ${maxVelocitySegment.start}-${maxVelocitySegment.end} (${maxVelocity.toFixed(2)} m/s) **SUPERA** el límite de ${V_max_input.toFixed(0)} m/s.
+                    **ACCIÓN REQUERIDA:** Se recomienda revisar y aumentar el diámetro en el tramo crítico para reducir la velocidad y evitar ruidos y erosión.`;
+                overallPass = false;
+            } else {
+                // Diseño Aprobado
+                statusDiv.className = 'mt-4 p-3 rounded-lg font-semibold text-sm bg-green-100 text-green-800';
+                conclusionText = `**CONCLUSIÓN: DISEÑO VIABLE**
+                    El diseño cumple con los criterios de presión y velocidad establecidos.
+                    La Presión Total es **${totalDeltaP.toFixed(3)} mbar**, lo que permite entregar una Presión Final de **${(getVal('P_in') - totalDeltaP).toFixed(3)} mbar** al punto más lejano, superando la presión final mínima requerida.`;
+            }
+            
+            statusDiv.innerHTML = conclusionText.replace(/\*\*/g, '<span>');
+        }
+        
+        // Se mantiene la función exportData por si se requiere reactivar.
+        function exportData() {
+            // 1. Recopilar todos los datos
+            const dataToExport = {
+                params: {
+                    P_in: getVal('P_in'),
+                    P_out: getVal('P_out'),
+                    GasDensity: getVal('GasDensity'),
+                    CalorificValue: getVal('CalorificValue'),
+                    MaxVelocity: getVal('MaxVelocity'),
+                    RenouardConstant: getVal('RenouardConstant'),
+                    CityAltitude: getVal('CityAltitude'),
+                    AtmosphericPressure: getVal('AtmosphericPressure'),
+                    SelectedCity: document.getElementById('CitySelector').options[document.getElementById('CitySelector').selectedIndex]?.text || 'No seleccionada'
+                },
+                cities: CITIES,
+                diameters: pipeDiameters,
+                consumptionPoints: consumptionPoints,
+                segments: segments.map(s => ({
+                    id: s.id, start: s.start, end: s.end, L_real: s.L_real, nominal: s.nominal, 
+                    // Se omiten los resultados de cálculo ya que se derivan de los inputs.
+                })),
+                timestamp: new Date().toISOString()
+            };
+
+            const jsonString = JSON.stringify(dataToExport, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            
+            // 2. Crear y disparar la descarga
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Calculo_Gas_Renouard_${new Date().toISOString().slice(0, 10)}.json`;
+            
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // 3. Liberar URL
+            URL.revokeObjectURL(url);
+            
+            showToast('Datos guardados en formato JSON.', 'success');
+        }
+
+        // --- Funciones de Modificación de Datos ---
+
+        function setGasType(type) {
+            const preset = GAS_PRESETS[type];
+            if (!preset) return;
+
+            const densityInput = document.getElementById('GasDensity');
+            const calorificInput = document.getElementById('CalorificValue');
+
+            if (densityInput) densityInput.value = preset.GasDensity.toFixed(2);
+            if (calorificInput) calorificInput.value = preset.CalorificValue.toFixed(2);
+
+            calculateAll();
+        }
+        
+        function updateConsumptionModelFromUI() {
+            consumptionPoints.forEach(p => {
+                const kwInput = document.getElementById(`kw-${p.id}`);
+                const labelInput = document.getElementById(`label-${p.id}`);
+                const artifactInput = document.getElementById(`artifact-${p.id}`);
+                
+                p.kw = parseFloat(kwInput?.value) || 0;
+                p.label = labelInput?.value || p.id;
+                p.artifact = artifactInput?.value || '';
+            });
+        }
+
+        function updateConsumptionLabel(id, label) {
+            const point = consumptionPoints.find(p => p.id === id);
+            if (point) point.label = label.trim() || point.id;
+            renderSegments(); 
+        }
+        
+        function updateConsumptionArtifact(id, artifact) {
+            const point = consumptionPoints.find(p => p.id === id);
+            if (point) point.artifact = artifact.trim();
+        }
+
+        function updateConsumptionKw(id, kw) {
+            const point = consumptionPoints.find(p => p.id === id);
+            if (point) point.kw = kw;
+        }
+
+        function addConsumptionPoint() {
+            const newId = String.fromCharCode(65 + consumptionPoints.length);
+            const newPoint = { id: newId, kw: 0, label: newId, artifact: '' };
+            consumptionPoints.push(newPoint);
+            renderConsumptionPoints();
+            renderSegments();
+        }
+
+        function removeConsumptionPoint(id) {
+            consumptionPoints = consumptionPoints.filter(p => p.id !== id);
+            segments = segments.filter(s => s.start !== id && s.end !== id);
+            
+            consumptionPoints.forEach((p, index) => {
+                p.id = String.fromCharCode(65 + index);
+                p.label = p.id;
+            });
+
+            renderConsumptionPoints();
+            calculateAll();
+        }
+
+        function updatePipeDiameter(oldNominal, prop, value) {
+            let pipeIndex = pipeDiameters.findIndex(p => p.nominal === oldNominal);
+            if (pipeIndex !== -1) {
+                if (prop === 'nominal') {
+                    if (pipeDiameters.some((p, i) => p.nominal === value && i !== pipeIndex)) {
+                        showToast('Error: El nombre nominal ya existe.', 'error');
+                        return; 
+                    }
+                    
+                    segments.forEach(seg => {
+                        if (seg.nominal === oldNominal) seg.nominal = value;
+                    });
+                    
+                    pipeDiameters[pipeIndex].nominal = value;
+                    
+                } else if (prop === 'di') {
+                    pipeDiameters[pipeIndex].di = value;
+                }
+            }
+            renderPipeDiameters();
+        }
+
+        function addDiameter() {
+            const newNominal = `PE Nuevo ${pipeDiameters.length + 1}`;
+            pipeDiameters.push({ nominal: newNominal, di: 0.0 });
+            renderPipeDiameters();
+        }
+        
+        function removeDiameter(nominal) {
+            pipeDiameters = pipeDiameters.filter(p => p.nominal !== nominal);
+            const defaultNominal = pipeDiameters.length > 0 ? pipeDiameters[0].nominal : '';
+            segments.forEach(seg => {
+                if (seg.nominal === nominal) seg.nominal = defaultNominal;
+            });
+            renderPipeDiameters();
+        }
+
+        function addSegment() {
+            const defaultKw = consumptionPoints[0]?.kw || 0;
+
+            const newSegment = {
+                id: nextSegmentId++,
+                start: consumptionPoints[0]?.id || '',
+                end: consumptionPoints[1]?.id || consumptionPoints[0]?.id || '',
+                L_real: 10,
+                nominal: pipeDiameters[0]?.nominal || '',
+                accumulatedKw: defaultKw, 
+                L_calc: 0,
+                Q_m3h: 0,
+                DeltaP_per_m: 0,
+                DeltaP_segment: 0,
+                Velocity: 0,
+                isSpeedValid: true
+            };
+            segments.push(newSegment);
+            calculateAll();
+        }
+
+        function updateSegmentProp(id, prop, value) {
+            const index = segments.findIndex(seg => seg.id === id);
+            if (index !== -1) {
+                segments[index][prop] = value;
+            }
+        }
+
+        function removeSegment(id) {
+            segments = segments.filter(seg => seg.id !== id);
+            calculateAll();
+        }
+
+        function resetApp() {
+            // Reiniciar arrays de datos a vacío o por defecto
+            consumptionPoints = [];
+            pipeDiameters = JSON.parse(JSON.stringify(DEFAULT_PIPE_DIAMETERS));
+            segments = [];
+            nextSegmentId = 1;
+
+            // Restablecer parámetros del formulario
+            document.getElementById('P_in').value = DEFAULT_PARAMS.P_in;
+            document.getElementById('P_out').value = DEFAULT_PARAMS.P_out;
+            document.getElementById('GasDensity').value = DEFAULT_PARAMS.GasDensity;
+            document.getElementById('CalorificValue').value = DEFAULT_PARAMS.CalorificValue;
+            document.getElementById('MaxVelocity').value = DEFAULT_PARAMS.MaxVelocity;
+            document.getElementById('RenouardConstant').value = DEFAULT_PARAMS.RenouardConstant;
+            
+            // Restablecer ciudad y altitud/presión
+            const defaultCity = CITIES.find(c => c.name === DEFAULT_PARAMS.CitySelector);
+             if (defaultCity) {
+                document.getElementById('CitySelector').value = defaultCity.altitude;
+                document.getElementById('CityAltitude').value = defaultCity.altitude;
+                document.getElementById('AtmosphericPressure').value = defaultCity.pressure;
+            } else {
+                 document.getElementById('CitySelector').value = '';
+                 document.getElementById('CityAltitude').value = '';
+                 document.getElementById('AtmosphericPressure').value = '';
+            }
+            
+            // Limpiar diagrama
+            document.getElementById('diagramUrl').value = '';
+            document.getElementById('diagramFileInput').value = '';
+            if (diagramFileUrl) {
+                URL.revokeObjectURL(diagramFileUrl);
+                diagramFileUrl = null;
+            }
+            displayDiagram('');
+
+            init();
+            
+            showToast('¡Datos limpiados! Aplicación lista para un nuevo cálculo.', 'success');
+            
+            // Asegurar que la sección de consumo esté visible después del reinicio para empezar a trabajar
+            const consumptionContent = document.getElementById('consumption-content');
+            if (consumptionContent.classList.contains('hidden')) toggleConsumptionSection();
+        }
+        
+        // --- Inicialización ---
+
+        function init() {
+            pipeDiameters = JSON.parse(JSON.stringify(DEFAULT_PIPE_DIAMETERS));
+
+            if (consumptionPoints.length === 0) {
+                consumptionPoints = [
+                    { id: 'A', kw: 50, label: 'A', artifact: 'Planta de energía' },
+                    { id: 'B', kw: 0, label: 'B', artifact: 'Estufa Comercial' },
+                    { id: 'C', kw: 0, label: 'C', artifact: 'Calentador de agua' }
+                ];
+                
+                // [TRAMOS ELIMINADOS] Se inicia con la tabla de tramos vacía.
+                
+            }
+
+            // Inicializar el selector de ciudades y altitud
+            populateCitySelector();
+            
+            // Forzar la selección por defecto y actualización de campos de altitud/presión
+            const defaultCity = CITIES.find(c => c.name === DEFAULT_PARAMS.CitySelector);
+            if (defaultCity) {
+                document.getElementById('CitySelector').value = defaultCity.altitude;
+                // La llamada a updateAltitude asegura que la presión atmosférica se cargue también
+                updateAltitude(defaultCity.altitude); 
+            }
+            
+            renderConsumptionPoints();
+            
+            const paramsContent = document.getElementById('params-content');
+            const paramsIcon = document.getElementById('toggle-icon-params');
+            if (paramsContent && paramsIcon) {
+                if (!paramsContent.classList.contains('hidden')) {
+                    paramsIcon.style.transform = 'rotate(180deg)';
+                }
+            }
+            
+            calculateAll(); 
+            setupDragAndDrop();
+        }
+        
+        window.addEventListener('beforeunload', () => {
+            if (diagramFileUrl) {
+                URL.revokeObjectURL(diagramFileUrl);
+            }
+        });
+        
+        window.onload = () => {
+            init();
+            showGuidanceModal();
+        };
+    </script>
+</body>
+</html>

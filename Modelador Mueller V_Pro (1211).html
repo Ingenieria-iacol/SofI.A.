@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modelador Mueller Red de Gas</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <!-- html2pdf for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- MathJax for rendering LaTeX formulas -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Firebase Imports (Required for Canvas Environment) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; 
+
+        let app, db, auth;
+        let globalUserId = '';
+
+        if (firebaseConfig) {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('error'); 
+
+                const setupAuth = async () => {
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Firebase Auth Error:", error);
+                        document.getElementById('firebase-status').textContent = 'Error de autenticación.';
+                    }
+                };
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        globalUserId = user.uid;
+                        document.getElementById('firebase-status').textContent = `Autenticado. ID: ${globalUserId}`;
+                        window.globalUserId = globalUserId;
+                        window.db = db;
+                    } else {
+                        globalUserId = crypto.randomUUID();
+                        document.getElementById('firebase-status').textContent = `Anonimo. ID temporal: ${globalUserId}`;
+                        window.globalUserId = globalUserId;
+                        window.db = db;
+                    }
+                });
+
+                setupAuth();
+            } catch (error) {
+                console.error("Firebase Init Error:", error);
+                document.getElementById('firebase-status').textContent = 'Error de inicialización de Firebase.';
+            }
+        } else {
+            document.getElementById('firebase-status').textContent = 'Firebase no configurado (modo sin persistencia).';
+            window.globalUserId = crypto.randomUUID();
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f9;
+        }
+        .input-field {
+            /* Añado text-center para centrar el texto en todos los inputs y selects */
+            @apply px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full transition duration-150 ease-in-out text-center;
+        }
+        /* Estilo para campos editables (Fondo Amarillo Claro) */
+        .input-field:not([readonly]) {
+            @apply bg-yellow-100;
+        }
+        /* Estilo para campos de solo lectura (Fondo Gris Oscuro, Texto Gris Oscuro) */
+        .input-field[readonly] {
+            @apply bg-gray-200 cursor-not-allowed text-gray-600;
+        }
+        .section-title {
+            @apply text-xl font-bold mb-4 border-b-2 border-indigo-400 pb-2 text-indigo-700;
+        }
+        .card {
+            @apply bg-white p-6 rounded-xl shadow-lg mb-12;
+        }
+        .table-header {
+            @apply px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50;
+        }
+        .table-cell {
+            @apply px-4 py-2 whitespace-nowrap text-sm text-gray-900;
+        }
+        /* Estilo para la etiqueta de campo automático */
+        .auto-label {
+            @apply text-xs font-normal text-gray-500 ml-1;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .card {
+                box-shadow: none !important;
+                border: 1px solid #eee !important;
+            }
+            body {
+                background-color: white !important;
+            }
+        }
+        .select-multiple {
+            /* Mantener el p-1 y el fondo amarillo para selectores en la tabla de consumos */
+            @apply p-1 text-sm bg-yellow-100 border border-gray-300 rounded-lg;
+        }
+        /* Ajuste específico para inputs de número dentro de tablas que deben estar a la derecha (Longitud, Caudal) */
+        .table-cell .input-field.text-right {
+             @apply text-right; 
+        }
+        /* Ajuste específico para el input de valor de presión para que esté a la derecha */
+        #initial-pressure-value {
+             @apply text-right;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- VISTA PRINCIPAL DEL MODELADOR -->
+    <div id="app-container" class="max-w-7xl mx-auto hidden">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 border-b-4 border-blue-600 pb-2">
+            Modelador Mueller Red de Gas - Pérdida de Presión y Velocidad
+        </h1>
+
+        <!-- Firebase Status/User ID Display -->
+        <div id="firebase-status" class="text-xs text-right text-gray-600 mb-4">
+            Cargando autenticación...
+        </div>
+
+        <!-- Botones de Acción Global -->
+        <div class="no-print flex flex-wrap gap-4 mb-8 p-4 bg-blue-100 rounded-xl shadow-md">
+            <button onclick="exportToPdf()" class="flex-1 min-w-[150px] bg-red-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-red-700 transition duration-300 shadow-md transform hover:scale-[1.02]">
+                Guardar PDF
+            </button>
+            <button onclick="resetApplication()" class="flex-1 min-w-[150px] bg-gray-500 text-white font-semibold py-3 px-6 rounded-xl hover:bg-gray-600 transition duration-300 shadow-md transform hover:scale-[1.02]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94l-1.72-1.72z" /></svg>
+                Limpiar
+            </button>
+            <button onclick="toggleView('math-explanation-container')" class="flex-1 min-w-[150px] bg-blue-500 text-white font-semibold py-3 px-6 rounded-xl hover:bg-blue-600 transition duration-300 shadow-md transform hover:scale-[1.02]">
+                Consultar Método Matemático
+            </button>
+            <button onclick="toggleView('instructions-container')" class="flex-1 min-w-[150px] bg-green-500 text-white font-semibold py-3 px-6 rounded-xl hover:bg-green-600 transition duration-300 shadow-md transform hover:scale-[1.02]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                Instrucciones de Uso
+            </button>
+            <button onclick="toggleView('design-course-container')" class="flex-1 min-w-[150px] bg-purple-500 text-white font-semibold py-3 px-6 rounded-xl hover:bg-purple-600 transition duration-300 shadow-md transform hover:scale-[1.02]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM5.223 6.974A1 1 0 016.4 6.784l2.5-1.5A1 1 0 0110 6v7a1 1 0 11-2 0V7.95l-1.777 1.066A1 1 0 015 8V7a1 1 0 01.223-.026z" clip-rule="evenodd" fill-rule="evenodd" /></svg>
+                Curso Rápido de Diseño
+            </button>
+        </div>
+
+        <!-- 1. DATOS BÁSICOS -->
+        <div class="card">
+            <h2 class="section-title">1. Datos Básicos del Proyecto</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Proyecto:</label><input type="text" id="project-name" class="input-field" value=""></div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Ciudad de Ubicación:</label>
+                    <select id="city" class="input-field" onchange="updateCityProperties(this.value)">
+                        <option value="" disabled selected>Seleccione Ciudad</option>
+                        <option value="Cali">Cali (995m)</option>
+                        <option value="Bogota">Bogotá (2640m)</option>
+                        <option value="Medellin">Medellín (1495m)</option>
+                        <option value="Barranquilla">Barranquilla (18m)</option>
+                        <option value="Bucaramanga">Bucaramanga (959m)</option>
+                        <option value="Cartagena">Cartagena (2m)</option>
+                        <option value="Pasto">Pasto (2536m)</option>
+                        <option value="Villavicencio">Villavicencio (467m)</option>
+                        <option value="Pereira">Pereira (1411m)</option>
+                        <option value="Manizales">Manizales (2160m)</option>
+                        <option value="Cucuta">Cúcuta (320m)</option>
+                        <option value="Popayan">Popayán (1760m)</option>
+                        <option value="IngresoManual">Ingreso Manual de Altitud / Otra Ciudad</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fecha:
+                        <sub class="auto-label">Campo Automático</sub>
+                    </label>
+                    <input type="text" id="date-field" class="input-field" readonly>
+                </div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Responsable:</label><input type="text" id="responsible" class="input-field" value=""></div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Código ID:</label>
+                    <input type="text" id="project-id" class="input-field" value="" >
+                </div>
+            </div>
+            
+            <div class="mt-6 border-t pt-4 border-gray-200">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Isométrico (Cargar Imagen):</label>
+                <input type="file" id="isometric-image-input" accept="image/*" onchange="previewIsometricImage(event)" class="input-field p-2 border-dashed border-gray-400">
+                <div id="isometric-image-preview-container" class="mt-4 p-2 bg-gray-50 rounded-lg max-w-lg mx-auto overflow-hidden">
+                    <img id="isometric-image-preview" src="" alt="Previsualización de Isométrico" class="hidden w-full h-auto rounded-md shadow-md">
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- 2. INFORMACIÓN TÉCNICA -->
+        <div class="card">
+            <h2 class="section-title">2. Información Técnica del Diseño</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Gas:</label>
+                    <select id="gas-type" class="input-field" onchange="updateGasProperties()">
+                        <option value="" disabled selected>Seleccione Tipo de Gas</option>
+                        <option value="GN">Gas Natural (GN)</option>
+                        <option value="GLP">Gas Licuado de Petróleo (GLP)</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Presión Inicial:</label>
+                    <div class="flex space-x-2">
+                        <input type="number" id="initial-pressure-value" class="input-field w-2/3 text-right" value="" step="0.1" placeholder="Valor">
+                        <select id="initial-pressure-unit" class="input-field w-1/3 bg-yellow-100">
+                            <option value="mbar" selected>mbar</option>
+                            <option value="kPa">kPa</option>
+                            <option value="psi">psi</option>
+                            <option value="kgcm2">kgf/cm²</option>
+                        </select>
+                    </div>
+                    <p id="pressure-conversion-display" class="text-xs text-gray-500 mt-1">Equivalente: 0.00 mbar</p>
+                </div>
+
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Velocidad Máx. Esperada (m/s):</label><input type="number" id="max-velocity" class="input-field" value="" step="0.1"></div>
+                
+                <!-- CAMPO Factor de Fricción K (adimensional) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Factor de Fricción K (Coef. Fricción):</label>
+                    <input type="number" id="mueller-friction-k" class="input-field" value="0.5" step="0.01">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Densidad Relativa del Gas (Aire=1):
+                        <sub class="auto-label">Campo Automático</sub>
+                    </label>
+                    <input type="number" id="gas-density" class="input-field" value="" step="0.01" readonly>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Poder Calorífico (BTU/h):
+                        <sub class="auto-label">Campo Automático</sub>
+                    </label>
+                    <input type="number" id="calorific-value-btu" class="input-field" value="" step="0.01" readonly>
+                </div>
+                
+                <div class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Altura Nivel del Mar (msnm, m):
+                        <sub class="auto-label">Campo Automático</sub>
+                    </label>
+                    <input type="number" id="sea-level-alt" class="input-field" value="0" step="1" readonly>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Altura Sitio Instalación (m):
+                        <sub class="auto-label">Campo Automático</sub>
+                    </label>
+                    <input type="number" id="site-alt" class="input-field" value="" step="1" readonly>
+                </div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Presión Atmosférica Sitio (mbar):</label><input type="number" id="site-pressure" class="input-field" value="" step="0.01"></div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Presión Atmosférica Nivel del Mar (mbar):
+                        <sub class="auto-label">Campo Automático</sub>
+                    </label>
+                    <input type="number" id="sea-level-pressure" class="input-field" value="1013.25" step="0.01" readonly>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. INFORMACIÓN DE TRAMOS DE LA RED -->
+        <div class="card">
+            <h2 class="section-title">3. Información de Tramos de la Red</h2>
+            <div class="no-print mb-4">
+                <button onclick="addSegmentRow()" class="bg-indigo-500 text-white py-2 px-4 rounded-lg hover:bg-indigo-600 transition duration-300 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    Añadir Tramo
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table id="segments-table" class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="table-header w-[5%]">ID</th>
+                            <th class="table-header w-[15%]">Longitud Real (m)</th>
+                            <th class="table-header w-[20%]">Material</th>
+                            <th class="table-header w-[20%]">Diámetro Interno (pulgadas)</th> 
+                            <th class="table-header w-[15%]">Caudal Total (m³/h)</th>
+                            <th class="table-header w-[10%] no-print">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="segments-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Segment rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. CONSUMO (LOADS) -->
+        <div class="card">
+            <h2 class="section-title">4. Consumos Asociados a los Tramos</h2>
+            <p class="text-sm text-gray-600 mb-4">Relacione el consumo asociado a cada tramo de la red. El caudal total de cada tramo se calculará automáticamente.</p>
+            <div class="no-print mb-4">
+                <button onclick="addConsumptionRow()" class="bg-indigo-500 text-white py-2 px-4 rounded-lg hover:bg-indigo-600 transition duration-300 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    Añadir Consumo (Carga)
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table id="consumption-table" class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="table-header w-[10%]">ID Consumo</th>
+                            <th class="table-header w-[15%]">Caudal Individual (m³/h)</th>
+                            <th class="table-header w-[60%]">Tramos Afectados (Seleccione)</th>
+                            <th class="table-header w-[15%] no-print">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="consumption-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Consumption rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 5. RESULTADOS DEL CÁLCULO -->
+        <div class="card">
+            <h2 class="section-title">5. Resultados de Cálculo (Pérdida de Presión y Velocidad)</h2>
+            <div id="results-message" class="bg-yellow-100 p-4 rounded-lg text-yellow-800 mb-4">
+                Presiona "Iterar" para generar la simulación.
+            </div>
+
+            <div class="overflow-x-auto">
+                <table id="results-table" class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="table-header">ID Tramo</th>
+                            <th class="table-header">Diámetro (mm)</th>
+                            <th class="table-header">Caudal (m³/h)</th>
+                            <th class="table-header">Velocidad (m/s)</th>
+                            <th class="table-header">Pérdida Presión Delta P (mbar)</th> 
+                            <th class="table-header">Presión Final (mbar)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Results will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- BOTÓN DE CÁLCULO REUBICADO -->
+        <div class="no-print flex justify-center mb-12">
+            <button onclick="calculatePressureLoss()" class="w-full max-w-sm bg-indigo-600 text-white font-semibold py-4 px-8 rounded-xl hover:bg-indigo-700 transition duration-300 shadow-xl transform hover:scale-[1.02] text-lg">
+                Iterar
+            </button>
+        </div>
+        
+        <!-- 6. CONCLUSIÓN DE LA MEMORIA DE CÁLCULO -->
+        <div id="conclusion-section" class="card hidden">
+            <h2 class="section-title text-emerald-700 border-emerald-400">6. Conclusión y Viabilidad del Diseño</h2>
+            <div id="conclusion-content" class="text-gray-700 leading-relaxed p-4 bg-emerald-50 rounded-lg border-l-4 border-emerald-300">
+                <!-- El texto generado se inyectará aquí -->
+                <p>Presione "Iterar" para generar la conclusión del diseño.</p>
+            </div>
+        </div>
+
+
+        <!-- Message Box Modal -->
+        <div id="message-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
+                <h3 id="message-title" class="text-lg font-bold mb-3 text-blue-600">Alerta</h3>
+                <p id="message-content" class="text-gray-700 mb-4"></p>
+                <button onclick="closeModal()" class="w-full bg-indigo-500 text-white py-2 rounded-lg hover:bg-indigo-600 transition">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE AUTENTICACIÓN (RESTAURADO) -->
+    <div id="auth-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full">
+            <h3 class="text-2xl font-bold mb-4 text-indigo-700">Acceso a la Herramienta</h3>
+            <p class="text-gray-700 mb-4">
+                Por favor, ingrese la contraseña para acceder al Modelador de Red de Gas.
+            </p>
+            <!-- CONTENEDOR DEL CAMPO DE CONTRASEÑA Y EL ICONO -->
+            <div class="relative mb-4">
+                <input type="password" id="auth-password" class="input-field pr-10" placeholder="Contraseña">
+                <button 
+                    type="button" 
+                    id="toggle-password-visibility"
+                    onclick="togglePasswordVisibility('auth-password')" 
+                    class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-600 hover:text-indigo-600 transition duration-150"
+                >
+                    <!-- Icono de ojo cerrado (por defecto) -->
+                    <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                        <path fill-rule="evenodd" d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06l-14.5-14.5zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                        <path d="M12.981 12.981a5 5 0 01-5.962-5.962M10 12.5a.5.5 0 00.5-.5V10h-.5a2.5 2.5 0 00-2.5 2.5v.5h.5a3 3 0 003 3.5v-.5a2.5 2.5 0 00-2.5-2.5z" />
+                        <path d="M10 9a2 2 0 100 4 2 2 0 000-4z" clip-rule="evenodd" fill-rule="evenodd" />
+                        <path d="M2.26 9.871a2 2 0 010-3.742A16.02 16.02 0 0110 3.5c3.213 0 6.273.992 8.74 2.629a2 2 0 010 3.742A15.936 15.936 0 0110 11.5c-3.213 0-6.273-.992-8.74-2.629zM10 10.5a.5.5 0 00.5-.5V9h-.5a1.5 1.5 0 00-1.5 1.5v.5h.5a2 2 0 002 2.5v-.5a1.5 1.5 0 00-1.5-1.5z" fill-rule="evenodd" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+            
+            <button onclick="authenticateAccess(document.getElementById('auth-password').value)" class="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition font-semibold">
+                Ingresar
+            </button>
+            <p id="auth-error-message" class="text-red-500 text-sm mt-3 hidden">Contraseña incorrecta. Intente de nuevo.</p>
+        </div>
+    </div>
+
+
+    <!-- VISTA DE EXPLICACIÓN MATEMÁTICA (Inicialmente oculta) -->
+    <div id="math-explanation-container" class="max-w-7xl mx-auto hidden">
+        <div class="bg-white p-8 rounded-xl shadow-lg mb-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 border-b-4 border-indigo-600 pb-2">
+                Consulta: Método Matemático de Modelado
+            </h1>
+            <p class="text-gray-700 mb-6">
+                Esta aplicación utiliza una fórmula basada en el modelo de Mueller/Pole, separando el Factor de Fricción ($K$) de la constante dimensional fija, para mayor precisión.
+            </p>
+            
+            <div class="bg-gray-50 p-6 rounded-lg mb-6 overflow-x-auto text-lg font-mono">
+                $$ \Delta P = \frac{K \cdot C_{f} \cdot Q^{1.82} \cdot L \cdot S}{D^{4.82} \cdot P_{abs}} $$
+            </div>
+            
+            <h3 class="font-bold text-lg mb-2 text-indigo-700">Donde:</h3>
+            <ul class="list-disc list-inside space-y-2 text-gray-700">
+                <li>$\Delta P$: Pérdida de Presión (mbar).</li>
+                <li>$K$: **Factor de Fricción / Rugosidad** (Valor configurable en Sección 2. Por defecto: $0.5$).</li>
+                <li>$C_{f}$: **Constante Dimensional Fija** (Valor fijo: $2.5 \cdot 10^8$. Esta constante convierte las unidades a $\text{mbar}$, $\text{m}^3/\text{h}$, $\text{m}$, $\text{mm}$).</li>
+                <li>$Q$: Caudal volumétrico de gas a condiciones estándar ($\text{m}^3/\text{h}$).</li>
+                <li>$L$: Longitud del tramo (m).</li>
+                <li>$S$: Densidad Relativa del Gas (respecto al aire = 1).</li>
+                <li>$D$: Diámetro Interno del tubo (mm).</li>
+                <li>$P_{abs}$: Presión absoluta promedio en el tramo, calculada como $\text{Presión Inicial (mbar manométrica)} + \text{Presión Atmosférica del Sitio (mbar)}$.</li>
+            </ul>
+
+            <h2 class="section-title mt-8">Fórmula de Velocidad ($V$)</h2>
+            <div class="bg-gray-50 p-6 rounded-lg mb-6 overflow-x-auto text-lg font-mono">
+                $$ V = \frac{4 \cdot Q_{real}}{\pi \cdot d^2} $$
+            </div>
+            <p class="text-gray-700 mb-4">Donde $Q_{real}$ es el caudal a condiciones del sitio, y $d$ es el diámetro interno del tubo en metros.</p>
+
+            <button onclick="toggleView('app-container')" class="mt-6 bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-blue-700 transition duration-300 shadow-md transform hover:scale-[1.02] flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" /></svg>
+                Regresar al Modelador
+            </button>
+        </div>
+    </div>
+
+    <!-- VISTA DE INSTRUCCIONES DE USO (Inicialmente oculta) -->
+    <div id="instructions-container" class="max-w-7xl mx-auto hidden">
+        <div class="bg-white p-8 rounded-xl shadow-lg mb-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 border-b-4 border-green-600 pb-2">
+                Instrucciones de Uso de la Herramienta
+            </h1>
+            <p class="text-gray-700 mb-6">
+                Esta guía le ayudará a ingresar los datos de su proyecto de red de gas de manera ordenada para obtener resultados de cálculo precisos.
+            </p>
+            
+            <div class="space-y-6">
+                <div class="border-l-4 border-indigo-500 pl-4">
+                    <h3 class="text-xl font-bold text-indigo-700 mb-2">Paso 1: Datos Básicos y Técnicos (Secciones 1 y 2)</h3>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700">
+                        <li>Complete la información de su proyecto.</li>
+                        <li>**Ciudad de Ubicación:** Seleccione la ciudad para cargar automáticamente la **Altura Sitio Instalación** y sugerir la **Presión Atmosférica Sitio**.</li>
+                        <li>**Tipo de Gas:** Elija GN o GLP. Esto actualizará la Densidad Relativa y el Poder Calorífico.</li>
+                        <li>Ingrese la **Presión Inicial** y la **Velocidad Máx. Esperada**. *Recuerde que puede seleccionar la unidad de presión inicial.*</li>
+                        <li>**IMPORTANTE (Factor K):** Ingrese el valor correcto del **Factor de Fricción K** (coeficiente de rugosidad de la tubería) según su norma técnica. Un valor común es $K=0.5$.</li>
+                    </ul>
+                </div>
+
+                <div class="border-l-4 border-indigo-500 pl-4">
+                    <h3 class="text-xl font-bold text-indigo-700 mb-2">Paso 2: Definición de Tramos (Sección 3)</h3>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700">
+                        <li>Utilice el botón **"Añadir Tramo"** para definir cada segmento de tubería (T1, T2, etc.) en orden secuencial.</li>
+                        <li>Ingrese la **Longitud Real** del tramo.</li>
+                        <li>Seleccione el **Material** y el **Diámetro Interno**.</li>
+                        <li>El **Caudal Total** ($\text{m}^3/\text{h}$) se actualizará al presionar "Iterar" o al cambiar los consumos.</li>
+                    </ul>
+                </div>
+
+                <div class="border-l-4 border-indigo-500 pl-4">
+                    <h3 class="text-xl font-bold text-indigo-700 mb-2">Paso 3: Definición de Consumos (Sección 4)</h3>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700">
+                        <li>Utilice el botón **"Añadir Consumo (Carga)"** para listar cada carga de gas.</li>
+                        <li>Ingrese el **Caudal Individual** ($\text{m}^3/\text{h}$).</li>
+                        <li>En **Tramos Afectados**, use el selector múltiple para elegir todos los tramos que alimentan este consumo (Ej: T1, T2).</li>
+                    </ul>
+                </div>
+
+                <div class="border-l-4 border-indigo-500 pl-4">
+                    <h3 class="text-xl font-bold text-indigo-700 mb-2">Paso 4: Cálculo y Resultados (Sección 5)</h3>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700">
+                        <li>Presione el botón **"Iterar"**.</li>
+                        <li>Verifique que la **Velocidad (m/s)** esté por debajo del límite máximo esperado (se resaltará en rojo si lo excede).</li>
+                        <li>Utilice **"Guardar PDF"** para generar un reporte.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <button onclick="toggleView('app-container')" class="mt-8 bg-green-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-green-700 transition duration-300 shadow-md transform hover:scale-[1.02] flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" /></svg>
+                Regresar al Modelador
+            </button>
+        </div>
+    </div>
+
+    <!-- NUEVA VISTA: CURSO RÁPIDO DE DISEÑO (Inicialmente oculta) -->
+    <div id="design-course-container" class="max-w-7xl mx-auto hidden">
+        <div class="bg-white p-8 rounded-xl shadow-lg mb-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 border-b-4 border-purple-600 pb-2">
+                Curso Rápido: Fundamentos de Diseño de Redes de Gas
+            </h1>
+            <p class="text-gray-700 mb-6">
+                El diseño de redes internas de gas es un proceso iterativo que busca optimizar el diámetro y la presión para asegurar el suministro de gas seguro y eficiente a los aparatos.
+            </p>
+            
+            <div class="space-y-8">
+                <div>
+                    <h3 class="text-2xl font-bold text-purple-700 mb-3">1. Caudal y Consumo</h3>
+                    <p class="text-gray-700 mb-2">
+                        El caudal (Q) se refiere al volumen de gas que fluye por la tubería en un tiempo dado ($\text{m}^3/\text{h}$). Se calcula sumando los consumos de todos los aparatos (cargas) que son alimentados por ese tramo.
+                    </p>
+                    <p class="text-gray-700 italic">
+                        **Principio de diseño:** El caudal es máximo al inicio de la red (tramo T1) y disminuye progresivamente.
+                    </p>
+                </div>
+
+                <div>
+                    <h3 class="text-2xl font-bold text-purple-700 mb-3">2. Pérdida de Presión ($\Delta P$)</h3>
+                    <p class="text-gray-700 mb-2">
+                        La pérdida de presión es la disminución de presión que sufre el gas al recorrer un tramo debido a la fricción, la longitud, el caudal, el diámetro y la densidad.
+                    </p>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700">
+                        <li>**Objetivo:** La presión final en el punto más desfavorable no debe ser menor a la presión mínima requerida por el aparato ($\geq 18 \text{ mbar}$).</li>
+                        <li>**Ajuste:** Si la $\Delta P$ es muy alta, debe aumentar el diámetro de la tubería.</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-2xl font-bold text-purple-700 mb-3">3. Criterio de Velocidad</h3>
+                    <p class="text-gray-700 mb-2">
+                        La velocidad del gas en la tubería está limitada para evitar ruidos excesivos.
+                    </p>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700">
+                        <li>**Límite Normativo:** El límite de velocidad suele ser de $10 \text{ m/s}$ a $25 \text{ m/s}$ (la herramienta compara con la Velocidad Máx. Esperada que usted ingresa).</li>
+                        <li>**Advertencia:** Si la velocidad excede el límite (resaltado en rojo), debe aumentar el diámetro.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <button onclick="toggleView('app-container')" class="mt-8 bg-purple-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-purple-700 transition duration-300 shadow-md transform hover:scale-[1.02] flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" /></svg>
+                Regresar al Modelador
+            </button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Variables de Estado ---
+        let isAuthenticated = false;
+        let isometricImageURL = null;
+        let segments = [];
+        let consumptions = [];
+        let segmentIdCounter = 1;
+        let consumptionIdCounter = 1;
+        let results = [];
+        // Contraseña fija para revertir
+        const FIXED_APP_PASSWORD = "1211"; 
+
+
+        // --- Constantes y Mapeos de Datos ---
+        const DIAMETER_MAPPING = {
+            'Cobre': [6.35, 10, 12, 15, 22, 28, 35, 42, 54, 76.1], 
+            'PEAD': [10.4, 15.6, 20.8, 26, 32.5, 39, 50, 63, 75, 90, 110, 125, 140, 160, 200, 250],
+            'Acero': [8.6, 11.5, 17.5, 23.9, 31.6, 39.1, 50.1, 62.7, 77.9, 90.1, 102.3, 154.1, 205.7, 258.9],
+            'Multicapa': [15.8, 20.9, 26.5, 34.3, 47.9, 60.1, 75.3, 100, 125, 150, 200, 250],
+            'Otro': [6.35, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 250]
+        };
+        const GAS_PROPERTIES = {
+            'GN': { density: 0.6, calorificValue: 10.87 },
+            'GLP': { density: 1.52, calorificValue: 25.82 }
+        };
+        const CITY_ALTITUDES = {
+            'Cali': 995, 'Bogota': 2640, 'Medellin': 1495, 'Barranquilla': 18, 'Bucaramanga': 959,
+            'Cartagena': 2, 'Pasto': 2536, 'Villavicencio': 467, 'Pereira': 1411, 'Manizales': 2160,
+            'Cucuta': 320, 'Popayan': 1760, 'IngresoManual': null
+        };
+        
+        // CONSTANTE DIMENSIONAL FIJA (Cf) - Permite usar Q(m³/h), L(m), D(mm), P(mbar)
+        const MU_CONST_DIMENSIONAL = 2.5 * 10 ** 8; 
+
+        const MU_EXP_Q = 1.82;
+        const MU_EXP_D = 4.82;
+        const CONVERSION_FACTORS = { 'mbar': 1.0, 'kPa': 10.0, 'psi': 68.9476, 'kgcm2': 980.665 };
+        const MM_TO_INCHES_NOMINAL = {
+            6.35: '1/4"', 8.6: '1/4"', 10.4: '3/8"', 11.5: '3/8"', 10: '3/8"', 12: '1/2"', 15: '5/8"',
+            15.6: '1/2"', 17.5: '1/2"', 20.8: '3/4"', 22: '3/4"', 23.9: '3/4"', 25: '1"', 26.5: '1"',
+            27.2: '1"', 31.6: '1"', 32: '1 1/4"', 32.5: '1 1/4"', 33.7: '1 1/4"', 34.3: '1 1/4"', 35: '1 1/4"',
+            38: '1 1/2"', 39.1: '1 1/2"', 42: '1 1/2"', 47.9: '2"', 48.3: '1 1/2"', 50: '2"', 50.1: '2"',
+            51: '2"', 54: '2"', 60.1: '2 1/2"', 60.3: '2 1/2"', 62.7: '2 1/2"', 63: '2 1/2"', 75: '3"',
+            75.3: '3"', 76: '3"', 76.1: '3"', 77.9: '3"', 90: '3 1/2"', 90.1: '3 1/2"', 100: '4"',
+            102.3: '4"', 110: '4"', 114.3: '4 1/2"', 125: '5"', 140: '6"', 150: '6"', 154.1: '6"',
+            160: '8"', 200: '8"', 205.7: '8"', 250: '10"', 258.9: '10"', 300: '12"',
+        };
+        const MIN_REQUIRED_PRESSURE = 18.0; // Valor de referencia en mbar
+
+        // --- Funciones de Utilidad y Navegación ---
+        
+        const $ = id => document.getElementById(id);
+
+        function convertPressureToMbar(value, fromUnit) {
+            if (isNaN(value) || value === null) return 0;
+            return value * (CONVERSION_FACTORS[fromUnit] || 1.0);
+        }
+
+        function updatePressureConversionDisplay() {
+            const value = parseFloat($('initial-pressure-value').value);
+            const unit = $('initial-pressure-unit').value;
+            const mbarValue = convertPressureToMbar(value, unit);
+            $('pressure-conversion-display').textContent = `Equivalente: ${mbarValue.toFixed(2)} mbar`;
+        }
+
+        function showMessage(title, content, isError = true) {
+            $('message-title').textContent = title;
+            $('message-title').className = isError ? 'text-lg font-bold mb-3 text-red-600' : 'text-lg font-bold mb-3 text-blue-600'; 
+            $('message-content').textContent = content;
+            $('message-modal').classList.remove('hidden');
+        }
+
+        function closeModal(modalId = 'message-modal') {
+            $(modalId).classList.add('hidden');
+        }
+
+        const formatDate = date => {
+            const [yyyy, mm, dd] = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')];
+            return `${dd}/${mm}/${yyyy}`;
+        };
+
+        function generateUniqueID() {
+            const now = new Date();
+            const [yyyy, mm, dd, hh, min, ss] = [
+                now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0'),
+                String(now.getHours()).padStart(2, '0'), String(now.getMinutes()).padStart(2, '0'), String(now.getSeconds()).padStart(2, '0')
+            ];
+            return `PROY-${yyyy}${mm}${dd}-${hh}${min}${ss}`;
+        }
+        
+        function previewIsometricImage(event) {
+            const file = event.target.files[0];
+            const previewImg = $('isometric-image-preview');
+
+            if (isometricImageURL) { URL.revokeObjectURL(isometricImageURL); isometricImageURL = null; }
+
+            if (file) {
+                isometricImageURL = URL.createObjectURL(file);
+                previewImg.src = isometricImageURL;
+                previewImg.classList.remove('hidden');
+                showMessage("Isométrico Cargado", `Imagen '${file.name}' lista para exportar en el PDF.`, false);
+            } else {
+                previewImg.classList.add('hidden');
+            }
+        }
+
+        function showWelcomeMessage() {
+            $('message-title').textContent = "¡Bienvenido al Modelador Mueller!";
+            $('message-title').className = 'text-xl font-bold mb-3 text-indigo-600';
+            $('message-content').textContent = "El uso de esta aplicación requiere de conocimientos específicos sobre diseño de redes de gas. Utilice la sección 'Instrucciones de Uso' para familiarizarse con el flujo de datos.";
+            $('message-modal').classList.remove('hidden');
+        }
+
+        function toggleView(viewId) {
+            if (!isAuthenticated) return showMessage("Acceso Restringido", "Debe ingresar la contraseña de acceso primero.", true);
+            const views = ['app-container', 'math-explanation-container', 'instructions-container', 'design-course-container'];
+            views.forEach(id => {
+                const view = $(id);
+                if (view) {
+                    view.classList[id === viewId ? 'remove' : 'add']('hidden');
+                    if (id === 'math-explanation-container' && id === viewId && window.MathJax) {
+                        window.MathJax.typeset([view]);
+                    }
+                }
+            });
+        }
+
+        function updateGasProperties() {
+            const gasType = $('gas-type').value;
+            const gasProps = GAS_PROPERTIES[gasType];
+            
+            $('gas-density').value = gasProps ? gasProps.density.toFixed(2) : '';
+            $('calorific-value-btu').value = gasProps ? gasProps.calorificValue.toFixed(2) : '';
+        }
+
+        function estimateSitePressure(altitude) {
+            const P0 = 1013.25; 
+            const pressureDropFactor = 8.5; 
+            if (altitude <= 0) return P0;
+            const estimatedPressure = P0 - (altitude / pressureDropFactor);
+            return estimatedPressure > 500 ? estimatedPressure : 500;
+        }
+
+        function updateCityProperties(city) {
+            const siteAltInput = $('site-alt');
+            const sitePressureInput = $('site-pressure');
+            const altitude = CITY_ALTITUDES[city];
+            
+            if (city === 'IngresoManual') {
+                siteAltInput.removeAttribute('readonly');
+                siteAltInput.classList.remove('bg-gray-200', 'cursor-not-allowed', 'text-gray-600');
+                siteAltInput.value = '';
+                sitePressureInput.value = '';
+            } else if (altitude !== undefined && altitude !== null) {
+                siteAltInput.value = altitude;
+                siteAltInput.setAttribute('readonly', true);
+                siteAltInput.classList.add('bg-gray-200', 'cursor-not-allowed', 'text-gray-600');
+                sitePressureInput.value = estimateSitePressure(altitude).toFixed(2);
+            } else {
+                siteAltInput.value = '';
+                sitePressureInput.value = '';
+                siteAltInput.setAttribute('readonly', true);
+                siteAltInput.classList.add('bg-gray-200', 'cursor-not-allowed', 'text-gray-600');
+            }
+        }
+
+
+        // --- Funciones de Tramos y Consumos (UI) ---
+
+        function mmToInchesDisplay(mmValue) {
+            const nominalInch = MM_TO_INCHES_NOMINAL[mmValue];
+            return nominalInch || `${mmValue.toFixed(2)} mm (No Est.)`;
+        }
+
+        function getSegmentOptions(material) {
+            const diameters = DIAMETER_MAPPING[material] || [];
+            const optionValues = [];
+            const uniqueOptions = new Set();
+            
+            diameters.forEach(d => {
+                const display = mmToInchesDisplay(d);
+                if (!uniqueOptions.has(display)) {
+                    optionValues.push({ value: d, display: display });
+                    uniqueOptions.add(display);
+                }
+            });
+
+            return optionValues.sort((a, b) => a.value - b.value);
+        }
+
+        function updateDiameterOptions(segmentIndex) {
+            const materialSelect = $(`segment-${segmentIndex}-material`);
+            const diameterSelect = $(`segment-${segmentIndex}-diameter`);
+            const selectedMaterial = materialSelect.value;
+            
+            diameterSelect.innerHTML = '<option value="">Seleccione Diámetro</option>';
+            const options = getSegmentOptions(selectedMaterial);
+
+            diameterSelect.innerHTML += options.map(opt => 
+                `<option value="${opt.value}" selected="${segments[segmentIndex].diameter === opt.value ? 'true' : ''}">${opt.display}</option>`
+            ).join('');
+            
+            segments[segmentIndex].material = selectedMaterial;
+            segments[segmentIndex].diameter = null;
+        }
+
+        function updateSegmentData(index, field, value) {
+            segments[index][field] = (field === 'diameter' || field === 'length') ? parseFloat(value) || null : value;
+            if (field === 'id') updateSegmentFlows();
+        }
+        
+        function getSegmentOptionsHtml(selectedSegmentIds) {
+            const sortedSegments = [...segments].sort((a, b) => parseInt(a.id.substring(1)) - parseInt(b.id.substring(1)));
+            return sortedSegments.map(seg => {
+                const isSelected = selectedSegmentIds.includes(seg.id);
+                return `<option value="${seg.id}" ${isSelected ? 'selected' : ''}>${seg.id}</option>`;
+            }).join('');
+        }
+        
+        function updateConsumptionData(index, selectElement) {
+            const selectedOptions = Array.from(selectElement.selectedOptions).map(option => option.value);
+            consumptions[index].segments = selectedOptions; 
+            
+            selectElement.size = Math.min(Math.max(1, selectedOptions.length), 6);
+
+            updateSegmentFlows();
+        }
+
+        function removeSegmentRow(index) {
+            if (!isAuthenticated) return showMessage("Acceso Restringido", "Debe ingresar la contraseña de acceso primero.", true);
+            
+            segments.splice(index, 1);
+            segments.forEach((seg, i) => seg.id = `T${i + 1}`);
+            segmentIdCounter = segments.length + 1;
+
+            updateSegmentFlows(); 
+            renderSegmentsTable();
+            renderConsumptionsTable();
+            showMessage("Tramo Eliminado", "Recuerda recalcular los resultados.", false);
+        }
+
+        function addSegmentRow() {
+            if (!isAuthenticated) return showMessage("Acceso Restringido", "Debe ingresar la contraseña de acceso primero.", true);
+            segments.push({
+                id: `T${segmentIdCounter++}`,
+                length: null,
+                material: 'Cobre',
+                diameter: null,
+                flow: 0
+            });
+            renderSegmentsTable();
+            renderConsumptionsTable();
+        }
+
+        function renderSegmentsTable() {
+            const tbody = $('segments-table-body');
+            tbody.innerHTML = segments.map((seg, index) => {
+                const materialOptions = Object.keys(DIAMETER_MAPPING).map(mat => 
+                    `<option value="${mat}" ${seg.material === mat ? 'selected' : ''}>${mat}</option>`
+                ).join('');
+
+                const diameterOptions = getSegmentOptions(seg.material).map(opt =>
+                    `<option value="${opt.value}" ${seg.diameter === opt.value ? 'selected' : ''}>${opt.display}</option>`
+                ).join('');
+                
+                // Nota: Usamos la clase 'text-right' directamente en el input de longitud 
+                return `
+                    <tr id="row-segment-${index}">
+                        <td class="table-cell font-bold text-center">${seg.id}</td>
+                        <td class="table-cell">
+                            <input type="number" step="0.1" value="${seg.length || ''}" oninput="updateSegmentData(${index}, 'length', this.value)" class="input-field text-right" placeholder="m">
+                        </td>
+                        <td class="table-cell">
+                            <select id="segment-${index}-material" onchange="updateDiameterOptions(${index})" class="input-field">${materialOptions}</select>
+                        </td>
+                        <td class="table-cell">
+                            <select id="segment-${index}-diameter" onchange="updateSegmentData(${index}, 'diameter', this.value)" class="input-field">
+                                <option value="">Seleccione Diámetro</option>${diameterOptions}
+                            </select>
+                        </td>
+                        <td class="table-cell font-mono text-right bg-gray-50" id="segment-${index}-flow-result">
+                            ${seg.flow.toFixed(3)} m³/h
+                        </td>
+                        <td class="table-cell no-print text-center">
+                            <button onclick="removeSegmentRow(${index})" class="text-red-600 hover:text-red-900 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function removeConsumptionRow(index) {
+            if (!isAuthenticated) return showMessage("Acceso Restringido", "Debe ingresar la contraseña de acceso primero.", true);
+            consumptions.splice(index, 1);
+            updateSegmentFlows();
+            renderConsumptionsTable();
+            showMessage("Consumo Eliminado", "Recuerda recalcular los resultados.", false);
+        }
+
+        function addConsumptionRow() {
+            if (!isAuthenticated) return showMessage("Acceso Restringido", "Debe ingresar la contraseña de acceso primero.", true);
+            consumptions.push({ id: `C${consumptionIdCounter++}`, flow: null, segments: [] });
+            renderConsumptionsTable();
+        }
+
+        function renderConsumptionsTable() {
+            const tbody = $('consumption-table-body');
+            tbody.innerHTML = consumptions.map((con, index) => {
+                const segmentOptions = getSegmentOptionsHtml(con.segments);
+                const initialSize = Math.min(Math.max(3, con.segments.length), 6);
+                
+                // Nota: Usamos la clase 'text-right' directamente en el input de caudal individual
+                return `
+                    <tr id="row-consumption-${index}">
+                        <td class="table-cell font-bold text-center">${con.id}</td>
+                        <td class="table-cell">
+                            <input type="number" step="0.01" value="${con.flow || ''}" oninput="consumptions[${index}].flow = parseFloat(this.value) || 0; updateSegmentFlows();" class="input-field text-right" placeholder="m³/h">
+                        </td>
+                        <td class="table-cell">
+                            <select multiple onchange="updateConsumptionData(${index}, this)" class="select-multiple w-full" size="${initialSize}">${segmentOptions}</select>
+                        </td>
+                        <td class="table-cell no-print text-center">
+                            <button onclick="removeConsumptionRow(${index})" class="text-red-600 hover:text-red-900 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function updateSegmentFlows() {
+            segments.forEach(seg => seg.flow = 0);
+
+            consumptions.forEach(con => {
+                if (con.flow > 0 && Array.isArray(con.segments)) {
+                    con.segments.forEach(segId => {
+                        const targetSegment = segments.find(s => s.id === segId);
+                        if (targetSegment) targetSegment.flow += con.flow; 
+                    });
+                }
+            });
+
+            segments.forEach((seg, index) => {
+                const flowCell = $(`segment-${index}-flow-result`);
+                if (flowCell) flowCell.textContent = seg.flow.toFixed(3) + ' m³/h';
+            });
+        }
+
+
+        // --- Lógica de Cálculo ---
+
+        function calculatePressureLoss() {
+            if (!isAuthenticated) return showMessage("Acceso Restringido", "Debe ingresar la contraseña de acceso primero.", true);
+            
+            updateSegmentFlows(); 
+
+            // Leer el Factor de Fricción K del campo de entrada
+            const MU_FRICTION_K = parseFloat($('mueller-friction-k').value);
+
+            const initialPressure = convertPressureToMbar(parseFloat($('initial-pressure-value').value), $('initial-pressure-unit').value);
+            const maxVelocity = parseFloat($('max-velocity').value);
+            const gasDensity = parseFloat($('gas-density').value); 
+            const sitePressureAtm = parseFloat($('site-pressure').value) || 900;
+            const standardPressure = 1013.25;
+
+            if (isNaN(MU_FRICTION_K) || MU_FRICTION_K <= 0) {
+                 return showMessage("Error de Constante", "El Factor de Fricción K es inválido o faltante. Por favor, ingrese el valor correcto (e.g., 0.5 - 1.0).", true);
+            }
+
+            if (isNaN(initialPressure) || isNaN(maxVelocity) || isNaN(gasDensity) || segments.length === 0) {
+                return showMessage("Datos Incompletos", "Complete los campos 'Presión Inicial', 'Velocidad Máx.', 'Densidad del Gas' y añada al menos un tramo.", true);
+            }
+            
+            results = [];
+            let currentPressure = initialPressure; 
+            
+            segments.sort((a, b) => parseInt(a.id.substring(1)) - parseInt(b.id.substring(1)));
+
+            segments.forEach(seg => {
+                const { flow: Q, length: L, diameter: D } = seg;
+
+                if (Q === 0 || !L || !D || isNaN(L) || isNaN(D)) {
+                    results.push({ id: seg.id, diameter: D, flow: Q, velocity: 0, deltaP: 0, finalP: currentPressure });
+                    return; 
+                }
+
+                const pressureForCalculation_abs = currentPressure + sitePressureAtm;
+
+                // CÁLCULO ACTUALIZADO: USA K * C_f
+                // ΔP = (K * C_f * Q^1.82 * L * S) / (D^4.82 * P_abs)
+                const deltaP = (MU_FRICTION_K * MU_CONST_DIMENSIONAL * (Q ** MU_EXP_Q) * L * gasDensity) / ((D ** MU_EXP_D) * pressureForCalculation_abs);
+
+                // Velocidad
+                const d_meters = D / 1000;
+                const Q_m3_s = Q / 3600; 
+                const Q_actual = Q_m3_s * (standardPressure / pressureForCalculation_abs);
+                const velocity = (4 * Q_actual) / (Math.PI * (d_meters ** 2));
+
+                const finalPressure = currentPressure - deltaP;
+                
+                results.push({ id: seg.id, diameter: D, flow: Q, velocity: velocity, deltaP: deltaP, finalP: finalPressure });
+                
+                currentPressure = finalPressure;
+            });
+            
+            renderResultsTable(results, maxVelocity);
+            renderConclusion(results, maxVelocity); // Llamada a la nueva función de conclusión
+        }
+
+        function renderResultsTable(results, maxVelocity) {
+            const tbody = $('results-table-body');
+            
+            if (results.length === 0) {
+                $('results-message').textContent = 'No hay resultados para mostrar. Añada tramos y consumos.';
+                $('results-message').className = 'bg-yellow-100 p-4 rounded-lg text-yellow-800 mb-4';
+                tbody.innerHTML = '';
+                return;
+            }
+            
+            $('results-message').textContent = 'Cálculos completados. Revise los resultados en la tabla.';
+            $('results-message').className = 'bg-green-100 p-4 rounded-lg text-green-800 mb-4';
+
+            tbody.innerHTML = results.map(res => {
+                const velocityCellClass = res.velocity > maxVelocity ? 'bg-red-100 font-bold text-red-700' : 'bg-green-100';
+                
+                return `
+                    <tr>
+                        <td class="table-cell font-bold">${res.id}</td>
+                        <td class="table-cell text-right">${res.diameter ? res.diameter.toFixed(1) + ' mm' : 'N/A'}</td> 
+                        <td class="table-cell text-right font-mono">${res.flow.toFixed(3)}</td>
+                        <td class="table-cell text-right ${velocityCellClass}">${res.velocity.toFixed(2)} m/s</td>
+                        <td class="table-cell text-right text-red-600 font-semibold">${res.deltaP.toFixed(3)}</td>
+                        <td class="table-cell text-right text-blue-600 font-semibold">${res.finalP.toFixed(3)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        /**
+         * Genera y muestra la conclusión del diseño basada en los resultados.
+         * @param {Array} results Resultados de cálculo por tramo.
+         * @param {number} maxVelocity Velocidad máxima permitida.
+         */
+        function renderConclusion(results, maxVelocity) {
+            const conclusionSection = $('conclusion-section');
+            const conclusionContent = $('conclusion-content');
+
+            if (results.length === 0) {
+                conclusionSection.classList.add('hidden');
+                return;
+            }
+
+            // 1. Obtener datos clave
+            const initialPressureValue = parseFloat($('initial-pressure-value').value);
+            const initialPressureUnit = $('initial-pressure-unit').value;
+            const initialPressure = convertPressureToMbar(initialPressureValue, initialPressureUnit); // mbar
+            const sitePressureAtm = parseFloat($('site-pressure').value) || 900;
+            const muellerFrictionK = parseFloat($('mueller-friction-k').value);
+            
+            // 2. Analizar resultados
+            let lowestPressure = initialPressure;
+            let lowestPressureTramo = 'T0 (Inicial)';
+            let exceededVelocity = false;
+            let exceededVelocityTramos = [];
+            
+            // Recorrer los resultados para encontrar el punto más desfavorable
+            results.forEach(res => {
+                // La presión final del tramo anterior se compara con la inicial
+                if (res.finalP < lowestPressure) {
+                    lowestPressure = res.finalP;
+                    lowestPressureTramo = res.id;
+                }
+                if (res.velocity > maxVelocity) {
+                    exceededVelocity = true;
+                    exceededVelocityTramos.push(res.id);
+                }
+            });
+            
+            // 3. Generar el texto de la conclusión
+            let conclusionText = `
+                <p class="font-bold text-lg text-gray-800 mb-4">Memoria de Cálculo del Diseño</p>
+                <p>El modelado de la red de gas para el proyecto <strong>${$('project-name').value || 'Sin Nombre'}</strong> ha sido completado. Los cálculos de pérdida de presión (ΔP) se realizaron utilizando la fórmula de Mueller/Pole con un **Factor de Fricción (K)** de <strong>${muellerFrictionK.toFixed(2)}</strong>, asumiendo una Presión Atmosférica de <strong>${sitePressureAtm.toFixed(2)} mbar</strong>.</p>
+                
+                <h3 class="font-bold mt-4 mb-2 text-md text-indigo-700">Resumen de Parámetros Críticos:</h3>
+                <ul class="list-disc list-inside space-y-2 ml-4">
+                    <li><strong>Presión Inicial (P_in):</strong> ${initialPressure.toFixed(2)} mbar.</li>
+                    <li><strong>Presión Mínima (P_min):</strong> La presión final más baja registrada es de <strong>${lowestPressure.toFixed(2)} mbar</strong> (en el Tramo ${lowestPressureTramo}).</li>
+                    <li><strong>Velocidad Máxima Permitida:</strong> ${maxVelocity.toFixed(2)} m/s.</li>
+                </ul>
+
+                <h3 class="font-bold mt-4 mb-2 text-md text-emerald-800">Evaluación de Viabilidad:</h3>
+            `;
+            
+            // Evaluación de la Presión Mínima (Referencia: 18 mbar)
+            if (lowestPressure >= MIN_REQUIRED_PRESSURE) {
+                 conclusionText += `
+                    <p class="mt-2 text-green-700 font-semibold">
+                        ✅ <strong>Criterio de Presión (P ≥ ${MIN_REQUIRED_PRESSURE.toFixed(1)} mbar):</strong> El diseño es <strong>VIABLE</strong> por presión, ya que la presión final más baja (${lowestPressure.toFixed(2)} mbar) cumple con el requisito mínimo.
+                    </p>
+                 `;
+            } else {
+                 conclusionText += `
+                    <p class="mt-2 text-red-700 font-bold">
+                        ❌ <strong>Criterio de Presión (P ≥ ${MIN_REQUIRED_PRESSURE.toFixed(1)} mbar):</strong> El diseño es <strong>NO VIABLE</strong> por presión. La presión final (${lowestPressure.toFixed(2)} mbar) está por debajo del mínimo.
+                    </p>
+                    <p class="text-red-600 text-sm mt-1"><em>Sugerencia: Aumente los diámetros de los tramos iniciales o aumente la Presión Inicial.</em></p>
+                 `;
+            }
+            
+            // Evaluación de la Velocidad Máxima
+            if (exceededVelocity) {
+                conclusionText += `
+                    <p class="mt-2 text-red-700 font-bold">
+                        ❌ <strong>Criterio de Velocidad (V ≤ ${maxVelocity.toFixed(2)} m/s):</strong> La velocidad máxima fue <strong>EXCEDIDA</strong> en los tramos: ${exceededVelocityTramos.join(', ')}.
+                    </p>
+                    <p class="text-red-600 text-sm mt-1"><em>Sugerencia: Aumente el diámetro interno en los tramos listados para reducir la velocidad del gas.</em></p>
+                `;
+            } else {
+                conclusionText += `
+                    <p class="mt-2 text-green-700 font-semibold">
+                        ✅ <strong>Criterio de Velocidad (V ≤ ${maxVelocity.toFixed(2)} m/s):</strong> El diseño cumple con el límite de velocidad y evita problemas de ruido.
+                    </p>
+                `;
+            }
+            
+            
+            // Veredicto Final
+            if (lowestPressure >= MIN_REQUIRED_PRESSURE && !exceededVelocity) {
+                conclusionContent.classList.remove('border-red-500', 'bg-red-50');
+                conclusionContent.classList.add('border-l-8', 'border-green-500', 'bg-green-50');
+                conclusionText += `<p class="font-extrabold text-xl text-green-800 mt-6">VEREDICTO FINAL: DISEÑO VIABLE.</p>`;
+            } else {
+                conclusionContent.classList.remove('border-green-500', 'bg-green-50');
+                conclusionContent.classList.add('border-l-8', 'border-red-500', 'bg-red-50');
+                conclusionText += `<p class="font-extrabold text-xl text-red-800 mt-6">VEREDICTO FINAL: DISEÑO NO VIABLE.</p>`;
+            }
+
+
+            conclusionSection.classList.remove('hidden');
+            conclusionContent.innerHTML = conclusionText;
+        }
+
+        // --- Funciones de Exportación y Compartir ---
+
+        function exportToPdf() {
+            if (!isAuthenticated) return showMessage("Acceso Restringido", "Debe ingresar la contraseña de acceso primero.", true);
+            
+            const element = $('app-container');
+            const projectTitle = $('project-name').value || 'Reporte_Red_Gas';
+
+            const opt = {
+                margin: 0.5,
+                filename: `${projectTitle.replace(/\s/g, '_')}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, logging: true, dpi: 192, letterRendering: true },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            
+            const views = ['math-explanation-container', 'instructions-container', 'design-course-container'];
+            if (views.some(id => !$(id).classList.contains('hidden'))) {
+                toggleView('app-container');
+            }
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // --- Nueva Función de Limpieza/Reset ---
+        
+        function resetApplication() {
+            if (!isAuthenticated) return showMessage("Acceso Restringido", "Debe ingresar la contraseña de acceso primero.", true);
+
+            $('project-name').value = '';
+            $('responsible').value = '';
+            $('initial-pressure-value').value = '';
+            $('initial-pressure-unit').value = 'mbar';
+            
+            const imageInput = $('isometric-image-input');
+            const previewImg = $('isometric-image-preview');
+            imageInput.value = '';
+            previewImg.src = '';
+            previewImg.classList.add('hidden');
+            if (isometricImageURL) { URL.revokeObjectURL(isometricImageURL); isometricImageURL = null; }
+
+            $('project-id').value = generateUniqueID(); 
+            $('max-velocity').value = '';
+            $('mueller-friction-k').value = 0.5; // Resetear el factor K
+
+            $('gas-type').value = "";
+            updateGasProperties();
+            $('city').value = "";
+            updateCityProperties(""); 
+            updatePressureConversionDisplay();
+
+            segments = [];
+            segmentIdCounter = 1;
+            renderSegmentsTable();
+
+            consumptions = [];
+            consumptionIdCounter = 1;
+            renderConsumptionsTable();
+            
+            // Limpiar y ocultar Resultados y Conclusión
+            results = [];
+            $('results-table-body').innerHTML = '';
+            $('results-message').textContent = 'Presiona "Iterar" para generar la simulación.';
+            $('results-message').className = 'bg-yellow-100 p-4 rounded-lg text-yellow-800 mb-4';
+            $('conclusion-section').classList.add('hidden');
+
+
+            showMessage("Aplicación Reiniciada", "Todos los datos de entrada han sido limpiados.", false);
+        }
+
+
+        // --- Funciones de Autenticación y Seguridad (RESTAURADAS) ---
+        
+        function togglePasswordVisibility(inputId) {
+            const passwordInput = document.getElementById(inputId);
+            const button = passwordInput.nextElementSibling;
+            const eyeIcon = button ? button.querySelector('svg') : null;
+            
+            if (!passwordInput || !eyeIcon) return;
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.innerHTML = `<path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                                     <path fill-rule="evenodd" d="M2 10s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5zm8 3.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" clip-rule="evenodd" />`;
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.innerHTML = `<path fill-rule="evenodd" d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06l-14.5-14.5zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                                     <path d="M12.981 12.981a5 5 0 01-5.962-5.962M10 12.5a.5.5 0 00.5-.5V10h-.5a2.5 2.5 0 00-2.5 2.5v.5h.5a3 3 0 003 3.5v-.5a2.5 2.5 0 00-2.5-2.5z" />
+                                     <path d="M10 9a2 2 0 100 4 2 2 0 000-4z" clip-rule="evenodd" fill-rule="evenodd" />
+                                     <path d="M2.26 9.871a2 2 0 010-3.742A16.02 16.02 0 0110 3.5c3.213 0 6.273.992 8.74 2.629a2 2 0 010 3.742A15.936 15.936 0 0110 11.5c-3.213 0-6.273-.992-8.74-2.629zM10 10.5a.5.5 0 00.5-.5V9h-.5a1.5 1.5 0 00-1.5 1.5v.5h.5a2 2 0 002 2.5v-.5a1.5 1.5 0 00-1.5-1.5z" fill-rule="evenodd" clip-rule="evenodd" />`;
+            }
+        }
+
+
+        function authenticateAccess(password) {
+            const errorMessage = $('auth-error-message');
+            
+            // Revertido a la contraseña fija
+            if (password === FIXED_APP_PASSWORD) {
+                isAuthenticated = true;
+                $('auth-modal').classList.add('hidden');
+                $('app-container').classList.remove('hidden');
+                errorMessage.classList.add('hidden');
+                showWelcomeMessage(); 
+            } else {
+                errorMessage.textContent = 'Contraseña incorrecta. Intente de nuevo.';
+                errorMessage.classList.remove('hidden');
+                $('auth-password').value = '';
+            }
+        }
+
+        // --- Inicialización ---
+        
+        function initApp() {
+            $('date-field').value = formatDate(new Date());
+            $('project-id').value = generateUniqueID();
+
+            // Inicializar el factor K con el valor por defecto
+            $('mueller-friction-k').value = 0.5;
+
+            $('gas-type').value = "";
+            $('city').value = "";
+            
+            updateGasProperties();
+            updateCityProperties(""); 
+            updatePressureConversionDisplay();
+
+            $('initial-pressure-value').addEventListener('input', updatePressureConversionDisplay);
+            $('initial-pressure-unit').addEventListener('change', updatePressureConversionDisplay);
+
+            renderSegmentsTable();
+            renderConsumptionsTable();
+            
+            $('auth-modal').classList.remove('hidden');
+            $('app-container').classList.add('hidden');
+
+            setTimeout(() => { 
+                $('auth-password').focus();
+                // Inicializar el icono de ojo al estado de cerrado
+                togglePasswordVisibility('auth-password'); 
+                togglePasswordVisibility('auth-password'); 
+            }, 100); 
+        }
+
+        window.onload = initApp;
+        
+        // Expose functions for inline event handlers (Necessary for single-file HTML structure)
+        window.updateSegmentData = updateSegmentData;
+        window.updateDiameterOptions = updateDiameterOptions;
+        window.removeSegmentRow = removeSegmentRow;
+        window.addSegmentRow = addSegmentRow;
+        window.updateConsumptionData = updateConsumptionData;
+        window.removeConsumptionRow = removeConsumptionRow;
+        window.addConsumptionRow = addConsumptionRow;
+        window.calculatePressureLoss = calculatePressureLoss;
+        window.exportToPdf = exportToPdf;
+        window.resetApplication = resetApplication;
+        window.closeModal = closeModal;
+        window.updateGasProperties = updateGasProperties; 
+        window.updateCityProperties = updateCityProperties;
+        window.toggleView = toggleView;
+        window.authenticateAccess = authenticateAccess;
+        window.showWelcomeMessage = showWelcomeMessage;
+        window.previewIsometricImage = previewIsometricImage;
+        window.updateSegmentFlows = updateSegmentFlows;
+        window.togglePasswordVisibility = togglePasswordVisibility;
+    </script>
+</body>
+</html>

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertidor de Unidades de Gas Propano</title>
+    <!-- Incluir Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluir Feather Icons (para los iconos) -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f6f8;
+        }
+        .result-box {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+        }
+        .conversion-table th, .conversion-table td {
+            padding: 8px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div id="app-container" class="max-w-2xl mx-auto bg-white shadow-2xl rounded-2xl p-6 sm:p-10">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-gray-800 mb-2">Convertidor Universal de Unidades de Gas Propano (GLP)</h1>
+            <p class="text-gray-600">Convierte entre Kilogramos (kg), m³, Galones, BTU y kWh.</p>
+        </header>
+
+        <!-- Contenedor principal de la aplicación -->
+        <div id="calculator-content">
+            <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Datos de Conversión</h2>
+
+            <!-- Botones de Información -->
+            <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                <button id="instructions-button" class="flex-1 py-3 px-6 rounded-full bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition duration-150 ease-in-out shadow-sm">
+                    <i data-feather="help-circle" class="w-4 h-4 mr-1 inline-block"></i>
+                    Instrucciones de Uso
+                </button>
+                <button id="method-button" class="flex-1 py-3 px-6 rounded-full bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition duration-150 ease-in-out shadow-sm">
+                    <i data-feather="calculator" class="w-4 h-4 mr-1 inline-block"></i>
+                    Método Matemático
+                </button>
+            </div>
+            
+            <!-- Selector de Unidad y Cantidad -->
+            <div class="flex flex-col md:flex-row gap-4 mb-6">
+                <div class="flex-1">
+                    <label for="input-amount" class="block text-sm font-medium text-gray-700 mb-2">
+                        1. Ingresa la Cantidad:
+                    </label>
+                    <input type="number" id="input-amount" value="" min="0" step="0.01" placeholder="Ej: 10" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-[#7450ff] focus:ring focus:ring-[#7450ff]/50">
+                </div>
+                <div class="flex-1">
+                    <label for="input-unit" class="block text-sm font-medium text-gray-700 mb-2">
+                        2. Selecciona la Unidad:
+                    </label>
+                    <select id="input-unit" class="mt-1 block w-full p-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:border-[#7450ff] focus:ring focus:ring-[#7450ff]/50 transition duration-150 ease-in-out">
+                        <option value="kg">Kilogramos (kg)</option>
+                        <option value="m3">Metros Cúbicos (m³)</option>
+                        <option value="gal">Galones (gal)</option>
+                        <option value="btu">BTU</option>
+                        <option value="kwh">Kilovatios Hora (kWh)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Botones de Acción (Calcular y Limpiar) -->
+            <div id="action-buttons" class="flex gap-4 mb-8">
+                <button id="calculate-button" class="flex-1 py-3 px-6 rounded-full bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition duration-150 ease-in-out shadow-md hover:shadow-lg">
+                    Realizar Conversiones
+                </button>
+                <button id="clear-button" class="w-1/3 flex items-center justify-center py-3 px-6 rounded-full bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition duration-150 ease-in-out shadow-md hover:shadow-lg">
+                    <i data-feather="refresh-ccw" class="w-5 h-5 mr-1"></i>
+                    Limpiar
+                </button>
+            </div>
+
+            <!-- Resultados -->
+            <div id="results-section" class="pt-4 border-t border-gray-200 hidden">
+                <h2 class="text-xl font-bold text-gray-800 text-center mb-4">Tabla de Equivalencias</h2>
+
+                <div class="overflow-x-auto rounded-xl shadow-lg border mb-6">
+                    <table class="min-w-full divide-y divide-gray-200 conversion-table bg-white">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="py-3 text-xs font-bold uppercase tracking-wider text-gray-500">Unidad</th>
+                                <th class="py-3 text-xs font-bold uppercase tracking-wider text-gray-500">Valor Convertido</th>
+                            </tr>
+                        </thead>
+                        <tbody id="conversion-results" class="divide-y divide-gray-200">
+                            <!-- Resultados inyectados aquí por JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- SECCIÓN: EQUIVALENCIA CON GAS NATURAL (GN) - Estilos reducidos -->
+                <div class="bg-gray-100 border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-2 flex items-center">
+                        <i data-feather="zap" class="w-4 h-4 text-gray-600 mr-2"></i>
+                        Equivalencia con Gas Natural (GN)
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-3">
+                        Tu consumo de Gas Propano (GLP) en kWh equivale a la siguiente cantidad de Gas Natural:
+                    </p>
+                    <div class="text-center bg-white p-3 rounded-lg border border-gray-200">
+                        <span id="gn-equivalent-result" class="text-xl font-extrabold text-gray-800">0.0 m³</span>
+                        <p class="text-xs text-gray-600 mt-1">Metros Cúbicos de Gas Natural</p>
+                    </div>
+                </div>
+                
+            </div>
+
+            <!-- Área de Mensajes (Modal simple para errores) -->
+            <div id="message-box" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+                <div id="message-modal" class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+                    <h3 id="message-title" class="text-xl font-bold text-red-600 mb-4">Error de Entrada</h3>
+                    <p id="message-content" class="text-gray-700 mb-6">La cantidad debe ser un número positivo.</p>
+                    <button id="close-message-button" class="py-2 px-4 bg-red-600 text-white rounded-full hover:bg-red-700 transition duration-150 ease-in-out">
+                        Aceptar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal de Instrucciones de Uso (NUEVO) -->
+            <div id="instructions-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Instrucciones de Uso</h3>
+                    <ul class="text-gray-700 text-sm list-disc list-inside space-y-2 mb-6">
+                        <li>**Ingresar Cantidad:** Escribe el valor numérico de Gas LP que deseas convertir en el campo "1. Ingresa la Cantidad".</li>
+                        <li>**Seleccionar Unidad:** Elige la unidad actual de esa cantidad (kg, m³, Galones, BTU o kWh) en el menú desplegable "2. Selecciona la Unidad".</li>
+                        <li>**Calcular:** Presiona el botón "Realizar Conversiones".</li>
+                        <li>**Ver Resultados:** Los resultados aparecerán en la "Tabla de Equivalencias" y en la "Equivalencia con Gas Natural".</li>
+                        <li>**Método Matemático:** Utiliza el botón "Método Matemático" para ver las fórmulas exactas utilizadas en la conversión.</li>
+                        <li>**Limpiar:** Presiona "Limpiar" para borrar todos los campos y resultados.</li>
+                    </ul>
+                    <div class="text-right">
+                        <button id="close-instructions-button" class="py-2 px-4 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition duration-150 ease-in-out">
+                            Entendido
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal de Método Matemático (NUEVO) -->
+            <div id="method-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Método Matemático</h3>
+                    
+                    <div id="method-details-content" class="text-gray-700 text-sm space-y-4 mb-6">
+                        <!-- El contenido detallado se inyectará aquí con la función generateMathDetails() -->
+                    </div>
+
+                    <div class="text-right">
+                        <button id="close-method-button" class="py-2 px-4 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition duration-150 ease-in-out">
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+        
+    </div>
+
+    <!-- Script de lógica de la aplicación -->
+    <script>
+        // FACTORES DE CÁLCULO (INTERNOS)
+        const CONVERSION_FACTORS = {
+            // Equivalencias a KILOVATIOS HORA (kWh) - La energía es la unidad base de cálculo
+            to_kwh: {
+                // Se usan valores con más decimales internamente para mayor precisión
+                kg: 13.385,
+                m3: 27.84,
+                gal: 26.01,
+                btu: 0.000293,
+                kwh: 1
+            },
+            // Factores de conversión inversos a partir de kWh
+            from_kwh: {
+                kg: 1 / 13.385,
+                m3: 1 / 27.84,
+                gal: 1 / 26.01,
+                btu: 1 / 0.000293,
+                kwh: 1
+            },
+            // Factor de conversión para Gas Natural
+            GN_KWH_TO_M3: 1 / 11.70 
+        };
+        
+        // FACTORES PARA PRESENTACIÓN EN LA TABLA (Redondeados a 1 decimal para la visualización en la tabla de factores)
+        const FACTORS_GROUPS = {
+            'Densidad y Volumen (GLP)': {
+                'Densidad 1 Galón a kg': '1.9 kg/gal',
+                'Densidad Estándar 1 m³ a kg (Gas Gaseoso)': '~2.1 kg/m³',
+                'Densidad 1 kg a m³ (Gas Gaseoso)': '~0.5 m³/kg',
+            },
+            'Poder Calorífico (GLP)': {
+                'Poder Calorífico Superior (PCS) 1 kg (Gas LP) a kWh': '13.4 kWh/kg',
+                'Poder Calorífico Superior (PCS) 1 Galón (Gas LP) a kWh': '26.0 kWh/gal',
+                'Poder Calorífico Superior (PCS) 1 m³ (Gas LP) a kWh': '27.8 kWh/m³',
+                '1 kg a BTU': '45690.0 BTU/kg', 
+            },
+            'Otros Factores de Conversión': {
+                'Poder Calorífico Gas Natural (PCS)': '11.7 kWh/m³',
+            }
+        };
+
+        const UNIT_LABELS = {
+            kg: "Kilogramos (kg)",
+            m3: "Metros Cúbicos (m³)",
+            gal: "Galones (gal)",
+            btu: "BTU",
+            kwh: "Kilovatios Hora (kWh)"
+        };
+
+        // Referencias del DOM
+        const inputAmount = document.getElementById('input-amount');
+        const inputUnit = document.getElementById('input-unit');
+        const calculateButton = document.getElementById('calculate-button');
+        const resultsSection = document.getElementById('results-section');
+        const conversionResults = document.getElementById('conversion-results');
+        const gnEquivalentResult = document.getElementById('gn-equivalent-result');
+        const messageBox = document.getElementById('message-box');
+        const closeMessageButton = document.getElementById('close-message-button');
+        
+        // Nuevos elementos del DOM para Modales
+        const instructionsButton = document.getElementById('instructions-button');
+        const instructionsModal = document.getElementById('instructions-modal');
+        const closeInstructionsButton = document.getElementById('close-instructions-button');
+        
+        const methodButton = document.getElementById('method-button');
+        const methodModal = document.getElementById('method-modal');
+        const closeMethodButton = document.getElementById('close-method-button');
+        const methodDetailsContent = document.getElementById('method-details-content');
+
+
+        // Inicializa la tabla de factores de conversión
+        function initializeFactorsTable() {
+            // NOTA: Esta función ha quedado vacía en el HTML porque se eliminó la sección.
+            // Si la necesitas en el futuro, puedes reactivarla.
+        }
+
+        // Función para generar el contenido detallado del método matemático
+        function generateMathDetails(amount, sourceUnit, kwhBase, gnEquivalent) {
+            
+            let detailsHTML = `
+                <h4 class="font-bold text-base text-gray-800 mb-2">Paso 1: Conversión a Unidad Base de Energía (kWh)</h4>
+                <p class="text-xs text-gray-600 mb-2">
+                    La aplicación convierte primero la cantidad ingresada a Kilovatios Hora (kWh), que actúa como unidad energética universal para garantizar la precisión de las conversiones entre diferentes magnitudes (masa, volumen y energía).
+                </p>
+                <div class="bg-gray-100 p-3 rounded-lg">
+                    <p class="font-mono text-xs">
+                        Valor (kWh) = Cantidad (Origen) x Factor de Conversión a kWh
+                    </p>
+                    <p class="font-mono text-xs mt-1">
+                        ${kwhBase.toFixed(1)} kWh = ${amount.toFixed(1)} ${sourceUnit} x ${CONVERSION_FACTORS.to_kwh[sourceUnit].toFixed(4)}
+                    </p>
+                </div>
+
+                <h4 class="font-bold text-base text-gray-800 mt-4 mb-2">Paso 2: Conversión de kWh a Unidades Destino (GLP)</h4>
+                <p class="text-xs text-gray-600 mb-2">
+                    El valor base en kWh se multiplica por el factor de conversión inverso para obtener cada unidad de destino.
+                </p>
+                <ul class="text-xs text-gray-600 list-disc list-inside space-y-1 bg-gray-100 p-3 rounded-lg">
+            `;
+
+            // Agregar detalles de conversión del GLP
+            for (const targetUnit in CONVERSION_FACTORS.from_kwh) {
+                const convertedAmount = kwhBase * CONVERSION_FACTORS.from_kwh[targetUnit];
+                if (targetUnit !== sourceUnit) {
+                    const inverseFactor = CONVERSION_FACTORS.from_kwh[targetUnit];
+                    detailsHTML += `
+                        <li class="font-mono">${UNIT_LABELS[targetUnit]}: 
+                            ${kwhBase.toFixed(1)} kWh 
+                            x 
+                            ${inverseFactor.toFixed(4)} 
+                            = 
+                            ${convertedAmount.toFixed(1)} ${targetUnit}
+                        </li>
+                    `;
+                }
+            }
+            detailsHTML += `</ul>`;
+            
+            // Agregar cálculo de Gas Natural
+            if (kwhBase > 0) {
+                 detailsHTML += `
+                    <h4 class="font-bold text-base text-gray-800 mt-4 mb-2">Paso 3: Equivalencia con Gas Natural (GN)</h4>
+                    <p class="text-xs text-gray-600 mb-2">
+                        La energía base (kWh) se divide por el Poder Calorífico Superior (PCS) del Gas Natural (11.7 kWh/m³) para encontrar el equivalente en m³.
+                    </p>
+                    <div class="bg-gray-200 p-3 rounded-lg">
+                        <p class="font-mono text-xs">
+                            Volumen GN (m³) = Valor (kWh) x Factor (m³/kWh)
+                        </p>
+                        <p class="font-mono text-xs mt-1">
+                            ${gnEquivalent.toFixed(1)} m³ = ${kwhBase.toFixed(1)} kWh x ${CONVERSION_FACTORS.GN_KWH_TO_M3.toFixed(4)} m³/kWh
+                        </p>
+                    </div>
+                `;
+            }
+
+            return detailsHTML;
+        }
+
+
+        // Función para mostrar mensajes de alerta
+        function showMessage(title, message) {
+            const messageModal = document.getElementById('message-modal');
+            const messageTitle = document.getElementById('message-title');
+            const messageContent = document.getElementById('message-content');
+            messageTitle.textContent = title;
+            messageContent.textContent = message;
+            messageModal.classList.add('max-w-sm', 'w-full', 'text-center'); // Asegurar estilos de modal de error
+            messageBox.classList.remove('hidden');
+        }
+
+        // Evento para cerrar el modal de mensaje
+        closeMessageButton.addEventListener('click', () => {
+            messageBox.classList.add('hidden');
+        });
+
+        // Eventos para Modales de Información
+        instructionsButton.addEventListener('click', () => {
+            instructionsModal.classList.remove('hidden');
+        });
+
+        closeInstructionsButton.addEventListener('click', () => {
+            instructionsModal.classList.add('hidden');
+        });
+
+        methodButton.addEventListener('click', () => {
+            // El contenido se genera solo cuando se abre el modal para usar los últimos resultados.
+            if (resultsSection.classList.contains('hidden')) {
+                 methodDetailsContent.innerHTML = '<p class="text-center text-sm text-gray-500">Por favor, realiza una conversión primero para ver el detalle de los procesos matemáticos aplicados.</p>';
+            } else {
+                const amount = parseFloat(inputAmount.value);
+                const sourceUnit = inputUnit.value;
+                const kwhBase = amount * CONVERSION_FACTORS.to_kwh[sourceUnit];
+                const gnEquivalent = kwhBase * CONVERSION_FACTORS.GN_KWH_TO_M3;
+
+                methodDetailsContent.innerHTML = generateMathDetails(amount, sourceUnit, kwhBase, gnEquivalent);
+            }
+            methodModal.classList.remove('hidden');
+        });
+
+        closeMethodButton.addEventListener('click', () => {
+            methodModal.classList.add('hidden');
+        });
+
+
+        // Evento principal de cálculo
+        calculateButton.addEventListener('click', convertUnits);
+
+        function convertUnits() {
+            const amount = parseFloat(inputAmount.value);
+            const sourceUnit = inputUnit.value;
+            
+            // Validación de entrada
+            if (isNaN(amount) || amount <= 0) {
+                showMessage("Error de Entrada", "Por favor, ingresa una cantidad válida y positiva para la conversión.");
+                resultsSection.classList.add('hidden');
+                return;
+            }
+
+            // 1. Convertir la cantidad de entrada a la unidad base de energía (kWh)
+            const kwhBaseFactor = CONVERSION_FACTORS.to_kwh[sourceUnit];
+            const kwhBase = amount * kwhBaseFactor;
+
+            // 2. Calcular equivalente de Gas Natural (GN)
+            const gnEquivalent = kwhBase * CONVERSION_FACTORS.GN_KWH_TO_M3;
+            gnEquivalentResult.textContent = `${gnEquivalent.toFixed(1)} m³`; // 1 decimal para el resultado GN
+            
+            let resultsHTML = '';
+            
+            // 3. Calcular y mostrar las conversiones para todas las unidades (GLP)
+            for (const targetUnit in CONVERSION_FACTORS.from_kwh) {
+                const convertedAmount = kwhBase * CONVERSION_FACTORS.from_kwh[targetUnit];
+                
+                // 1 decimal para los valores en la Tabla de Equivalencias
+                const isSource = targetUnit === sourceUnit;
+                const rowClass = isSource ? 'bg-blue-50 border-l-4 border-blue-600 font-semibold' : 'hover:bg-gray-50';
+                
+                resultsHTML += `
+                    <tr class="${rowClass}">
+                        <td class="py-2 text-sm text-gray-900">${UNIT_LABELS[targetUnit]} ${isSource ? '(Base)' : ''}</td>
+                        <td class="py-2 text-sm text-gray-800">${convertedAmount.toFixed(1)}</td>
+                    </tr>
+                `;
+            }
+            
+            // 4. Inyectar y mostrar resultados
+            conversionResults.innerHTML = resultsHTML;
+            resultsSection.classList.remove('hidden');
+
+            feather.replace(); // Recargar iconos después de inyectar HTML
+        }
+
+        // Función para limpiar la interfaz
+        function resetApp() {
+            inputAmount.value = ''; // Campo de cantidad queda vacío
+            inputUnit.value = 'kg';  // Unidad vuelve a Kilogramos (kg) - Primera opción de la lista
+            resultsSection.classList.add('hidden'); // Ocultar resultados
+            conversionResults.innerHTML = ''; 
+            gnEquivalentResult.textContent = '0.0 m³'; // Limpiar resultado GN
+        }
+
+        // Evento para el botón de Limpiar
+        const clearButtonElement = document.getElementById('clear-button');
+        clearButtonElement.addEventListener('click', resetApp);
+        
+        // Inicialización: Limpiar al cargar la página para evitar valores residuales en el campo de cantidad
+        window.addEventListener('load', resetApp);
+        // Inicializar iconos de Feather
+        feather.replace();
+
+    </script>
+</body>
+</html>
