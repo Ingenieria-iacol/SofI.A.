@@ -11,6 +11,8 @@
             --card-bg: #2f2f2f;
             --text-color: #ffffff;
             --primary-color: #e50914;
+            --footer-bg: #0a0a0a;
+            --footer-text: #737373;
         }
 
         body {
@@ -19,6 +21,9 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
         /* --- PANTALLA DE LOGIN --- */
@@ -39,7 +44,10 @@
         .login-error { color: #e5a1a1; font-size: 0.9rem; margin-top: 10px; display: none; }
 
         /* --- INTERFAZ PRINCIPAL --- */
-        #main-interface { display: none; }
+        #main-interface { 
+            display: none; 
+            flex: 1; /* Para que ocupe el espacio y empuje el footer */
+        }
 
         header {
             display: flex; align-items: center; justify-content: space-between;
@@ -62,20 +70,19 @@
             transition: background-image 1s ease-in-out;
         }
         
-        /* Capas de oscurecimiento para leer el texto */
-        .hero-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to right, #141414 15%, rgba(20,20,20,0.6) 50%, transparent 100%); z-index: 1; }
-        .hero-overlay-btm { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, #141414 0%, transparent 30%); z-index: 1; }
+        /* Capas de oscurecimiento más intensas para garantizar legibilidad */
+        .hero-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to right, #141414 20%, rgba(20,20,20,0.7) 60%, rgba(0,0,0,0.4) 100%); z-index: 1; }
+        .hero-overlay-btm { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, #141414 0%, transparent 40%); z-index: 1; }
         
         .hero-content { 
             position: relative; z-index: 10; max-width: 600px; 
-            opacity: 1; transition: opacity 0.5s ease-in-out; /* Transición para el texto */
+            opacity: 1; transition: opacity 0.5s ease-in-out;
         }
         
-        /* Clase para ocultar contenido durante la transición */
         .hero-content.fade-out { opacity: 0; }
 
-        .hero-title { font-size: 3.5rem; margin-bottom: 10px; font-weight: 800; line-height: 1.1; text-transform: uppercase; color: white; text-shadow: 0 0 20px rgba(0,0,0,0.8); }
-        .hero-desc { font-size: 1.2rem; margin-bottom: 25px; text-shadow: 2px 2px 4px black; line-height: 1.4; color: #ddd; min-height: 60px; }
+        .hero-title { font-size: 3.5rem; margin-bottom: 10px; font-weight: 800; line-height: 1.1; text-transform: uppercase; color: white; text-shadow: 0 2px 10px rgba(0,0,0,0.9); }
+        .hero-desc { font-size: 1.2rem; margin-bottom: 25px; text-shadow: 1px 1px 5px black; line-height: 1.4; color: #e6e6e6; min-height: 60px; font-weight: 500; }
         
         .hero-btn { padding: 12px 30px; font-size: 1.2rem; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; transition: transform 0.2s; display: inline-flex; align-items: center; gap: 10px; }
         .hero-btn:hover { transform: scale(1.05); }
@@ -116,6 +123,23 @@
         .add-list-btn:hover { border-color: white; background: rgba(80,80,80,0.9); }
         .card:hover .add-list-btn { opacity: 1; }
         .in-list { border-color: var(--primary-color); color: var(--primary-color); background: rgba(0,0,0,0.8); }
+
+        /* --- FOOTER (NUEVO) --- */
+        footer {
+            background-color: var(--footer-bg);
+            padding: 30px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--footer-text);
+            margin-top: auto; /* Empuja el footer al final */
+            border-top: 1px solid #222;
+            z-index: 30;
+            position: relative;
+        }
+        footer span#year-span {
+             color: #999;
+        }
+
 
         /* --- VISOR --- */
         #viewer {
@@ -169,7 +193,12 @@
 
         <div class="content-container" id="content-rows">
             </div>
+
+        <footer>
+            &reg; Software De Inteligencia Artificial <span id="year-span"></span>
+        </footer>
     </div>
+
 
     <div id="viewer">
         <div id="viewer-header">
@@ -234,8 +263,7 @@
         let heroInterval;
 
         function iniciarCarrusel() {
-            mostrarSlideHero(); // Mostrar el primero inmediatamente
-            // Cambiar cada 5 segundos
+            mostrarSlideHero();
             heroInterval = setInterval(() => {
                 heroIndex = (heroIndex + 1) % herramientas.length;
                 mostrarSlideHero();
@@ -247,27 +275,22 @@
             const bgSection = document.getElementById('hero-section');
             const contentDiv = document.getElementById('hero-content');
             
-            // 1. Efecto Fade Out del texto
             contentDiv.classList.add('fade-out');
 
             setTimeout(() => {
-                // 2. Cambiar datos mientras está invisible
                 document.getElementById('hero-title').textContent = tool.nombre;
                 document.getElementById('hero-desc').textContent = tool.descripcion;
-                
-                // Actualizar botón para que abra esta herramienta
                 const btn = document.getElementById('hero-btn-play');
                 btn.onclick = () => abrirHerramienta(tool.nombre, tool.url);
 
-                // 3. Cambiar Fondo
-                // Intentamos usar la imagen de la herramienta. Si falla, se verá negro/gris por el CSS default.
-                // Añadimos un fallback URL genérico por si la ruta local no funciona en la demo
-                const imgUrl = tool.imagen.includes('.') ? tool.imagen : tool.imagen + '.jpg'; // Intento simple de corregir falta de extensión
-                bgSection.style.backgroundImage = `url('${imgUrl}'), url('https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=2070&auto=format&fit=crop')`;
+                // Cambiar Fondo: Usa la imagen de la herramienta.
+                // NOTA: Si tus imágenes locales no cargan, el fondo se verá negro por el CSS default.
+                // Asegúrate de que las rutas en 'herramientas' sean correctas.
+                const imgUrl = tool.imagen.includes('.') ? tool.imagen : tool.imagen + '.jpg'; 
+                bgSection.style.backgroundImage = `url('${imgUrl}')`;
 
-                // 4. Efecto Fade In
                 contentDiv.classList.remove('fade-out');
-            }, 500); // Espera 500ms (lo que dura la transición CSS)
+            }, 500);
         }
 
 
@@ -339,9 +362,14 @@
             e.preventDefault();
             if(document.getElementById('username').value === USER && document.getElementById('password').value === PASS) {
                 document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('main-interface').style.display = 'block';
+                document.getElementById('main-interface').style.display = 'flex'; // Cambiado a flex para el footer sticky
+                
+                // INICIALIZACIÓN AL LOGIN
                 renderizarTodo();
-                iniciarCarrusel(); // <-- INICIAMOS EL CARRUSEL AL ENTRAR
+                iniciarCarrusel(); 
+                // Establecer el año actual en el footer
+                document.getElementById('year-span').textContent = new Date().getFullYear();
+
             } else {
                 document.getElementById('error-msg').style.display = 'block';
             }
