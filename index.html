@@ -10,7 +10,7 @@
             --bg-color: #141414;
             --card-bg: #2f2f2f;
             --text-color: #ffffff;
-            --primary-color: #e50914;
+            --primary-color: #e50914; /* Rojo Netflix */
             --secondary-color: #aaa;
         }
 
@@ -19,98 +19,228 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            overflow-x: hidden;
+            overflow-x: hidden; /* Evita scroll horizontal en la página entera */
         }
 
         /* --- PANTALLA DE LOGIN --- */
         #login-screen {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.8)), url('https://images.unsplash.com/photo-1581092918056-0c4c58a885f2?q=80&w=2070&auto=format&fit=crop');
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.8)), url('https://images.unsplash.com/photo-1581092918056-0c4c58a885f2?q=80&w=2070&auto=format&fit=crop'); /* Imagen de fondo industrial */
             background-size: cover;
-            display: flex; justify-content: center; align-items: center; z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
         }
 
         .login-box {
             background-color: rgba(0, 0, 0, 0.75);
-            padding: 60px; border-radius: 4px; width: 100%; max-width: 350px; text-align: center;
+            padding: 60px;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
         }
-        .login-box h1 { color: var(--primary-color); margin-bottom: 30px; font-size: 2.5rem; letter-spacing: 2px; }
-        .login-input { width: 100%; padding: 15px; margin-bottom: 20px; background: #333; border: none; border-radius: 4px; color: white; box-sizing: border-box; }
-        .login-btn { width: 100%; padding: 15px; background-color: var(--primary-color); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+
+        .login-box h1 {
+            color: var(--primary-color);
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            background: #333;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 1rem;
+            box-sizing: border-box; /* Asegura que el padding no rompa el ancho */
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
         .login-btn:hover { background-color: #f40612; }
         .login-error { color: #e5a1a1; font-size: 0.9rem; margin-top: 10px; display: none; }
 
-        /* --- INTERFAZ PRINCIPAL --- */
+        /* --- INTERFAZ PRINCIPAL (OCULTA AL INICIO) --- */
         #main-interface { display: none; }
 
+        /* CABECERA */
         header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 15px 40px; position: fixed; width: 100%; top: 0; z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 40px;
             background: linear-gradient(to bottom, rgba(20,20,20,1) 0%, rgba(20,20,20,0) 100%);
-            transition: background-color 0.4s; box-sizing: border-box;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+            box-sizing: border-box;
+            transition: background-color 0.4s;
         }
-        header.scrolled { background-color: #141414; }
-        .logo { color: var(--primary-color); font-size: 1.8rem; font-weight: 800; cursor: pointer; text-transform: uppercase; }
 
-        /* HERO SECTION */
-        .hero {
-            height: 80vh; position: relative;
-            background: url('https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=2070&auto=format&fit=crop') center/cover no-repeat;
-            display: flex; align-items: center; padding-left: 50px;
+        header.scrolled { background-color: #141414; }
+
+        .logo {
+            color: var(--primary-color);
+            font-size: 1.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            text-shadow: 0 0 15px rgba(229, 9, 20, 0.5);
+            cursor: pointer;
         }
-        .hero-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to right, #141414 10%, transparent 90%); }
-        .hero-content { position: relative; z-index: 10; max-width: 500px; }
+
+        .user-profile { font-size: 0.9rem; display: flex; align-items: center; gap: 10px; }
+        .avatar { width: 32px; height: 32px; background-color: #333; border-radius: 4px; }
+
+        /* HERO SECTION (Banner Principal) */
+        .hero {
+            height: 80vh;
+            position: relative;
+            background: url('https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=2070&auto=format&fit=crop') center/cover no-repeat;
+            display: flex;
+            align-items: center;
+            padding-left: 50px;
+        }
+        
+        .hero-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(to right, #141414 10%, transparent 90%);
+        }
+        
+        .hero-overlay-bottom {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(to top, #141414 0%, transparent 50%);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            max-width: 500px;
+        }
+
         .hero-title { font-size: 3.5rem; margin-bottom: 10px; font-weight: 800; line-height: 1; }
         .hero-desc { font-size: 1.2rem; margin-bottom: 20px; text-shadow: 1px 1px 4px black; }
-        .hero-btn { padding: 10px 25px; font-size: 1.1rem; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
         
-        /* LISTAS */
-        .content-container { position: relative; top: -100px; z-index: 20; padding-bottom: 50px; }
-        .category-row { margin-bottom: 40px; padding-left: 40px; }
-        .category-title { font-size: 1.4rem; font-weight: 600; color: #e5e5e5; margin-bottom: 10px; }
-        
+        .hero-btn {
+            padding: 10px 25px;
+            font-size: 1.1rem;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-flex; align-items: center; gap: 10px;
+        }
+        .btn-white { background-color: white; color: black; }
+        .btn-white:hover { background-color: rgba(255,255,255,0.75); }
+
+        /* CONTENEDOR DE FILAS */
+        .content-container {
+            position: relative;
+            top: -100px; /* Sube sobre el hero */
+            z-index: 20;
+            padding-bottom: 50px;
+        }
+
+        .category-row {
+            margin-bottom: 40px;
+            padding-left: 40px;
+        }
+
+        .category-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #e5e5e5;
+            margin-bottom: 10px;
+        }
+
         .row-slider {
-            display: flex; gap: 10px; overflow-x: auto; padding: 20px 0; scroll-behavior: smooth;
-            scrollbar-width: none;
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 20px 0;
+            scroll-behavior: smooth;
+            /* Ocultar barra de scroll pero permitir scroll */
+            scrollbar-width: none; /* Firefox */
         }
-        .row-slider::-webkit-scrollbar { display: none; }
+        .row-slider::-webkit-scrollbar { display: none; /* Chrome/Safari */ }
 
-        /* TARJETAS */
+        /* TARJETAS (CARDS) */
         .card {
-            flex: 0 0 250px; aspect-ratio: 16/9; background-color: var(--card-bg);
-            border-radius: 4px; position: relative; cursor: pointer;
-            transition: transform 0.3s ease, z-index 0.3s; overflow: hidden;
+            flex: 0 0 250px; /* Ancho fijo */
+            aspect-ratio: 16/9;
+            background-color: var(--card-bg);
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.3s ease, z-index 0.3s;
+            overflow: hidden;
         }
-        .card:hover { transform: scale(1.3); z-index: 100; box-shadow: 0 10px 20px rgba(0,0,0,0.8); }
-        .card-img { width: 100%; height: 100%; object-fit: cover; }
-        
-        .card-hover-info {
-            position: absolute; bottom: 0; left: 0; right: 0; padding: 10px;
-            background: linear-gradient(to top, black, transparent); opacity: 0; transition: opacity 0.3s;
-        }
-        .card:hover .card-hover-info { opacity: 1; }
-        
-        /* BOTÓN DE MI LISTA (NUEVO) */
-        .add-list-btn {
-            position: absolute; top: 10px; right: 10px;
-            background: rgba(40, 40, 40, 0.8); border: 2px solid #ccc; color: white;
-            width: 30px; height: 30px; border-radius: 50%;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 1.2rem; cursor: pointer; opacity: 0; transition: opacity 0.2s, background 0.2s;
-            z-index: 101;
-        }
-        .add-list-btn:hover { border-color: white; background: rgba(80,80,80,0.9); }
-        .card:hover .add-list-btn { opacity: 1; }
-        .in-list { border-color: var(--primary-color); color: var(--primary-color); background: rgba(0,0,0,0.8); }
 
-        /* VISOR */
-        #viewer {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: black; z-index: 2000; flex-direction: column;
+        .card:hover {
+            transform: scale(1.3); /* Zoom más agresivo estilo Netflix */
+            z-index: 100;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.8);
         }
-        #viewer-header { padding: 10px 30px; background-color: #141414; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
-        .close-btn { background: transparent; border: 1px solid white; color: white; padding: 5px 15px; cursor: pointer; }
+
+        .card-img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+
+        .card-hover-info {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 10px;
+            background: linear-gradient(to top, black, transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .card:hover .card-hover-info { opacity: 1; }
+        .card-mini-title { font-size: 0.8rem; font-weight: bold; color: white; }
+        .card-mini-desc { font-size: 0.6rem; color: #ccc; margin-top: 4px; }
+
+        /* VISOR DE APLICACIÓN */
+        #viewer {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: black;
+            z-index: 2000;
+            flex-direction: column;
+        }
+
+        #viewer-header {
+            padding: 10px 30px;
+            background-color: #141414;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .close-btn {
+            background: transparent; border: 1px solid white; color: white;
+            padding: 5px 15px; cursor: pointer; border-radius: 2px;
+        }
+        .close-btn:hover { background: white; color: black; }
+
         iframe { width: 100%; height: 100%; border: none; background: white; }
 
     </style>
@@ -120,27 +250,38 @@
     <div id="login-screen">
         <div class="login-box">
             <h1>SofI.A.</h1>
-            <form onsubmit="intentarLogin(event)">
-                <input type="text" id="username" class="login-input" placeholder="Usuario (admin)" required>
-                <input type="password" id="password" class="login-input" placeholder="Contraseña (1234)" required>
+            <form id="login-form" onsubmit="intentarLogin(event)">
+                <input type="text" id="username" class="login-input" placeholder="Usuario o Correo" required>
+                <input type="password" id="password" class="login-input" placeholder="Contraseña" required>
                 <button type="submit" class="login-btn">Iniciar Sesión</button>
-                <p id="error-msg" class="login-error">Credenciales incorrectas.</p>
+                <p id="error-msg" class="login-error">Credenciales incorrectas. (Prueba: admin / 1234)</p>
             </form>
+            <p style="color: #737373; font-size: 0.8rem; margin-top: 20px;">
+                ¿Nuevo en SofI.A.? <a href="#" style="color: white;">Suscríbete ahora.</a>
+            </p>
         </div>
     </div>
 
     <div id="main-interface">
         <header id="navbar">
             <div class="logo" onclick="location.reload()">SofI.A.</div>
-            <div style="font-size: 0.9rem;">Ingeniero | ▼</div>
+            <div class="user-profile">
+                <span>Ingeniero</span>
+                <div class="avatar"></div>
+            </div>
         </header>
 
         <div class="hero">
             <div class="hero-overlay"></div>
+            <div class="hero-overlay-bottom"></div>
             <div class="hero-content">
                 <div class="hero-title">EnginnerIA</div>
-                <div class="hero-desc">Tu asistente personal de ingeniería impulsado por I.A.</div>
-                <button class="hero-btn" style="background: white; color: black;" onclick="abrirHerramienta('EnginnerIA', 'Chat Bot')">▶ ABRIR</button>
+                <div class="hero-desc">
+                    Tu asistente personal de ingeniería impulsado por I.A. Resuelve dudas sobre redes de gas y combustión al instante.
+                </div>
+                <button class="hero-btn btn-white" onclick="abrirHerramienta('EnginnerIA', 'Chat Bot')">
+                    ▶  ABRIR APLICACIÓN
+                </button>
             </div>
         </div>
 
@@ -150,134 +291,165 @@
 
     <div id="viewer">
         <div id="viewer-header">
-            <span id="viewer-title">Herramienta</span>
+            <span id="viewer-title" style="font-weight:bold;">Herramienta</span>
             <button class="close-btn" onclick="cerrarHerramienta()">X CERRAR</button>
         </div>
         <iframe id="app-frame" src=""></iframe>
     </div>
 
     <script>
-        // CONFIGURACIÓN
-        const USER = "admin";
-        const PASS = "1234";
+        // 1. CONFIGURACIÓN DE USUARIO (Simulada)
+        const USER_CORRECTO = "admin";
+        const PASS_CORRECTO = "1234";
 
-        // BASE DE DATOS
+        // 2. BASE DE DATOS DE HERRAMIENTAS
+        // He añadido la propiedad "categoria" para agruparlas
         const herramientas = [
-            { nombre: "Calculadora Ventilación", url: "Calculadora de ventilacion 3631 V_Libre", imagen: "Imagen001.jpg", descripcion: "Cálculo NTC 3631", categoria: "Cálculos y Diseño" },
-            { nombre: "Convertidor GLP", url: "Aplicacion Convertidor Universal GLP", imagen: "Imagen004convertidorGLP.jpg", descripcion: "Conversión másica", categoria: "Utilidades" },
-            { nombre: "EnginnerIA", url: "Chat Bot", imagen: "LogoIngenieroIA.jpg", descripcion: "ChatBot Experto", categoria: "Inteligencia Artificial" },
-            { nombre: "Diseño Media Presión", url: "Modelador Mueller V_Pro (1211)", imagen: "Imagen003DiseñoMueller.jpg", descripcion: "Fórmula Mueller", categoria: "Cálculos y Diseño" },
-            { nombre: "Diseño Baja Presión", url: "Modelador Renoaurd-V_Pro", imagen: "Imagen002DiseñoRenouard.jpg", descripcion: "Fórmula Renouard", categoria: "Cálculos y Diseño" },
-            { nombre: "Inventario", url: "./inventario.html", imagen: "./unnamed (4).jpg", descripcion: "Gestión Stock", categoria: "En Desarrollo" },
-            { nombre: "Normativa NTC 2505", url: "#", imagen: "", descripcion: "Consulta rápida", categoria: "Documentación" }
+            { 
+                nombre: "Calculadora Ventilación", 
+                url: "Calculadora de ventilacion 3631 V_Libre", 
+                imagen: "Imagen001.jpg", // Ajusta esta ruta
+                descripcion: "Cálculo de ventilación según dimensiones.",
+                categoria: "Cálculos y Diseño"
+            },
+            { 
+                nombre: "Convertidor GLP", 
+                url: "Aplicacion Convertidor Universal GLP",
+                imagen: "Imagen004convertidorGLP.jpg", 
+                descripcion: "Conversiones másicas Kg/m3/Gl.",
+                categoria: "Utilidades"
+            },
+            { 
+                nombre: "EnginnerIA", 
+                url: "Chat Bot",
+                imagen: "LogoIngenieroIA.jpg",
+                descripcion: "ChatBot experto en gas.",
+                categoria: "Inteligencia Artificial"
+            },
+            { 
+                nombre: "Diseño Media Presión", 
+                url: "Modelador Mueller V_Pro (1211)",
+                imagen: "Imagen003DiseñoMueller.jpg",
+                descripcion: "Estimación pérdidas Mueller (>0.33 psi).",
+                categoria: "Cálculos y Diseño"
+            },
+             { 
+                nombre: "Diseño Baja Presión", 
+                url: "Modelador Renoaurd-V_Pro",
+                imagen: "Imagen002DiseñoRenouard.jpg",
+                descripcion: "Renouard (<0.33 psi).",
+                categoria: "Cálculos y Diseño"
+            },
+             { 
+                nombre: "Inventario (Beta)", 
+                url: "./inventario.html",
+                imagen: "./unnamed (4).jpg",
+                descripcion: "Gestión de stock en desarrollo.",
+                categoria: "En Desarrollo"
+            },
+            { 
+               nombre: "Normativa NTC 2505", 
+                url: "#",
+                imagen: "", 
+                descripcion: "Consulta rápida de norma.",
+                categoria: "Documentación"
+            },
         ];
 
-        // --- GESTIÓN DE MI LISTA (LOCALSTORAGE) ---
-        // Cargamos la lista guardada o iniciamos un array vacío
-        let miLista = JSON.parse(localStorage.getItem('sofi_favorites')) || [];
+        // 3. LÓGICA DE LOGIN
+        function intentarLogin(e) {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-msg');
 
-        function toggleMiLista(nombreHerramienta, event) {
-            // Detener propagación para que no abra la herramienta al hacer click en el botón +
-            event.stopPropagation();
-
-            const index = miLista.indexOf(nombreHerramienta);
-            if (index > -1) {
-                miLista.splice(index, 1); // Quitar si ya existe
+            if(user === USER_CORRECTO && pass === PASS_CORRECTO) {
+                // Login exitoso
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-interface').style.display = 'block';
+                inicializarApp();
             } else {
-                miLista.push(nombreHerramienta); // Agregar si no existe
+                // Error
+                errorMsg.style.display = 'block';
             }
-            
-            // Guardar en el navegador
-            localStorage.setItem('sofi_favorites', JSON.stringify(miLista));
-            
-            // Re-renderizar para actualizar iconos y la fila "Mi Lista"
-            renderizarTodo();
         }
 
-        // --- RENDERIZADO ---
-        function renderizarTodo() {
+        // 4. RENDERIZADO ESTILO NETFLIX
+        function inicializarApp() {
             const container = document.getElementById('content-rows');
             container.innerHTML = "";
 
-            // 1. RENDERIZAR FILA "MI LISTA" (Solo si hay items)
-            if (miLista.length > 0) {
-                const favs = herramientas.filter(h => miLista.includes(h.nombre));
-                if (favs.length > 0) {
-                    crearFila(container, "Mi Lista", favs);
-                }
-            }
-
-            // 2. RENDERIZAR CATEGORÍAS NORMALES
+            // Obtener categorías únicas
             const categorias = [...new Set(herramientas.map(h => h.categoria))];
+
             categorias.forEach(cat => {
-                const apps = herramientas.filter(h => h.categoria === cat);
-                crearFila(container, cat, apps);
+                // Crear contenedor de la fila
+                const row = document.createElement('div');
+                row.className = 'category-row';
+
+                // Título de categoría
+                const title = document.createElement('div');
+                title.className = 'category-title';
+                title.innerText = cat;
+                row.appendChild(title);
+
+                // Slider horizontal
+                const slider = document.createElement('div');
+                slider.className = 'row-slider';
+
+                // Filtrar herramientas de esta categoría
+                const appsEnCategoria = herramientas.filter(h => h.categoria === cat);
+
+                appsEnCategoria.forEach(tool => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    
+                    // Usamos un div con background-image para manejar mejor las imágenes rotas
+                    // Si falla, se verá gris oscuro (background del card)
+                    card.innerHTML = `
+                        <img src="${tool.imagen}" class="card-img" onerror="this.style.display='none'">
+                        <div class="card-hover-info">
+                            <div class="card-mini-title">${tool.nombre}</div>
+                            <div class="card-mini-desc">${tool.descripcion}</div>
+                        </div>
+                    `;
+
+                    card.onclick = () => abrirHerramienta(tool.nombre, tool.url);
+                    slider.appendChild(card);
+                });
+
+                row.appendChild(slider);
+                container.appendChild(row);
+            });
+
+            // Efecto Navbar al hacer scroll
+            window.addEventListener('scroll', () => {
+                const nav = document.getElementById('navbar');
+                if (window.scrollY > 50) {
+                    nav.classList.add('scrolled');
+                } else {
+                    nav.classList.remove('scrolled');
+                }
             });
         }
 
-        function crearFila(container, titulo, items) {
-            const row = document.createElement('div');
-            row.className = 'category-row';
-            
-            const titleDiv = document.createElement('div');
-            titleDiv.className = 'category-title';
-            titleDiv.innerText = titulo;
-            row.appendChild(titleDiv);
+        // 5. FUNCIONES DEL VISOR
+        function abrirHerramienta(titulo, url) {
+            const viewer = document.getElementById('viewer');
+            const frame = document.getElementById('app-frame');
+            const titleSpan = document.getElementById('viewer-title');
 
-            const slider = document.createElement('div');
-            slider.className = 'row-slider';
-
-            items.forEach(tool => {
-                const enLista = miLista.includes(tool.nombre);
-                const icono = enLista ? "✓" : "+";
-                const claseExtra = enLista ? "in-list" : "";
-
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="add-list-btn ${claseExtra}" onclick="toggleMiLista('${tool.nombre}', event)" title="Añadir/Quitar de Mi Lista">${icono}</div>
-                    <img src="${tool.imagen}" class="card-img" onerror="this.style.display='none'">
-                    <div class="card-hover-info">
-                        <div style="font-size:0.8rem; font-weight:bold; color:white;">${tool.nombre}</div>
-                        <div style="font-size:0.6rem; color:#ccc;">${tool.descripcion}</div>
-                    </div>
-                `;
-                card.onclick = () => abrirHerramienta(tool.nombre, tool.url);
-                slider.appendChild(card);
-            });
-
-            row.appendChild(slider);
-            container.appendChild(row);
-        }
-
-        // --- SISTEMA ---
-        function intentarLogin(e) {
-            e.preventDefault();
-            if(document.getElementById('username').value === USER && document.getElementById('password').value === PASS) {
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('main-interface').style.display = 'block';
-                renderizarTodo();
-            } else {
-                document.getElementById('error-msg').style.display = 'block';
-            }
-        }
-
-        function abrirHerramienta(t, u) {
-            document.getElementById('viewer-title').textContent = t;
-            document.getElementById('app-frame').src = u;
-            document.getElementById('viewer').style.display = 'flex';
+            titleSpan.textContent = titulo;
+            frame.src = url; 
+            viewer.style.display = 'flex';
         }
 
         function cerrarHerramienta() {
-            document.getElementById('app-frame').src = "";
-            document.getElementById('viewer').style.display = 'none';
+            const viewer = document.getElementById('viewer');
+            const frame = document.getElementById('app-frame');
+            frame.src = ""; 
+            viewer.style.display = 'none';
         }
-
-        // Navbar scroll effect
-        window.addEventListener('scroll', () => {
-            const nav = document.getElementById('navbar');
-            window.scrollY > 50 ? nav.classList.add('scrolled') : nav.classList.remove('scrolled');
-        });
 
     </script>
 </body>
