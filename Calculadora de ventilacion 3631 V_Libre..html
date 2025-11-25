@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Potencia de Ventilación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            font-family: 'Inter', sans-serif;
+        }
+        .container-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f7f9fb;
+            padding: 1rem;
+        }
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { 
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#1e40af',
+                        'secondary-cyan': '#06b6d4',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+
+<div class="container-wrapper">
+    <div class="w-full max-w-lg bg-white shadow-2xl rounded-xl p-6 sm:p-8 border border-gray-100">
+        
+        <!-- Encabezado -->
+        <h1 class="text-3xl font-extrabold text-primary-blue mb-2 text-center">
+            Ventilación y Volumen
+        </h1>
+        <p class="text-gray-600 mb-6 text-center">
+            Estima la potencia de ventilación requerida y compara con la potencia instalada.
+        </p>
+
+        <!-- Formulario de Entrada -->
+        <div class="space-y-4">
+            
+            <!-- Altura (m) -->
+            <div>
+                <label for="altura" class="block text-sm font-medium text-gray-700 mb-1">Altura (metros)</label>
+                <input type="number" id="altura" placeholder="Ej. 2.5" min="0.1" step="0.1"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-secondary-cyan focus:border-secondary-cyan transition duration-150"
+                       aria-label="Ingresa la altura en metros">
+            </div>
+
+            <!-- Profundidad (m) -->
+            <div>
+                <label for="profundidad" class="block text-sm font-medium text-gray-700 mb-1">Profundidad (metros)</label>
+                <input type="number" id="profundidad" placeholder="Ej. 4.0" min="0.1" step="0.1"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-secondary-cyan focus:border-secondary-cyan transition duration-150"
+                       aria-label="Ingresa la profundidad en metros">
+            </div>
+
+            <!-- Anchura (m) -->
+            <div>
+                <label for="anchura" class="block text-sm font-medium text-gray-700 mb-1">Anchura (metros)</label>
+                <input type="number" id="anchura" placeholder="Ej. 6.0" min="0.1" step="0.1"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-secondary-cyan focus:border-secondary-cyan transition duration-150"
+                       aria-label="Ingresa la anchura en metros">
+            </div>
+
+            <!-- Potencia Instalada (kW) - NUEVO CAMPO -->
+            <div>
+                <label for="potencia-instalada" class="block text-sm font-medium text-gray-700 mb-1">Potencia Instalada Actual (Kilovatios, kW)</label>
+                <input type="number" id="potencia-instalada" placeholder="Ej. 1.5" min="0" step="0.1"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-secondary-cyan focus:border-secondary-cyan transition duration-150"
+                       aria-label="Ingresa la potencia instalada en Kilovatios">
+            </div>
+
+            <!-- Botón de Cálculo -->
+            <button onclick="calcularPotencia()"
+                    class="w-full bg-primary-blue hover:bg-blue-800 text-white font-semibold py-3 rounded-xl shadow-md transition duration-200 transform hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-secondary-cyan focus:ring-opacity-50">
+                Evaluar Idoneidad de la Potencia
+            </button>
+        </div>
+
+        <!-- Área de Resultados -->
+        <div id="resultados" class="mt-8 pt-6 border-t border-gray-200 space-y-4 hidden">
+            <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Resultados de la Evaluación</h2>
+            
+            <!-- Resultado de Volumen -->
+            <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <span class="font-medium text-blue-700">Volumen del Espacio:</span>
+                <span id="volumen-output" class="text-lg font-bold text-blue-900"></span>
+            </div>
+
+            <!-- Resultado de Potencia Máxima a Instalar -->
+            <div class="flex justify-between items-center p-4 bg-secondary-cyan/10 rounded-lg border border-secondary-cyan/40 shadow-md">
+                <span class="font-medium text-cyan-700">Potencia Máxima a Instalar:</span>
+                <span id="potencia-output" class="text-xl font-extrabold text-cyan-900"></span>
+            </div>
+
+            <!-- Resultado de la Potencia a instalar a futuro -->
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <span class="font-medium text-gray-700">Potencia a instalar a futuro:</span>
+                <span id="diferencia-output" class="text-lg font-bold text-gray-900"></span>
+            </div>
+            
+            <!-- Clasificación de Idoneidad - NUEVO RESULTADO CLAVE -->
+            <div class="flex justify-center items-center p-4 rounded-lg shadow-xl" id="clasificacion-box">
+                <span class="text-2xl font-black uppercase tracking-wider" id="clasificacion-output"></span>
+            </div>
+            
+        </div>
+
+        <!-- Contenedor de Mensajes (Modal/Alert replacement) -->
+        <div id="message-box" class="mt-4 hidden p-4 text-sm rounded-lg border" role="alert"></div>
+
+    </div>
+</div>
+
+<script>
+    const FACTOR_CONVERSION = 3.4;
+
+    function displayMessage(message, type = 'error') {
+        const messageBox = document.getElementById('message-box');
+        messageBox.textContent = message;
+        messageBox.classList.remove('hidden', 'bg-red-100', 'border-red-400', 'text-red-700', 'bg-green-100', 'border-green-400', 'text-green-700');
+        
+        if (type === 'error') {
+            messageBox.classList.add('bg-red-100', 'border-red-400', 'text-red-700');
+        } else {
+            messageBox.classList.add('bg-green-100', 'border-green-400', 'text-green-700');
+        }
+        
+        messageBox.classList.remove('hidden');
+        
+        setTimeout(() => {
+            messageBox.classList.add('hidden');
+        }, 5000);
+    }
+
+    function calcularPotencia() {
+        // 1. Obtener valores de entrada y convertirlos a números
+        const altura = parseFloat(document.getElementById('altura').value);
+        const profundidad = parseFloat(document.getElementById('profundidad').value);
+        const anchura = parseFloat(document.getElementById('anchura').value);
+        const potenciaInstalada = parseFloat(document.getElementById('potencia-instalada').value);
+
+        const resultadosDiv = document.getElementById('resultados');
+
+        // 2. Validación de entradas
+        if (isNaN(altura) || isNaN(profundidad) || isNaN(anchura) || altura <= 0 || profundidad <= 0 || anchura <= 0) {
+            displayMessage('Por favor, ingresa valores numéricos válidos y mayores que cero para las dimensiones.', 'error');
+            resultadosDiv.classList.add('hidden');
+            return;
+        }
+
+        if (isNaN(potenciaInstalada) || potenciaInstalada < 0) {
+            displayMessage('Por favor, ingresa un valor numérico válido y no negativo para la Potencia Instalada (kW).', 'error');
+            resultadosDiv.classList.add('hidden');
+            return;
+        }
+
+        // 3. Calcular el Volumen (V) en metros cúbicos (m³)
+        const volumen = altura * profundidad * anchura;
+
+        // 4. Calcular la Potencia Máxima a Instalar (P_Max) en Kilovatios (kW)
+        // La fórmula: P_Max (kW) = Volumen (m³) / 3.4 (m³/kW)
+        const potenciaKilowatts = volumen / FACTOR_CONVERSION;
+
+        // 5. Comparación y Diferencia
+        // Diferencia / Potencia a instalar a futuro: Potencia Máxima a Instalar - Potencia Instalada
+        const diferencia = potenciaKilowatts - potenciaInstalada; 
+
+        // 6. Clasificación de Idoneidad (APTO/NO APTO)
+        let clasificacion = '';
+        let clasificacionClase = '';
+        
+        // APTO si la instalada es MENOR que la máxima a instalar
+        if (potenciaInstalada < potenciaKilowatts) {
+            clasificacion = 'APTO';
+            clasificacionClase = 'bg-green-100 border-green-400 text-green-800'; 
+        } else {
+            // NO APTO si la instalada es MAYOR O IGUAL que la máxima a instalar
+            clasificacion = 'NO APTO';
+            clasificacionClase = 'bg-red-100 border-red-400 text-red-800'; 
+        }
+
+        // 7. Formatear y mostrar los resultados
+        document.getElementById('volumen-output').textContent = volumen.toFixed(2) + ' m³';
+        document.getElementById('potencia-output').textContent = potenciaKilowatts.toFixed(2) + ' kW';
+        
+        // Se muestra la Potencia a instalar a futuro
+        document.getElementById('diferencia-output').textContent = diferencia.toFixed(2) + ' kW';
+
+        const clasificacionOutput = document.getElementById('clasificacion-output');
+        const clasificacionBox = document.getElementById('clasificacion-box');
+        
+        clasificacionBox.classList.remove('bg-green-100', 'border-green-400', 'text-green-800', 'bg-red-100', 'border-red-400', 'text-red-800');
+        clasificacionBox.classList.add(...clasificacionClase.split(' '));
+        clasificacionOutput.textContent = clasificacion;
+
+        resultadosDiv.classList.remove('hidden');
+        displayMessage('Evaluación de potencia completada. Revisa la clasificación de Idoneidad.', 'success');
+    }
+
+    window.onload = () => {
+        document.getElementById('altura').value = '';
+        document.getElementById('profundidad').value = '';
+        document.getElementById('anchura').value = '';
+        document.getElementById('potencia-instalada').value = ''; 
+    };
+
+</script>
+
+</body>
+</html>
