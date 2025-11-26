@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThermoDiag Pro - Asistente Técnico</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- jsPDF for PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .slide-in { animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { jsPDF } = window.jspdf;
+
+        // --- BASE DE CONOCIMIENTOS (Extraída del PDF subido) ---
+        const KNOWLEDGE_BASE = [
+            {
+                id: 'asian_11',
+                platforms: ['Rinnai', 'Navien', 'Rheem', 'Noritz'],
+                codes: ['11', 'E003'],
+                symptom: 'Falla de Ignición (El equipo intenta encender pero no detecta llama)',
+                rootCause: 'Insuficiencia de gas, aire en tubería, presión dinámica baja al abrir válvula.',
+                solution: [
+                    'Purgar la línea de gas completamente.',
+                    'Medir presión dinámica: Gas Natural > 5" W.C., GLP > 10" W.C.',
+                    'Verificar resistencia de bobina de válvula de gas.',
+                    'Limpiar electrodos de ignición.'
+                ],
+                reference: 'Sección 2.1 - Patologías de Ignición'
+            },
+            {
+                id: 'asian_12',
+                platforms: ['Rinnai', 'Navien', 'Rheem'],
+                codes: ['12', 'E012'],
+                symptom: 'Pérdida de Llama (Enciende y se apaga durante operación)',
+                rootCause: 'Recirculación de gases (mala ventilación), varilla de ionización sucia (sílice/carbón), mala tierra.',
+                solution: [
+                    'Inspeccionar integridad del sistema de ventilación (fugas).',
+                    'Limpiar varilla de flama con lija fina o billete (no dañar recubrimiento).',
+                    'Verificar conexión a tierra física (< 1 ohm idealmente).'
+                ],
+                reference: 'Sección 2.1 - Patologías de Ignición'
+            },
+            {
+                id: 'asian_14',
+                platforms: ['Rinnai', 'Rheem'],
+                codes: ['14'],
+                symptom: 'Fusible Térmico / Bloqueo Duro (Riesgo incendio)',
+                rootCause: 'Incrustación calcárea (sarro) severa en el intercambiador. El calor no se transfiere al agua.',
+                solution: [
+                    'Reemplazar fusible térmico (obligatorio).',
+                    'Realizar lavado químico (Flushing) con vinagre o desincrustante inmediatamente.'
+                ],
+                reference: 'Sección 2.2 - Patologías de Temperatura'
+            },
+            {
+                id: 'asian_90',
+                platforms: ['Rinnai', 'Noritz', 'Navien'],
+                codes: ['90', '99', '10', 'E110'],
+                symptom: 'Bloqueo de Flujo de Aire / Escape',
+                rootCause: 'Mallas anti-pájaros sucias, ducto muy largo, condensado acumulado en trampa.',
+                solution: [
+                    'Verificar obstrucciones físicas en terminales.',
+                    'Revisar trampa de condensados (si el agua sube, bloquea humos).',
+                    'Validar longitud máxima de tubería según manual.'
+                ],
+                reference: 'Sección 2.2 - Patologías de Sensores'
+            },
+            {
+                id: 'euro_ea',
+                platforms: ['Bosch', 'Junkers'],
+                codes: ['EA'],
+                symptom: 'No hay llama / Falla de Ionización',
+                rootCause: 'Humedad en electrodos, grietas en cerámica, presión de CO2 incorrecta.',
+                solution: [
+                    'Reemplazar set de electrodos (suelen derivar chispa a tierra).',
+                    'Verificar presión de CO2 en modelos de condensación.',
+                    'Asegurar fase y neutro correctos (polaridad).'
+                ],
+                reference: 'Sección 3.1 - La Pesadilla de la Ionización'
+            },
+            {
+                id: 'euro_e9',
+                platforms: ['Bosch', 'Junkers'],
+                codes: ['E9'],
+                symptom: 'Limitador de seguridad disparado (>105°C)',
+                rootCause: 'Bomba de circulación trabada, aire en el sistema.',
+                solution: [
+                    'Desbloquear la bomba (girar eje manualmente).',
+                    'Purgar aire del sistema.',
+                    'Verificar resistencia del limitador (debe ser casi 0 ohms).'
+                ],
+                reference: 'Sección 3.2 - Protección Térmica'
+            },
+            {
+                id: 'latam_e1',
+                platforms: ['Haceb', 'Challenger', 'Calorex', 'Midea', 'OEM Chino'],
+                codes: ['E1'],
+                symptom: 'Falla de Encendido (Ignition Failure)',
+                rootCause: 'Válvula solenoide defectuosa (bobina abierta), falta de gas.',
+                solution: [
+                    'Verificar suministro de gas.',
+                    'Revisar continuidad en bobinas de solenoides.',
+                    'Verificar estado de pilas (si es tiro natural).'
+                ],
+                reference: 'Sección 4.1 - Desambiguación Códigos'
+            },
+            {
+                id: 'latam_e4_challenger',
+                platforms: ['Challenger', 'Calorex'],
+                codes: ['E4'],
+                symptom: 'Sobrecalentamiento (>80°C)',
+                rootCause: 'Caudal de agua bajo o sensor NTC detecta exceso.',
+                solution: [
+                    'Aumentar caudal de agua.',
+                    'Bajar potencia de gas.',
+                    'Revisar sensor NTC de salida.'
+                ],
+                reference: 'Sección 4.2 - El Confuso Caso del Error E4'
+            },
+            {
+                id: 'latam_e4_haceb',
+                platforms: ['Haceb', 'Midea (Tiro Forzado)'],
+                codes: ['E4'],
+                symptom: 'Falla Sensor Hall del Ventilador',
+                rootCause: 'El ventilador gira pero la tarjeta no recibe señal de RPM.',
+                solution: [
+                    'Medir voltaje en cable de señal (blanco/amarillo). Debe ser pulsante (aprox 2.5V DC).',
+                    'Si hay 0V o 5V fijos girando, cambiar sensor Hall o ventilador.'
+                ],
+                reference: 'Sección 4.2 - El Confuso Caso del Error E4'
+            },
+            {
+                id: 'tank_pilot',
+                platforms: ['Rheem Depósito', 'Calorex Depósito'],
+                codes: ['Piloto se apaga', 'Sin Código'],
+                symptom: 'El piloto enciende pero se apaga al soltar perilla',
+                rootCause: 'Termocupla genera <10mV, o Interruptor Térmico (ECO) abierto por retorno de llama.',
+                solution: [
+                    'CRÍTICO: Verificar interruptor térmico en cámara antes de cambiar termocupla.',
+                    'Medir voltaje termocupla (min 12mV bajo carga).',
+                    'Si >20mV y switch cerrado, cambiar válvula de gas.'
+                ],
+                reference: 'Sección 5.1 - La Termocupla'
+            },
+             {
+                id: 'industrial_blink',
+                platforms: ['Honeywell S8610U', 'Industrial'],
+                codes: ['2 Flashes', '2 Parpadeos'],
+                symptom: 'Piloto no encendió (Retry)',
+                rootCause: 'Inyector piloto sucio, cable alta tensión aterrizado.',
+                solution: [
+                    'Limpiar inyector del piloto.',
+                    'Revisar aislamiento del cable de bujía.',
+                    'Verificar tierra del módulo.'
+                ],
+                reference: 'Sección 7.1 - Módulo Honeywell'
+            }
+        ];
+
+        // --- COMPONENTS ---
+
+        const Icon = ({ name, size = 24, color = "currentColor" }) => {
+            React.useEffect(() => {
+                lucide.createIcons();
+            }, [name]);
+            return <i data-lucide={name} width={size} height={size} style={{color: color}}></i>;
+        };
+
+        const App = () => {
+            const [step, setStep] = useState(1);
+            const [projectData, setProjectData] = useState({
+                techName: '',
+                clientName: '',
+                date: new Date().toISOString().split('T')[0],
+                model: '',
+                serial: ''
+            });
+            const [diagnosis, setDiagnosis] = useState({
+                platform: '',
+                code: '',
+                conditions: {
+                    gasPressure: false,
+                    venting: false,
+                    grounding: false
+                }
+            });
+            const [result, setResult] = useState(null);
+            const [image, setImage] = useState(null);
+
+            const handleProjectChange = (e) => {
+                setProjectData({ ...projectData, [e.target.name]: e.target.value });
+            };
+
+            const diagnose = () => {
+                // Logic engine based on PDF
+                let findings = KNOWLEDGE_BASE.filter(k => 
+                    k.platforms.some(p => p.toLowerCase().includes(diagnosis.platform.toLowerCase())) || 
+                    diagnosis.platform === 'Todas'
+                );
+
+                if (diagnosis.code) {
+                    const exactMatch = findings.find(k => k.codes.includes(diagnosis.code.toUpperCase()));
+                    // Fuzzy match for specific edge cases (like E4 in different brands)
+                    if (diagnosis.code.toUpperCase() === 'E4') {
+                        if (['Haceb', 'Midea'].some(p => diagnosis.platform.includes(p))) {
+                            setResult(KNOWLEDGE_BASE.find(k => k.id === 'latam_e4_haceb'));
+                            setStep(3);
+                            return;
+                        } else if (['Challenger', 'Calorex'].some(p => diagnosis.platform.includes(p))) {
+                            setResult(KNOWLEDGE_BASE.find(k => k.id === 'latam_e4_challenger'));
+                            setStep(3);
+                            return;
+                        }
+                    }
+                    
+                    if (exactMatch) {
+                        setResult(exactMatch);
+                    } else {
+                        // Generic Fallback if code not found but platform selected
+                        setResult({
+                            symptom: 'Código no documentado específicamente en esta BD.',
+                            rootCause: 'Posible falla electrónica o de sensores no estándar.',
+                            solution: ['Realizar inspección visual de placa.', 'Verificar voltajes de entrada.', 'Consultar manual específico del fabricante.'],
+                            reference: 'Diagnóstico Genérico'
+                        });
+                    }
+                } else {
+                    // Manual selection or keyword search logic could go here
+                     setResult({
+                            symptom: 'Diagnóstico Manual Requerido',
+                            rootCause: 'No se ingresó código de error.',
+                            solution: ['Revise la tabla de códigos en el manual físico.', 'Verifique condiciones básicas de instalación.'],
+                            reference: 'General'
+                        });
+                }
+                setStep(3);
+            };
+
+            const handleImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        setImage(reader.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const generatePDF = () => {
+                const doc = new jsPDF();
+                const pageWidth = doc.internal.pageSize.getWidth();
+                
+                // Header
+                doc.setFillColor(41, 128, 185); // Blue
+                doc.rect(0, 0, pageWidth, 40, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(22);
+                doc.text("Reporte de Diagnóstico Técnico", 20, 25);
+                doc.setFontSize(10);
+                doc.text("Generado por ThermoDiag Pro", 20, 32);
+
+                // Project Info
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text("Datos del Proyecto (Trazabilidad):", 20, 50);
+                doc.setFont(undefined, 'normal');
+                doc.setFontSize(10);
+                doc.text(`Cliente: ${projectData.clientName}`, 20, 60);
+                doc.text(`Técnico: ${projectData.techName}`, 20, 66);
+                doc.text(`Fecha: ${projectData.date}`, 120, 60);
+                doc.text(`Modelo/Serie: ${projectData.model} / ${projectData.serial}`, 120, 66);
+
+                doc.line(20, 72, pageWidth - 20, 72);
+
+                // Diagnosis
+                doc.setFontSize(14);
+                doc.setTextColor(192, 57, 43); // Red
+                doc.text(`Código/Síntoma Detectado: ${diagnosis.code || "Sin Código"}`, 20, 85);
+                
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'bold');
+                doc.text(`Diagnóstico (Plataforma ${diagnosis.platform}):`, 20, 95);
+                doc.setFont(undefined, 'normal');
+                
+                const splitSymptom = doc.splitTextToSize(result.symptom, pageWidth - 40);
+                doc.text(splitSymptom, 20, 102);
+
+                doc.setFont(undefined, 'bold');
+                doc.text("Causa Raíz Probable:", 20, 120);
+                doc.setFont(undefined, 'normal');
+                const splitRoot = doc.splitTextToSize(result.rootCause, pageWidth - 40);
+                doc.text(splitRoot, 20, 127);
+
+                // Solutions
+                doc.setFillColor(240, 240, 240);
+                doc.rect(20, 145, pageWidth - 40, 60, 'F');
+                doc.setFont(undefined, 'bold');
+                doc.text("Protocolo de Solución Sugerido:", 25, 155);
+                doc.setFont(undefined, 'normal');
+                
+                let yPos = 165;
+                result.solution.forEach(sol => {
+                    doc.text(`• ${sol}`, 25, yPos);
+                    yPos += 7;
+                });
+
+                // Checkbox Data
+                doc.setFontSize(9);
+                doc.setTextColor(100, 100, 100);
+                doc.text("Condiciones de Instalación Verificadas:", 20, 220);
+                doc.text(`Presión Gas Dinámica: ${diagnosis.conditions.gasPressure ? 'OK' : 'No Verificada'}`, 20, 226);
+                doc.text(`Ventilación/Recirculación: ${diagnosis.conditions.venting ? 'OK' : 'No Verificada'}`, 80, 226);
+                doc.text(`Puesta a Tierra: ${diagnosis.conditions.grounding ? 'OK' : 'No Verificada'}`, 140, 226);
+
+                // Image
+                if (image) {
+                    doc.addPage();
+                    doc.text("Evidencia Fotográfica:", 20, 20);
+                    doc.addImage(image, 'JPEG', 20, 30, 170, 120); // Scaled image
+                }
+
+                // Footer
+                doc.setFontSize(8);
+                doc.text(`Referencia Técnica: ${result.reference}`, 20, 280);
+                doc.text("Este reporte es una guía de asistencia y no reemplaza el manual del fabricante.", 20, 285);
+
+                doc.save(`Diagnostico_${projectData.clientName}_${new Date().getTime()}.pdf`);
+            };
+
+            return (
+                <div className="min-h-screen pb-10">
+                    {/* Header */}
+                    <div className="bg-blue-700 text-white p-4 shadow-lg">
+                        <div className="container mx-auto flex items-center gap-3">
+                            <Icon name="flame" size={32} />
+                            <div>
+                                <h1 className="text-2xl font-bold">ThermoDiag Pro</h1>
+                                <p className="text-xs opacity-80">Sistema Experto de Diagnóstico Térmico</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="container mx-auto mt-8 px-4 max-w-2xl">
+                        
+                        {/* Step 1: Traceability */}
+                        {step === 1 && (
+                            <div className="glass-panel p-6 rounded-xl shadow-md slide-in">
+                                <h2 className="text-xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                                    <Icon name="clipboard-list" className="text-blue-600"/> 
+                                    Datos del Proyecto
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Técnico Responsable</label>
+                                        <input type="text" name="techName" value={projectData.techName} onChange={handleProjectChange} className="mt-1 w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Nombre del técnico" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Cliente / Ubicación</label>
+                                        <input type="text" name="clientName" value={projectData.clientName} onChange={handleProjectChange} className="mt-1 w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Ej. Familia Pérez" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Modelo Equipo</label>
+                                        <input type="text" name="model" value={projectData.model} onChange={handleProjectChange} className="mt-1 w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Ej. Rinnai R75" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Serie / ID</label>
+                                        <input type="text" name="serial" value={projectData.serial} onChange={handleProjectChange} className="mt-1 w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" placeholder="S/N" />
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setStep(2)}
+                                    className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all flex justify-center items-center gap-2"
+                                >
+                                    Iniciar Diagnóstico <Icon name="arrow-right" size={18} />
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Step 2: Symptom Input */}
+                        {step === 2 && (
+                            <div className="glass-panel p-6 rounded-xl shadow-md slide-in">
+                                <h2 className="text-xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                                    <Icon name="stethoscope" className="text-red-600"/> 
+                                    Triaje Técnico
+                                </h2>
+                                
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Plataforma / Marca del Equipo</label>
+                                    <select 
+                                        className="w-full p-3 border rounded-lg bg-white"
+                                        value={diagnosis.platform}
+                                        onChange={(e) => setDiagnosis({...diagnosis, platform: e.target.value})}
+                                    >
+                                        <option value="">Seleccione Plataforma...</option>
+                                        <option value="Rinnai">Asiática (Rinnai, Rheem, Navien)</option>
+                                        <option value="Bosch">Europea (Bosch, Junkers)</option>
+                                        <option value="Haceb">Latinoamericana (Haceb, Midea)</option>
+                                        <option value="Challenger">OEM/Challenger/Calorex</option>
+                                        <option value="Industrial">Industrial/Comercial</option>
+                                    </select>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Código de Error o Síntoma</label>
+                                    <input 
+                                        type="text" 
+                                        className="w-full p-3 border rounded-lg text-lg font-mono uppercase" 
+                                        placeholder="Ej. 11, E4, EA, Piloto"
+                                        value={diagnosis.code}
+                                        onChange={(e) => setDiagnosis({...diagnosis, code: e.target.value})}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Ingrese el código tal cual aparece en el display.</p>
+                                </div>
+
+                                <div className="bg-yellow-50 p-4 rounded-lg mb-6 border border-yellow-200">
+                                    <h3 className="font-semibold text-yellow-800 text-sm mb-2">Condiciones de Instalación (Checklist)</h3>
+                                    <div className="space-y-2">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" checked={diagnosis.conditions.gasPressure} onChange={(e) => setDiagnosis({...diagnosis, conditions: {...diagnosis.conditions, gasPressure: e.target.checked}})} />
+                                            <span className="text-sm text-gray-700">Presión Dinámica de Gas Verificada</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" checked={diagnosis.conditions.venting} onChange={(e) => setDiagnosis({...diagnosis, conditions: {...diagnosis.conditions, venting: e.target.checked}})} />
+                                            <span className="text-sm text-gray-700">Ducto de Ventilación sin obstrucción/fugas</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" checked={diagnosis.conditions.grounding} onChange={(e) => setDiagnosis({...diagnosis, conditions: {...diagnosis.conditions, grounding: e.target.checked}})} />
+                                            <span className="text-sm text-gray-700">Puesta a tierra física &lt; 2 Ohms</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button onClick={() => setStep(1)} className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-medium">Atrás</button>
+                                    <button onClick={diagnose} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold shadow-md">Diagnosticar</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 3: Results */}
+                        {step === 3 && result && (
+                            <div className="glass-panel p-6 rounded-xl shadow-md slide-in">
+                                <div className="flex justify-between items-start mb-4">
+                                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                        <Icon name="activity" className="text-green-600"/> 
+                                        Diagnóstico
+                                    </h2>
+                                    <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold border border-gray-300">
+                                        Ref: {result.reference}
+                                    </span>
+                                </div>
+
+                                <div className="mb-6">
+                                    <p className="text-sm text-gray-500 uppercase font-bold tracking-wider">Síntoma Detectado</p>
+                                    <p className="text-lg text-gray-900 font-medium border-l-4 border-red-500 pl-3 my-2">{result.symptom}</p>
+                                </div>
+
+                                <div className="mb-6">
+                                    <p className="text-sm text-gray-500 uppercase font-bold tracking-wider">Causa Raíz Probable</p>
+                                    <p className="text-gray-700 mt-1">{result.rootCause}</p>
+                                </div>
+
+                                <div className="bg-blue-50 p-5 rounded-lg border border-blue-100 mb-6">
+                                    <h3 className="font-bold text-blue-800 mb-3 flex items-center gap-2"><Icon name="wrench" size={16}/> Solución Sugerida</h3>
+                                    <ul className="list-disc pl-5 space-y-2">
+                                        {result.solution.map((sol, idx) => (
+                                            <li key={idx} className="text-gray-700 text-sm">{sol}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                        <Icon name="camera" size={16}/> Adjuntar Foto (Opcional)
+                                    </label>
+                                    <input type="file" accept="image/*" onChange={handleImageUpload} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                    {image && <img src={image} alt="Evidencia" className="mt-4 h-32 object-cover rounded-lg border" />}
+                                </div>
+
+                                <div className="flex flex-col gap-3">
+                                    <button 
+                                        onClick={generatePDF}
+                                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-md flex justify-center items-center gap-2"
+                                    >
+                                        <Icon name="download" size={20}/> Descargar Reporte PDF
+                                    </button>
+                                    <button 
+                                        onClick={() => {setStep(2); setResult(null); setImage(null);}}
+                                        className="w-full bg-white border border-gray-300 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-50"
+                                    >
+                                        Nueva Consulta
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
