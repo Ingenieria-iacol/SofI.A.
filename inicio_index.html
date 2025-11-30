@@ -8,7 +8,7 @@
         :root {
             --netflix-black: #141414;
             --netflix-dark-gray: #181818;
-            --brand-blue: #0071eb; /* Azul estilo Netflix reemplazando el rojo */
+            --brand-blue: #0071eb; 
             --brand-blue-hover: #005bb5;
             --text-white: #ffffff;
             --text-gray: #b3b3b3;
@@ -50,6 +50,7 @@
             text-shadow: 0 0 10px rgba(0, 113, 235, 0.5);
         }
 
+        /* Actualizado para funcionar con etiqueta <a> */
         .btn-login {
             background-color: var(--brand-blue);
             color: white;
@@ -59,6 +60,9 @@
             font-weight: bold;
             cursor: pointer;
             transition: 0.3s;
+            text-decoration: none; /* Elimina el subrayado del enlace */
+            display: inline-block; /* Asegura que el padding funcione correctamente */
+            font-size: 1rem;
         }
 
         .btn-login:hover {
@@ -68,7 +72,7 @@
         /* --- Hero Section --- */
         .hero {
             height: 85vh;
-            background-image: url('https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=2070&auto=format&fit=crop'); /* Imagen de ingeniería industrial */
+            background-image: url('https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=2070&auto=format&fit=crop'); 
             background-size: cover;
             background-position: center;
             position: relative;
@@ -78,7 +82,6 @@
             text-align: center;
         }
 
-        /* El gradiente oscuro característico de la parte inferior del Hero de Netflix */
         .hero::after {
             content: '';
             position: absolute;
@@ -196,11 +199,10 @@
             font-weight: bold;
         }
 
-        /* Efecto Hover Futurista */
         .card:hover {
-            transform: scale(1.1); /* Zoom característico de Netflix */
+            transform: scale(1.1);
             z-index: 10;
-            box-shadow: 0 0 15px rgba(0, 113, 235, 0.6); /* Resplandor azul */
+            box-shadow: 0 0 15px rgba(0, 113, 235, 0.6);
             border-color: var(--brand-blue);
         }
 
@@ -208,7 +210,7 @@
             opacity: 1;
         }
 
-        /* --- Features Split Section (Alternating) --- */
+        /* --- Features Split Section --- */
         .feature-split {
             display: flex;
             align-items: center;
@@ -239,7 +241,6 @@
             position: relative;
         }
         
-        /* Simulación de interfaz técnica */
         .tech-box {
             background: #000;
             border: 2px solid #333;
@@ -297,7 +298,7 @@
 
     <header>
         <div class="logo">GIT<span style="color: white; font-size: 0.8em;">DE</span>INGENIERÍA</div>
-        <button class="btn-login">Iniciar Sesión</button>
+        <a href="index.html" class="btn-login">Regresar a Herramientas</a>
     </header>
 
     <div class="hero">
