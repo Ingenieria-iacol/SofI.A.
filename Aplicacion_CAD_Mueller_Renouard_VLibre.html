@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IngenieroCAD - P&ID Web (Despiece & BOM)</title>
+    <title>IngenieroCAD - P&ID Web (BOM Avanzado)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -157,18 +157,26 @@
             const bom = [];
             const pipes = elements.filter(e => e.type === TOOLS.TRAMO_DATA && e.tagMetadata);
             
+            // Helper para convertir longitud a metros
+            const toMeters = (val, unit) => {
+                const n = parseFloat(val) || 0;
+                if (unit === 'cm') return n / 100;
+                if (unit === 'mm') return n / 1000;
+                return n;
+            };
+
             // 1. Tuberías (Sumar longitud)
             const pipeMap = {};
             pipes.forEach(p => {
                 const m = p.tagMetadata;
                 const key = `Tubería ${m.material} Ø${m.diameter}`;
                 if (!pipeMap[key]) pipeMap[key] = { desc: `Tubería ${m.material}`, spec: `Ø${m.diameter}`, qty: 0, unit: 'm' };
-                pipeMap[key].qty += parseFloat(m.length) || 0;
+                // Usamos la función de conversión para asegurar que sumamos metros
+                pipeMap[key].qty += toMeters(m.length, m.lengthUnit);
             });
             Object.values(pipeMap).forEach(i => bom.push(i));
 
             // 2. Codos (Heurística de conexión)
-            // Solo para Ag, Ac, Cu Rig
             const elbowMat = ['Ag', 'Ac', 'Cu Rig'];
             const points = {};
             
@@ -192,19 +200,13 @@
                     const m1 = p1.tagMetadata;
                     const m2 = p2.tagMetadata;
                     if (m1.material === m2.material && m1.diameter === m2.diameter) {
-                        // Check angle
                         const angle1 = Math.atan2(p1.y2 - p1.y1, p1.x2 - p1.x1);
                         const angle2 = Math.atan2(p2.y2 - p2.y1, p2.x2 - p2.x1);
-                        // Normalize vectors relative to junction? Simplified:
-                        // If slope is different, it's a turn.
-                        // We use the raw segment angles. If abs(diff) is not 0 or 180 deg (PI), it is a turn.
                         let diff = Math.abs(angle1 - angle2);
-                        // Normalize to 0-PI
                         if (diff > Math.PI) diff = 2*Math.PI - diff;
                         
-                        // If not straight (tolerance 0.1 rad)
                         if (Math.abs(diff) > 0.1 && Math.abs(diff - Math.PI) > 0.1) {
-                            const key = `Codo 90° ${m1.material} Ø${m1.diameter}`; // Assume 90 for BOM simplicity or generic Codo
+                            const key = `Codo 90° ${m1.material} Ø${m1.diameter}`; 
                             if (!elbows[key]) elbows[key] = { desc: `Codo`, spec: `${m1.material} Ø${m1.diameter}`, qty: 0, unit: 'und' };
                             elbows[key].qty++;
                         }
@@ -231,6 +233,28 @@
                 }
             });
             Object.values(accMap).forEach(i => bom.push(i));
+
+            // 4. Uniones por Longitud (> 6m)
+            const unionMat = ['Ag', 'Ac', 'Cu Rig'];
+            const unionsMap = {};
+            pipes.forEach(p => {
+                const m = p.tagMetadata;
+                if (unionMat.includes(m.material)) {
+                    const lenM = toMeters(m.length, m.lengthUnit);
+                    // Si longitud > 6m, se requieren uniones.
+                    // Fórmula: Techo(Longitud / 6) - 1.
+                    // Ej: 6m -> 0 uniones. 6.1m -> 1 unión. 12m -> 1 unión. 12.1m -> 2 uniones.
+                    if (lenM > 6) {
+                        const count = Math.ceil(lenM / 6) - 1;
+                        if (count > 0) {
+                            const key = `Unión ${m.material} Ø${m.diameter}`;
+                            if (!unionsMap[key]) unionsMap[key] = { desc: `Unión`, spec: `${m.material} Ø${m.diameter}`, qty: 0, unit: 'und' };
+                            unionsMap[key].qty += count;
+                        }
+                    }
+                }
+            });
+            Object.values(unionsMap).forEach(i => bom.push(i));
 
             return bom;
         };
