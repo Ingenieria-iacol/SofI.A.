@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluador NTC 3631 - Vacíos Internos</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel para compilar JSX en el navegador -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Estilos para impresión -->
+    <style>
+        @media print {
+            body { -webkit-print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            .print-full-width { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
+        }
+        /* Animaciones simples */
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- COMPONENTES DE ICONOS (SVG Inline para no depender de librerías externas) ---
+        const IconRuler = ({size=24, className=""}) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>
+        );
+        const IconCheckCircle = ({size=24, className=""}) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        );
+        const IconXCircle = ({size=24, className=""}) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        );
+        const IconFileText = ({size=24, className=""}) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        );
+        const IconPrinter = ({size=24, className=""}) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        );
+        const IconCalculator = ({size=24, className=""}) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="16" y1="18" x2="16" y2="18"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="12" y1="18" x2="12" y2="18"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/></svg>
+        );
+        const IconBuilding = ({size=24, className=""}) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="9" y1="22" x2="9" y2="22.01"/><line x1="15" y1="22" x2="15" y2="22.01"/><line x1="9" y1="18" x2="9" y2="18.01"/><line x1="15" y1="18" x2="15" y2="18.01"/><line x1="9" y1="14" x2="9" y2="14.01"/><line x1="15" y1="14" x2="15" y2="14.01"/><line x1="9" y1="10" x2="9" y2="10.01"/><line x1="15" y1="10" x2="15" y2="10.01"/><line x1="9" y1="6" x2="9" y2="6.01"/><line x1="15" y1="6" x2="15" y2="6.01"/></svg>
+        );
+
+        // --- APLICACIÓN PRINCIPAL ---
+
+        const EvaluatorApp = () => {
+            const [formData, setFormData] = useState({
+                technicianName: '',
+                projectAddress: '',
+                floors: 1,
+                usageType: 'ventilation', // ventilation, evacuation, mixed
+                measuredArea: 0,
+                measuredSide: 0,
+                numAppliances: 0, // NE
+                totalPower: 0, // Sigma P for 7+ floors
+                intakeType: 'platform', // platform, duct, first_floor
+                checklist: {
+                    roofOpening: false,
+                    distanceWindows: false, // A & D
+                    distanceDucts: false, // B
+                    distanceWalls: false, // C & E
+                }
+            });
+
+            const [showReport, setShowReport] = useState(false);
+
+            const handleInputChange = (e) => {
+                const { name, value, type, checked } = e.target;
+                if (name.startsWith('check_')) {
+                    const key = name.split('_')[1];
+                    setFormData(prev => ({
+                        ...prev,
+                        checklist: { ...prev.checklist, [key]: checked }
+                    }));
+                } else {
+                    setFormData(prev => ({
+                        ...prev,
+                        [name]: type === 'number' ? parseFloat(value) || 0 : value
+                    }));
+                }
+            };
+
+            // --- LÓGICA DE CÁLCULO NTC 3631 ---
+            const calculateCompliance = () => {
+                let requiredArea = 0;
+                let requiredSide = 0;
+                let requiredVentBase = 0;
+                let requiredVentSide = 0; 
+                let rulesApplied = [];
+
+                const { floors, usageType, numAppliances, totalPower, intakeType } = formData;
+                const NE = numAppliances;
+
+                // 1. Cálculo de Área y Lado
+                if (floors >= 1 && floors <= 6) {
+                    if (usageType === 'ventilation') {
+                        requiredArea = 2.0;
+                        requiredSide = 1.0;
+                        rulesApplied.push("Edificios 1-6 pisos (Ventilación): A ≥ 2m², Lm ≥ 1m");
+                    } else if (usageType === 'evacuation') {
+                        requiredArea = Math.max(0.20 * NE, 2.5);
+                        requiredSide = 1.5;
+                        rulesApplied.push("Edificios 1-6 pisos (Evacuación): A = (0.20 × NE) ≥ 2.5m², Lm ≥ 1.5m");
+                    } else if (usageType === 'mixed') {
+                        requiredArea = Math.max(0.25 * NE, 3.0);
+                        requiredSide = 1.5;
+                        rulesApplied.push("Edificios 1-6 pisos (Mixto): A = (0.25 × NE) ≥ 3m², Lm ≥ 1.5m");
+                    }
+                } else if (floors >= 7) {
+                    if (usageType === 'ventilation') {
+                        requiredArea = 3.0;
+                        requiredSide = 1.0;
+                        rulesApplied.push("Edificios 7+ pisos (Ventilación): A ≥ 3m², Lm ≥ 1m");
+                    } else if (usageType === 'evacuation') {
+                        requiredArea = Math.max(0.25 * NE, 3.5);
+                        requiredSide = Math.max(Math.sqrt(requiredArea / 1.5), 1.5);
+                        rulesApplied.push("Edificios 7+ pisos (Evacuación): A = (0.25 × NE) ≥ 3.5m², Lm = √(A/1.5) ≥ 1.5m");
+                    } else if (usageType === 'mixed') {
+                        requiredArea = Math.max(0.4 * NE, 4.0);
+                        requiredSide = Math.max(Math.sqrt(requiredArea / 1.5), 2.0);
+                        rulesApplied.push("Edificios 7+ pisos (Mixto): A = (0.4 × NE) ≥ 4m², Lm = √(A/1.5) ≥ 2m");
+                    }
+
+                    // 2. Cálculo Ventilación en Base (7+ pisos)
+                    if (usageType !== 'ventilation') {
+                        if (intakeType === 'platform') {
+                            requiredVentBase = (totalPower * 6);
+                            rulesApplied.push("Ventilación Base (Plataforma): V = (ΣP × 6) / 1");
+                        } else if (intakeType === 'duct') {
+                            requiredVentBase = (totalPower * 11);
+                            requiredVentSide = Math.sqrt(requiredVentBase / 1.5);
+                            rulesApplied.push("Ventilación Base (Conducto): V = (ΣP × 11) / 1");
+                        } else if (intakeType === 'first_floor') {
+                            requiredVentBase = (totalPower * 22);
+                            rulesApplied.push("Ventilación Base (Primer Piso): V = (ΣP × 22) / 1");
+                        }
+                    }
+                }
+
+                // 3. Evaluación Aprobado/Reprobado
+                const areaPass = formData.measuredArea >= requiredArea;
+                const sidePass = formData.measuredSide >= requiredSide;
+                
+                // Checklist (Todos deben ser true)
+                const checklistPass = Object.values(formData.checklist).every(val => val === true);
+                
+                const overallPass = areaPass && sidePass && checklistPass;
+
+                return {
+                    requiredArea,
+                    requiredSide,
+                    requiredVentBase,
+                    requiredVentSide,
+                    rulesApplied,
+                    areaPass,
+                    sidePass,
+                    checklistPass,
+                    overallPass
+                };
+            };
+
+            const results = calculateCompliance();
+
+            const printReport = () => {
+                window.print();
+            };
+
+            // --- VISTA DE REPORTE ---
+            if (showReport) {
+                return (
+                    <div className="min-h-screen bg-white text-black p-8 max-w-4xl mx-auto print-full-width">
+                        <div className="flex justify-between items-center mb-6 no-print">
+                            <button onClick={() => setShowReport(false)} className="text-gray-600 hover:text-gray-900 flex items-center gap-2">
+                                &larr; Volver a editar
+                            </button>
+                            <button onClick={printReport} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-md">
+                                <IconPrinter size={18} /> Imprimir / Guardar PDF
+                            </button>
+                        </div>
+
+                        <div className="border-b-2 border-gray-800 pb-4 mb-6">
+                            <div className="flex justify-between items-end">
+                                <div>
+                                    <h1 className="text-3xl font-bold uppercase text-gray-800">Reporte de Inspección</h1>
+                                    <p className="text-lg text-gray-600">Vacíos Internos para Gas</p>
+                                </div>
+                                <div className="text-right text-xs text-gray-500">
+                                    <p>Conformidad NTC 3631 (Anexo C)</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6 mb-8 text-sm">
+                            <div className="bg-gray-50 p-4 rounded border border-gray-100">
+                                <p className="mb-1"><span className="font-bold text-gray-700">Técnico Evaluador:</span> {formData.technicianName || 'N/A'}</p>
+                                <p className="mb-1"><span className="font-bold text-gray-700">Fecha:</span> {new Date().toLocaleDateString()}</p>
+                                <p><span className="font-bold text-gray-700">Dirección:</span> {formData.projectAddress || 'N/A'}</p>
+                            </div>
+                            <div className="bg-gray-50 p-4 rounded border border-gray-100">
+                                <p className="mb-1"><span className="font-bold text-gray-700">Número de Pisos:</span> {formData.floors}</p>
+                                <p className="mb-1"><span className="font-bold text-gray-700">Tipo de Uso:</span> {formData.usageType === 'ventilation' ? 'Solo Ventilación' : formData.usageType === 'evacuation' ? 'Solo Evacuación' : 'Mixto (Vent + Evac)'}</p>
+                                {(formData.usageType !== 'ventilation') && (
+                                    <>
+                                    <p className="mb-1"><span className="font-bold text-gray-700">Artefactos (NE):</span> {formData.numAppliances}</p>
+                                    <p><span className="font-bold text-gray-700">Potencia Total (ΣP):</span> {formData.totalPower} kW</p>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* RESULTADO FINAL */}
+                        <div className={`p-4 border-l-8 mb-8 ${results.overallPass ? 'bg-green-50 border-green-600' : 'bg-red-50 border-red-600'}`}>
+                            <h2 className={`text-2xl font-bold ${results.overallPass ? 'text-green-800' : 'text-red-800'}`}>
+                                DICTAMEN FINAL: {results.overallPass ? 'APROBADO' : 'NO APROBADO'}
+                            </h2>
+                            <p className="text-gray-700 mt-1">
+                                El vacío interno evaluado <strong>{results.overallPass ? 'CUMPLE' : 'NO CUMPLE'}</strong> con las especificaciones mínimas de la norma técnica.
+                            </p>
+                        </div>
+
+                        {/* DETALLE DIMENSIONAL */}
+                        <div className="mb-8">
+                            <h3 className="text-lg font-bold border-b border-gray-300 mb-4 pb-1 text-gray-800">1. Evaluación Dimensional</h3>
+                            <table className="w-full text-sm text-left border-collapse">
+                                <thead className="bg-gray-100 text-gray-700">
+                                    <tr>
+                                        <th className="p-2 border border-gray-200">Parámetro</th>
+                                        <th className="p-2 border border-gray-200">Valor Medido</th>
+                                        <th className="p-2 border border-gray-200">Mínimo Requerido</th>
+                                        <th className="p-2 border border-gray-200 text-center">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className="p-2 border border-gray-200">Área en Planta (A)</td>
+                                        <td className="p-2 border border-gray-200 font-medium">{formData.measuredArea.toFixed(2)} m²</td>
+                                        <td className="p-2 border border-gray-200">{results.requiredArea.toFixed(2)} m²</td>
+                                        <td className="p-2 border border-gray-200 text-center">
+                                            {results.areaPass ? <span className="text-green-700 font-bold flex justify-center items-center gap-1"><IconCheckCircle size={14}/> OK</span> : <span className="text-red-700 font-bold flex justify-center items-center gap-1"><IconXCircle size={14}/> FALLA</span>}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-gray-200">Lado Menor (Lm)</td>
+                                        <td className="p-2 border border-gray-200 font-medium">{formData.measuredSide.toFixed(2)} m</td>
+                                        <td className="p-2 border border-gray-200">{results.requiredSide.toFixed(2)} m</td>
+                                        <td className="p-2 border border-gray-200 text-center">
+                                            {results.sidePass ? <span className="text-green-700 font-bold flex justify-center items-center gap-1"><IconCheckCircle size={14}/> OK</span> : <span className="text-red-700 font-bold flex justify-center items-center gap-1"><IconXCircle size={14}/> FALLA</span>}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p className="text-xs text-gray-500 mt-2 italic">Criterio aplicado: {results.rulesApplied[0]}</p>
+                        </div>
+
+                        {/* VENTILACION EN BASE (SOLO SI APLICA) */}
+                        {results.requiredVentBase > 0 && (
+                            <div className="mb-8">
+                                <h3 className="text-lg font-bold border-b border-gray-300 mb-4 pb-1 text-gray-800">2. Ventilación en Base (Edificios 7+ pisos)</h3>
+                                <div className="bg-gray-50 p-4 rounded border border-gray-200">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-gray-500 text-xs uppercase tracking-wider">Método de Entrada</p>
+                                            <p className="font-bold text-gray-800">{
+                                                formData.intakeType === 'platform' ? 'Bajo Plataforma' :
+                                                formData.intakeType === 'duct' ? 'Conducto Horizontal' : 'Primer Piso'
+                                            }</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500 text-xs uppercase tracking-wider">Área Libre Requerida (V)</p>
+                                            <p className="font-bold text-gray-800 text-lg">{results.requiredVentBase.toFixed(2)} cm²</p>
+                                        </div>
+                                    </div>
+                                    {formData.intakeType === 'duct' && (
+                                        <div className="mt-2 pt-2 border-t border-gray-200">
+                                            <p className="text-gray-500 text-xs uppercase tracking-wider">Lado Mínimo Conducto</p>
+                                            <p className="font-bold text-gray-800">{results.requiredVentSide.toFixed(2)} cm</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2 italic">Fórmula: {results.rulesApplied.find(r => r.includes('Ventilación Base'))}</p>
+                            </div>
+                        )}
+
+                        {/* CHEQUEO VISUAL */}
+                        <div className="mb-8">
+                            <h3 className="text-lg font-bold border-b border-gray-300 mb-4 pb-1 text-gray-800">3. Inspección Visual (Distancias y Cubierta)</h3>
+                            <ul className="text-sm space-y-3">
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-0.5">{formData.checklist.roofOpening ? <IconCheckCircle size={18} className="text-green-600"/> : <IconXCircle size={18} className="text-red-600"/>}</div>
+                                    <span className={formData.checklist.roofOpening ? "text-gray-700" : "text-red-700 font-medium"}>Cubierta superior (si existe) deja libre 25% del área o cumple mínimo requerido.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-0.5">{formData.checklist.distanceWindows ? <IconCheckCircle size={18} className="text-green-600"/> : <IconXCircle size={18} className="text-red-600"/>}</div>
+                                    <span className={formData.checklist.distanceWindows ? "text-gray-700" : "text-red-700 font-medium"}>Distancia a ventanas/muros ventilados (A, D, G) ≥ 1.0m (o 0.40m convergentes).</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-0.5">{formData.checklist.distanceDucts ? <IconCheckCircle size={18} className="text-green-600"/> : <IconXCircle size={18} className="text-red-600"/>}</div>
+                                    <span className={formData.checklist.distanceDucts ? "text-gray-700" : "text-red-700 font-medium"}>Distancia entre conductos (B) ≥ 0.30m.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-0.5">{formData.checklist.distanceWalls ? <IconCheckCircle size={18} className="text-green-600"/> : <IconXCircle size={18} className="text-red-600"/>}</div>
+                                    <span className={formData.checklist.distanceWalls ? "text-gray-700" : "text-red-700 font-medium"}>Distancia a muros ciegos (C, E) ≥ 0.30m (lateral) / Frontal ≥ 1.0m.</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div className="mt-16 pt-6 border-t border-gray-300 flex justify-between text-xs text-gray-500">
+                            <p>Generado por App Evaluador NTC 3631</p>
+                            <div className="text-center">
+                                <p className="mb-8">__________________________________________</p>
+                                <p className="font-bold">Firma del Técnico Responsable</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- VISTA DE FORMULARIO ---
+            return (
+                <div className="min-h-screen bg-slate-100 p-4 md:p-8 no-print fade-in">
+                    <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden">
+                        {/* Header */}
+                        <div className="bg-blue-800 p-6 text-white">
+                            <div className="flex items-center gap-3">
+                                <IconCalculator size={32} />
+                                <div>
+                                    <h1 className="text-2xl font-bold">Evaluador de Vacíos Internos</h1>
+                                    <p className="text-blue-100 text-sm">Cálculo y Reporte según NTC 3631 - Anexo C</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 space-y-8">
+                        
+                            {/* Sección 1: Info General */}
+                            <section>
+                                <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2">
+                                    <IconFileText className="text-blue-600" size={20}/> Información del Proyecto
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Técnico</label>
+                                        <input
+                                            type="text"
+                                            name="technicianName"
+                                            value={formData.technicianName}
+                                            onChange={handleInputChange}
+                                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                                            placeholder="Ej. Juan Pérez"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Dirección / Proyecto</label>
+                                        <input
+                                            type="text"
+                                            name="projectAddress"
+                                            value={formData.projectAddress}
+                                            onChange={handleInputChange}
+                                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                                            placeholder="Ej. Edificio Los Andes Apto 402"
+                                        />
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* Sección 2: Datos Edificación */}
+                            <section className="bg-slate-50 p-5 rounded-lg border border-slate-200 shadow-sm">
+                                <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                                    <IconBuilding className="text-blue-600" size={20}/> Datos de la Edificación
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Número de Pisos</label>
+                                        <input
+                                            type="number"
+                                            name="floors"
+                                            min="1"
+                                            value={formData.floors}
+                                            onChange={handleInputChange}
+                                            className="w-full p-2 border border-gray-300 rounded-md outline-none"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Determina si aplica C.1.1 (1-6 pisos) o C.1.2 (7+ pisos).</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Uso del Vacío</label>
+                                        <select
+                                            name="usageType"
+                                            value={formData.usageType}
+                                            onChange={handleInputChange}
+                                            className="w-full p-2 border border-gray-300 rounded-md outline-none bg-white"
+                                        >
+                                            <option value="ventilation">Solo Ventilación</option>
+                                            <option value="evacuation">Solo Evacuación</option>
+                                            <option value="mixed">Mixto (Ventilación + Evacuación)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Inputs Condicionales */}
+                                {formData.usageType !== 'ventilation' && (
+                                    <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-6 fade-in">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Número Total de Artefactos (B2 y C) <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="numAppliances"
+                                                min="0"
+                                                value={formData.numAppliances}
+                                                onChange={handleInputChange}
+                                                className="w-full p-2 border border-gray-300 rounded-md outline-none"
+                                                placeholder="NE"
+                                            />
+                                        </div>
+                                        
+                                        {formData.floors >= 7 && (
+                                            <>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Potencia Total Instalada (kW) <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        name="totalPower"
+                                                        min="0"
+                                                        value={formData.totalPower}
+                                                        onChange={handleInputChange}
+                                                        className="w-full p-2 border border-gray-300 rounded-md outline-none"
+                                                        placeholder="ΣP (Suma potencias)"
+                                                    />
+                                                </div>
+                                                <div className="col-span-1 md:col-span-2">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Entrada de Aire (Base)</label>
+                                                    <select
+                                                        name="intakeType"
+                                                        value={formData.intakeType}
+                                                        onChange={handleInputChange}
+                                                        className="w-full p-2 border border-gray-300 rounded-md outline-none bg-white"
+                                                    >
+                                                        <option value="platform">Caso 1: Bajo Plataforma</option>
+                                                        <option value="duct">Caso 2: Conducto Horizontal</option>
+                                                        <option value="first_floor">Caso 3: Por Primer Piso</option>
+                                                    </select>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </section>
+
+                            {/* Sección 3: Mediciones */}
+                            <section>
+                                <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2">
+                                    <IconRuler className="text-blue-600" size={20}/> Mediciones en Campo
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="bg-blue-50 p-4 rounded-md border border-blue-200 shadow-sm">
+                                        <label className="block text-sm font-bold text-blue-900 mb-1">Área Medida (m²)</label>
+                                        <input
+                                            type="number"
+                                            name="measuredArea"
+                                            step="0.01"
+                                            value={formData.measuredArea}
+                                            onChange={handleInputChange}
+                                            className="w-full p-2 border border-blue-300 rounded-md outline-none text-2xl font-mono text-blue-900 text-center bg-white"
+                                        />
+                                    </div>
+                                    <div className="bg-blue-50 p-4 rounded-md border border-blue-200 shadow-sm">
+                                        <label className="block text-sm font-bold text-blue-900 mb-1">Lado Menor Medido (m)</label>
+                                        <input
+                                            type="number"
+                                            name="measuredSide"
+                                            step="0.01"
+                                            value={formData.measuredSide}
+                                            onChange={handleInputChange}
+                                            className="w-full p-2 border border-blue-300 rounded-md outline-none text-2xl font-mono text-blue-900 text-center bg-white"
+                                        />
+                                    </div>
+                                </div>
+                                {/* Feedback en vivo */}
+                                <div className="mt-3 text-sm text-gray-500 flex justify-between px-2 font-medium">
+                                    <span>Requerido Mín: {results.requiredArea.toFixed(2)} m²</span>
+                                    <span>Requerido Mín: {results.requiredSide.toFixed(2)} m</span>
+                                </div>
+                            </section>
+
+                            {/* Sección 4: Checklist */}
+                            <section>
+                                <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2">
+                                    <IconCheckCircle className="text-blue-600" size={20}/> Inspección Visual (Norma)
+                                </h2>
+                                <div className="space-y-3">
+                                    <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer transition-colors shadow-sm">
+                                        <input
+                                            type="checkbox"
+                                            name="check_roofOpening"
+                                            checked={formData.checklist.roofOpening}
+                                            onChange={handleInputChange}
+                                            className="mt-1 h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-gray-700">
+                                            <span className="font-bold block text-gray-900">Cubierta Superior</span>
+                                            Si existe techo, deja libre una superficie de comunicación con el exterior del 25% (mín 4m² o 6m² según uso).
+                                        </span>
+                                    </label>
+
+                                    <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer transition-colors shadow-sm">
+                                        <input
+                                            type="checkbox"
+                                            name="check_distanceWindows"
+                                            checked={formData.checklist.distanceWindows}
+                                            onChange={handleInputChange}
+                                            className="mt-1 h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-gray-700">
+                                            <span className="font-bold block text-gray-900">Distancias a Ventanas (A, D, G)</span>
+                                            Conductos a ≥ 1.0m de paredes con ventanas. (Si hay flujos convergentes ≥ 0.40m).
+                                        </span>
+                                    </label>
+
+                                    <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer transition-colors shadow-sm">
+                                        <input
+                                            type="checkbox"
+                                            name="check_distanceDucts"
+                                            checked={formData.checklist.distanceDucts}
+                                            onChange={handleInputChange}
+                                            className="mt-1 h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-gray-700">
+                                            <span className="font-bold block text-gray-900">Distancia entre Conductos (B)</span>
+                                            Separación entre conductos al mismo nivel ≥ 0.30m.
+                                        </span>
+                                    </label>
+                                    
+                                    <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer transition-colors shadow-sm">
+                                        <input
+                                            type="checkbox"
+                                            name="check_distanceWalls"
+                                            checked={formData.checklist.distanceWalls}
+                                            onChange={handleInputChange}
+                                            className="mt-1 h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-gray-700">
+                                            <span className="font-bold block text-gray-900">Distancias a Muros Ciegos (C, E)</span>
+                                            Lateral ≥ 0.30m. Frontal ≥ 1.0m (o 2m según interpretación de tabla para seguridad).
+                                        </span>
+                                    </label>
+                                </div>
+                            </section>
+
+                            {/* Botón de Acción */}
+                            <div className="pt-6">
+                                <button
+                                    onClick={() => setShowReport(true)}
+                                    className={`w-full py-4 rounded-lg font-bold text-lg shadow-lg transition-all transform hover:-translate-y-1 active:translate-y-0 ${
+                                        results.overallPass 
+                                        ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-green-200' 
+                                        : 'bg-gray-800 hover:bg-gray-900 text-white'
+                                    }`}
+                                >
+                                    {results.overallPass 
+                                        ? '✔ Vacío Cumple - Generar Certificado' 
+                                        : 'Evaluar y Ver Fallos'}
+                                </button>
+                                {!results.overallPass && (
+                                    <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded text-center text-red-600 text-sm font-medium animate-pulse">
+                                        <span className="flex items-center justify-center gap-2">
+                                            <IconAlertTriangle size={16} /> Hay criterios que no se cumplen. Revisa los datos.
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
+                    </div>
+                    <div className="text-center text-gray-400 text-xs mt-8">
+                        App de Evaluación NTC 3631 • Funciona offline
+                    </div>
+                </div>
+            );
+        };
+
+        const IconAlertTriangle = ({size=24, className=""}) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        );
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<EvaluatorApp />);
+    </script>
+</body>
+</html>
