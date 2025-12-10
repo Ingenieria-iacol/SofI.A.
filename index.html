@@ -809,10 +809,19 @@
             else d.innerHTML = `Membresía <strong>${target}</strong> Validada.<br><strong style="color:var(--secondary-green); font-size:1.1rem;">Vigente hasta 28-11-2025</strong>`;
             m.dataset.pendingProfile = target; m.style.display = 'flex';
         }
-        function finalizarCarga() {
+       function finalizarCarga() {
             const m = document.getElementById('membership-modal');
             const p = m.dataset.pendingProfile || 'General'; // Fallback
             m.style.display = 'none';
+
+            // --- MODIFICACIÓN: REDIRECCIÓN PERFIL ACADÉMICO ---
+            if (p === 'Académico') {
+                // Si el perfil validado es Académico, ir a la nueva interfaz
+                window.location.href = "ModalDeCursosPerfilAcademico_V1.html";
+                return; // Detenemos la ejecución para que no cargue la interfaz normal
+            }
+            // --------------------------------------------------
+
             const ls = document.getElementById('login-screen');
             if (ls.style.display !== 'none') {
                 ls.style.opacity = '0';
@@ -914,6 +923,7 @@
     </script>
 </body>
 </html>
+
 
 
 
