@@ -96,21 +96,38 @@
                 setCurrentVideo(video);
             };
 
+            const handleGoBack = () => {
+                // En una app real usarías navigate(-1) o history.back()
+                // Aquí simulamos la acción con un alert o console.log
+                console.log("Regresando al dashboard...");
+                // window.history.back(); // Descomentar para funcionalidad real
+            };
+
             return (
                 <div className="flex flex-col h-screen bg-[#0f0f0f] text-white font-sans overflow-hidden">
                 
                 {/* --- HEADER --- */}
                 <header className="flex items-center justify-between px-4 py-3 bg-[#0f0f0f] border-b border-gray-800 z-20">
-                    <div className="flex items-center gap-4">
-                    <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-gray-800 rounded-full">
-                        <Icon name="Menu" className="w-6 h-6" />
-                    </button>
-                    <div className="flex items-center gap-1 cursor-pointer">
-                        <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
-                        <Icon name="Flame" className="w-5 h-5 text-white fill-current" />
+                    <div className="flex items-center gap-2">
+                        {/* BOTÓN REGRESAR INTEGRADO */}
+                        <button 
+                            onClick={handleGoBack}
+                            className="p-2 mr-2 hover:bg-gray-800 rounded-full text-gray-400 hover:text-white transition-colors"
+                            title="Volver al Panel Principal"
+                        >
+                            <Icon name="ArrowLeft" className="w-6 h-6" />
+                        </button>
+
+                        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-gray-800 rounded-full">
+                            <Icon name="Menu" className="w-6 h-6" />
+                        </button>
+                        
+                        <div className="flex items-center gap-1 cursor-pointer ml-2">
+                            <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+                            <Icon name="Flame" className="w-5 h-5 text-white fill-current" />
+                            </div>
+                            <span className="text-xl font-bold tracking-tight hidden sm:inline">GasEngineering<span className="text-xs align-top opacity-70">Hub</span></span>
                         </div>
-                        <span className="text-xl font-bold tracking-tight">GasEngineering<span className="text-xs align-top opacity-70">Hub</span></span>
-                    </div>
                     </div>
 
                     <div className="hidden md:flex flex-1 max-w-2xl mx-8">
