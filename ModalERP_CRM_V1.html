@@ -23,12 +23,17 @@
 
         // --- VARIABLES GLOBALES ---
         let currentUser = null;
+        let isRegistering = false; // Controla si estamos en modo Login o Registro
 
         // --- UI REFERENCIAS ---
         const loginModal = document.getElementById('login-modal');
         const appContainer = document.getElementById('app-container');
         const userEmailDisplay = document.getElementById('user-email-display');
         const loadingOverlay = document.getElementById('loading-overlay');
+        const loginTitle = document.getElementById('login-title');
+        const loginBtn = document.getElementById('login-btn-action');
+        const toggleAuthText = document.getElementById('toggle-auth-text');
+        const loginError = document.getElementById('login-error');
         
         // --- AUTH LOGIC ---
         // Escuchar cambios de estado
@@ -47,31 +52,72 @@
             }
         });
 
-        // Login
-        window.handleLogin = async (e) => {
+        // Alternar entre Login y Registro
+        window.toggleAuthMode = () => {
+            isRegistering = !isRegistering;
+            loginError.textContent = ""; // Limpiar errores
+            
+            if (isRegistering) {
+                loginTitle.innerHTML = 'Crear Cuenta <span style="color:var(--primary)">ERP</span>';
+                loginBtn.textContent = "Registrarme";
+                toggleAuthText.innerHTML = '¿Ya tienes cuenta? <span class="link-text" onclick="toggleAuthMode()">Inicia Sesión aquí</span>';
+            } else {
+                loginTitle.innerHTML = 'ENTALPIA <span style="color:var(--primary)">ERP</span>';
+                loginBtn.textContent = "Acceder al Sistema";
+                toggleAuthText.innerHTML = '¿No tienes cuenta? <span class="link-text" onclick="toggleAuthMode()">Regístrate aquí</span>';
+            }
+        };
+
+        // Manejar Autenticación (Login o Registro)
+        window.handleAuth = async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const errorMsg = document.getElementById('login-error');
+            
+            loginError.textContent = "";
+
+            if (!email || !password) {
+                loginError.textContent = "Por favor ingresa correo y contraseña.";
+                return;
+            }
+
+            loadingOverlay.style.display = 'flex';
 
             try {
-                loadingOverlay.style.display = 'flex';
-                await signInWithEmailAndPassword(auth, email, password);
+                if (isRegistering) {
+                    // Modo Registro
+                    await createUserWithEmailAndPassword(auth, email, password);
+                    // El onAuthStateChanged manejará la redirección automática
+                } else {
+                    // Modo Login (Estricto)
+                    await signInWithEmailAndPassword(auth, email, password);
+                    // El onAuthStateChanged manejará la redirección
+                }
             } catch (error) {
                 loadingOverlay.style.display = 'none';
-                // Si falla, intentamos registrar (comportamiento simplificado para demo)
-                try {
-                    await createUserWithEmailAndPassword(auth, email, password);
-                    // Si registra, se loguea automáticamente
-                } catch (regError) {
-                     errorMsg.textContent = "Error: " + regError.message;
+                console.error("Auth Error:", error);
+                
+                // Mensajes de error amigables
+                let msg = "Error de autenticación.";
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+                    msg = "Credenciales incorrectas. Verifica tu correo o contraseña.";
+                } else if (error.code === 'auth/email-already-in-use') {
+                    msg = "Este correo ya está registrado. Intenta iniciar sesión.";
+                } else if (error.code === 'auth/weak-password') {
+                    msg = "La contraseña debe tener al menos 6 caracteres.";
+                } else {
+                    msg = "Error: " + error.message;
                 }
+                loginError.textContent = msg;
             }
         };
 
         // Logout
         window.handleLogout = () => {
             signOut(auth);
+            // Resetear UI al salir
+            isRegistering = true; 
+            toggleAuthMode(); // Volver a modo login por defecto
         };
 
         // --- DB LOGIC ---
@@ -106,9 +152,6 @@
                 console.error("Error tasks:", error);
             });
 
-            // 2. Cargar KPIs (Si no existen, crear defaults)
-            // Para simplificar, en esta demo usamos datos estáticos simulados como "placeholders" si no hay base de datos real de ventas
-            // pero demostramos la carga real de Tareas arriba.
             loadingOverlay.style.display = 'none';
         }
 
@@ -137,10 +180,9 @@
 
         // Toggle Tarea
         window.toggleTask = async (taskId, newState) => {
-            // Nota: En una app real actualizariamos el documento
-            // const taskRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'tasks', taskId);
-            // await updateDoc(taskRef, { completed: newState });
-            // Por brevedad en one-file, visualmente lo dejamos reactivo via snapshot
+           // Lógica visual simulada para respuesta rápida en one-file
+           // En producción usar updateDoc(doc(...), {completed: newState})
+           console.log("Toggle task", taskId, newState);
         };
 
         // --- MODAL UTILS ---
@@ -202,6 +244,11 @@
             font-size: 1rem; transition: background 0.2s;
         }
         .login-btn:hover { background: var(--primary-dark); }
+
+        .link-text {
+            color: var(--primary); cursor: pointer; font-weight: 600; text-decoration: none;
+        }
+        .link-text:hover { text-decoration: underline; }
 
         /* --- APP LAYOUT (Hidden initially) --- */
         #app-container { display: none; width: 100%; height: 100%; }
@@ -302,20 +349,22 @@
         <div>Cargando ERP Entalpia...</div>
     </div>
 
-    <!-- 1. LOGIN MODAL (Simula "Modal del Index") -->
+    <!-- 1. LOGIN MODAL -->
     <div id="login-modal" class="full-screen-modal">
         <div class="login-card">
-            <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 10px;">ENTALPIA <span style="color:var(--primary)">ERP</span></div>
+            <div id="login-title" style="font-size: 1.5rem; font-weight: bold; margin-bottom: 10px;">ENTALPIA <span style="color:var(--primary)">ERP</span></div>
             <p style="color: #666; margin-bottom: 20px; font-size: 0.9rem;">Acceso exclusivo para Clientes Corporativos</p>
             
-            <form onsubmit="handleLogin(event)">
+            <form onsubmit="handleAuth(event)">
                 <input type="email" id="email" class="login-input" placeholder="correo@empresa.com" required>
-                <input type="password" id="password" class="login-input" placeholder="Contraseña de acceso" required>
-                <button type="submit" class="login-btn">Acceder al Sistema</button>
+                <input type="password" id="password" class="login-input" placeholder="Contraseña" required>
+                <button type="submit" id="login-btn-action" class="login-btn">Acceder al Sistema</button>
             </form>
             
             <div id="login-error" style="color: var(--danger); margin-top: 10px; font-size: 0.85rem;"></div>
-            <div style="margin-top: 15px; font-size: 0.8rem; color: #888;">Si no tienes cuenta, se creará automáticamente al acceder.</div>
+            <div style="margin-top: 15px; font-size: 0.8rem; color: #666;" id="toggle-auth-text">
+                ¿No tienes cuenta? <span class="link-text" onclick="toggleAuthMode()">Regístrate aquí</span>
+            </div>
         </div>
     </div>
 
@@ -370,7 +419,7 @@
 
             <div class="scroll-area">
                 <div class="grid">
-                    <!-- KPI CARDS (Datos Simulados para Demo, pero estáticos en código) -->
+                    <!-- KPI CARDS (Datos Simulados para Demo) -->
                     <div class="grid grid-4">
                         <div class="card stat-card">
                             <span class="stat-label">Ingresos del Mes</span>
