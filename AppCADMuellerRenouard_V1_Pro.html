@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IngenieroCAD - P&ID Web V4 (Iso Clean & Instruments)</title>
+    <title>IngenieroCAD - P&ID Web V5 (Propiedades & UX)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -436,6 +436,20 @@
 
             useEffect(() => {
                 const handleKeyDown = (e) => {
+                    // ESC KEY LOGIC
+                    if (e.key === 'Escape') {
+                        if (currentElement) {
+                            setCurrentElement(null); // Cancel current drawing
+                            setDrawingLength('');
+                            setBezierStep(0);
+                            setDimensionStep(0);
+                        } else if (selectedIds.length > 0) {
+                            setSelectedIds([]); // Deselect all
+                        } else if (tool !== TOOLS.SELECT) {
+                            setTool(TOOLS.SELECT); // Return to default select tool
+                        }
+                    }
+
                     if (e.key === 'Delete' || e.key === 'Backspace') {
                         if (currentElement && tool === TOOLS.LINE && drawingLength.length > 0) { e.preventDefault(); setDrawingLength(prev => prev.slice(0, -1)); return; }
                         if (selectedIds.length > 0) { setElements(prev => prev.filter(el => !selectedIds.includes(el.id))); setSelectedIds([]); }
@@ -585,12 +599,10 @@
                         ctx.quadraticCurveTo(0, 0, 0, elR/3);
                         ctx.lineTo(0, elR);
                         ctx.stroke();
-                        // Ticks eliminados para limpieza visual
                         break;
                     case TOOLS.NIPPLE:
                         const nipL = baseSize * 1.5;
                         ctx.moveTo(-nipL/2, 0); ctx.lineTo(nipL/2, 0); ctx.stroke();
-                        // Ticks eliminados
                         break;
                     case TOOLS.BASE_SUPPORT:
                         const bsW = baseSize * 0.8; const bsH = baseSize * 1.2;
@@ -781,6 +793,10 @@
             const updateSelectedCoord = (prop, val) => { const num = parseFloat(val); if (isNaN(num)) return; setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, [prop]: num } : el)); };
             const updateTramoMeta = (prop, val) => { setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, tagMetadata: { ...el.tagMetadata, [prop]: val } } : el)); };
             const updateCustomData = (prop, val) => { setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, customData: { ...el.customData, [prop]: val } } : el)); };
+            const updateSelectedLength = (val) => { /* Complex logic omitted for brevity, would require trig */ };
+            const updateSelectedAngle = (val) => { /* Complex logic omitted */ };
+            const updateSelectedRadius = (val) => { /* Complex logic omitted */ };
+            const updateSelectedRectDim = (prop, val) => { /* Complex logic omitted */ };
             const deleteSelection = () => { setElements(prev => prev.filter(el => !selectedIds.includes(el.id))); setSelectedIds([]); };
             const undo = () => setElements(prev => prev.slice(0, -1));
             const clearCanvas = () => { if(window.confirm('¿Borrar todo el dibujo y la memoria local?')) { setElements([]); localStorage.removeItem('ing-cad-autosave-v2'); } };
@@ -794,12 +810,11 @@
             const toggleLayerVisibility = (id) => setLayers(p => p.map(l => l.id === id ? { ...l, visible: !l.visible } : l));
             const deleteLayer = (id) => { if (layers.length <= 1) return alert("Mínimo una capa."); if(!confirm("Se borrarán los elementos. ¿Seguro?")) return; setElements(p => p.filter(e => e.layerId !== id)); const rem = layers.filter(l => l.id !== id); setLayers(rem); if(activeLayer === id) setActiveLayer(rem[0].id); };
 
-            // --- RESTORED SNAP LOGIC ---
+            // --- SNAP LOGIC ---
             const getSymbolSnapPoints = (el) => {
                  const localScale = el.elementScale || 1; 
                  const baseSize = GRID_SIZE * 0.6 * localScale; 
                  const points = [];
-                 
                  const angle = el.rotation || 0;
                  const cos = Math.cos(angle); const sin = Math.sin(angle);
                  const trans = (lx, ly) => ({ x: lx * cos - ly * sin + el.x1, y: lx * sin + ly * cos + el.y1 });
@@ -1053,12 +1068,15 @@
                         <main ref={containerRef} className="flex-1 relative bg-[#1a1a1a] cursor-crosshair overflow-hidden">
                             <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onWheel={handleWheel} onContextMenu={handleContextMenu} className="block touch-none" style={{ backgroundColor: '#1e1e1e' }} />
                             
-                            {/* Panel Propiedades de Selección */}
+                            {/* Panel Propiedades de Selección - FIXED & IMPROVED */}
                             {selectedIds.length > 0 && (
-                                <div className="absolute top-4 right-16 w-64 glass-panel rounded-xl p-4 shadow-2xl flex flex-col gap-3 fade-in z-20 overflow-y-auto max-h-[80vh]">
+                                <div className="absolute top-16 right-4 w-64 glass-panel rounded-xl p-4 shadow-2xl flex flex-col gap-3 fade-in z-20 overflow-y-auto max-h-[80vh]">
                                     <div className="flex justify-between items-center border-b border-gray-600 pb-2">
                                         <h3 className="text-sm font-bold text-white flex items-center gap-2"><Icon path={ICONS.Edit2} size={16}/> Propiedades ({selectedIds.length})</h3>
-                                        <button onClick={deleteSelection} className="p-1 bg-red-600 hover:bg-red-500 rounded text-white" title="Eliminar Selección"><Icon path={ICONS.Trash2} size={14}/></button>
+                                        <div className="flex gap-1">
+                                            <button onClick={deleteSelection} className="p-1 bg-red-600 hover:bg-red-500 rounded text-white" title="Eliminar Selección"><Icon path={ICONS.Trash2} size={14}/></button>
+                                            <button onClick={() => setSelectedIds([])} className="p-1 bg-gray-600 hover:bg-gray-500 rounded text-white" title="Cerrar Panel">✕</button>
+                                        </div>
                                     </div>
                                     
                                     <div className="space-y-3 mt-2">
@@ -1088,6 +1106,8 @@
 
                                         {selectedIds.length === 1 && (() => {
                                             const el = elements.find(e => e.id === selectedIds[0]);
+                                            if (!el) return null; // Safety check
+                                            
                                             const SYMBOL_TOOLS = Object.values(TOOLS).filter(t => ![TOOLS.SELECT, TOOLS.PAN, TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(t));
                                             const isSymbol = SYMBOL_TOOLS.includes(el.type);
                                             const custom = el.customData || {};
@@ -1099,16 +1119,16 @@
                                                     {el.type === TOOLS.TRAMO_DATA && (
                                                         <React.Fragment>
                                                             <div className="section-title text-green-400">Datos de Tubería</div>
-                                                            <div><span className="prop-label">ID Tramo</span><input type="text" className="prop-input" value={meta.id} onChange={(e) => updateTramoMeta('id', e.target.value)} /></div>
+                                                            <div><span className="prop-label">ID Tramo</span><input type="text" className="prop-input" value={meta.id || ''} onChange={(e) => updateTramoMeta('id', e.target.value)} /></div>
                                                             <div className="grid grid-cols-2 gap-2">
-                                                                <div><span className="prop-label">Longitud</span><input type="number" className="prop-input" value={meta.length} onChange={(e) => updateTramoMeta('length', e.target.value)} /></div>
-                                                                <div><span className="prop-label">Unidad</span><select className="prop-input" value={meta.lengthUnit} onChange={(e) => updateTramoMeta('lengthUnit', e.target.value)}>{LENGTH_UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                                                                <div><span className="prop-label">Longitud</span><input type="number" className="prop-input" value={meta.length || ''} onChange={(e) => updateTramoMeta('length', e.target.value)} /></div>
+                                                                <div><span className="prop-label">Unidad</span><select className="prop-input" value={meta.lengthUnit || 'm'} onChange={(e) => updateTramoMeta('lengthUnit', e.target.value)}>{LENGTH_UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
                                                             </div>
-                                                            <div><span className="prop-label">Diámetro</span><select className="prop-input" value={meta.diameter} onChange={(e) => updateTramoMeta('diameter', e.target.value)}>{DIAMETERS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
-                                                            <div><span className="prop-label">Material</span><select className="prop-input" value={meta.material} onChange={(e) => updateTramoMeta('material', e.target.value)}>{MATERIALS.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+                                                            <div><span className="prop-label">Diámetro</span><select className="prop-input" value={meta.diameter || ''} onChange={(e) => updateTramoMeta('diameter', e.target.value)}>{DIAMETERS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+                                                            <div><span className="prop-label">Material</span><select className="prop-input" value={meta.material || ''} onChange={(e) => updateTramoMeta('material', e.target.value)}>{MATERIALS.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
                                                             <div className="grid grid-cols-2 gap-2">
-                                                                <div><span className="prop-label">Carga</span><input type="number" className="prop-input" value={meta.load} onChange={(e) => updateTramoMeta('load', e.target.value)} /></div>
-                                                                <div><span className="prop-label">Unidad</span><select className="prop-input" value={meta.loadUnit} onChange={(e) => updateTramoMeta('loadUnit', e.target.value)}>{LOAD_UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                                                                <div><span className="prop-label">Carga</span><input type="number" className="prop-input" value={meta.load || ''} onChange={(e) => updateTramoMeta('load', e.target.value)} /></div>
+                                                                <div><span className="prop-label">Unidad</span><select className="prop-input" value={meta.loadUnit || ''} onChange={(e) => updateTramoMeta('loadUnit', e.target.value)}>{LOAD_UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
                                                             </div>
                                                         </React.Fragment>
                                                     )}
@@ -1138,7 +1158,7 @@
 
                                                     {el.type === TOOLS.TEXT && (
                                                         <div className="space-y-2">
-                                                            <div><span className="prop-label">Contenido</span><input type="text" className="prop-input" value={el.text} onChange={(e) => updateSelectedText(e.target.value)} /></div>
+                                                            <div><span className="prop-label">Contenido</span><input type="text" className="prop-input" value={el.text || ''} onChange={(e) => updateSelectedText(e.target.value)} /></div>
                                                             <div><span className="prop-label">Tamaño Fuente</span><input type="number" className="prop-input" value={el.fontSize || (GRID_SIZE * 0.35)} onChange={(e) => updateSelectedFontSize(e.target.value)} /></div>
                                                         </div>
                                                     )}
@@ -1159,10 +1179,13 @@
                             )}
 
                             {showLayers && (
-                                <div className="absolute top-4 right-4 w-64 glass-panel rounded-xl p-4 shadow-2xl flex flex-col gap-3 fade-in z-20">
+                                <div className="absolute top-16 right-72 w-64 glass-panel rounded-xl p-4 shadow-2xl flex flex-col gap-3 fade-in z-20">
                                     <div className="flex justify-between items-center border-b border-gray-600 pb-2">
                                         <h3 className="text-sm font-bold text-white flex items-center gap-2"><Icon path={ICONS.Layers} size={16}/> Capas</h3>
-                                        <button onClick={addLayer} className="p-1 bg-blue-600 hover:bg-blue-500 rounded text-white" title="Nueva Capa"><Icon path={ICONS.Plus} size={14}/></button>
+                                        <div className="flex gap-1">
+                                            <button onClick={addLayer} className="p-1 bg-blue-600 hover:bg-blue-500 rounded text-white" title="Nueva Capa"><Icon path={ICONS.Plus} size={14}/></button>
+                                            <button onClick={() => setShowLayers(false)} className="p-1 text-gray-400 hover:text-white">✕</button>
+                                        </div>
                                     </div>
                                     <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
                                         {layers.map(layer => (
