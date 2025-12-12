@@ -143,9 +143,36 @@
 
         /* --- CONTENIDO --- */
         .content-container { position: relative; z-index: 20; margin-top: -100px; padding-bottom: 50px; min-height: 400px; }
-        .row { margin-bottom: 3.5rem; padding-left: 4%; }
-        .row-title { font-size: 1.5rem; font-weight: 700; color: #e5e5e5; margin-bottom: 1rem; }
-        .row-scroller { display: flex; gap: 12px; overflow-x: auto; padding: 20px 0; scrollbar-width: none; flex-wrap: nowrap; }
+        .row { margin-bottom: 3.5rem; /* Padding left removed here, moved to children */ }
+        .row-title { font-size: 1.5rem; font-weight: 700; color: #e5e5e5; margin-bottom: 1rem; padding-left: 4%; }
+        
+        /* MEJORA: Scroll Horizontal */
+        .row-scroller { 
+            display: flex; 
+            gap: 12px; 
+            overflow-x: auto; 
+            padding: 20px 4%; /* Padding lateral interno para que el scroll cubra toda la pantalla */
+            flex-wrap: nowrap; 
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Estilizado de la barra de desplazamiento (Scrollbar) */
+        .row-scroller::-webkit-scrollbar {
+            height: 8px;
+        }
+        .row-scroller::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            margin: 0 4%; /* Margen para alinear con el contenido */
+        }
+        .row-scroller::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        .row-scroller::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
         
         .search-results-grid { display: flex; flex-wrap: wrap; gap: 20px; padding-left: 4%; padding-right: 4%; }
         
