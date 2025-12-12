@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entalpia | Hub de Ingeniería</title>
+    
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://images.unsplash.com">
+    
+    <link rel="preload" as="image" href="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     
@@ -43,6 +51,7 @@
             background-size: cover; background-position: center;
             display: flex; justify-content: center; align-items: center; z-index: 3000;
             transition: opacity 0.8s ease;
+            will-change: opacity; /* Optimización de animación */
         }
 
         .login-box-static {
@@ -130,6 +139,7 @@
             background-color: #000; background-position: center top; background-size: cover;
             display: flex; align-items: center; padding-left: 4%;
             transition: background-image 0.8s ease-in-out;
+            will-change: background-image; /* Optimización */
         }
         .hero-overlay { position: absolute; inset: 0; background: linear-gradient(to right, #141414 10%, rgba(20,20,20,0.4) 60%, transparent 100%); z-index: 1; }
         .hero-overlay-btm { position: absolute; bottom: 0; left: 0; right: 0; height: 200px; background: linear-gradient(to top, #141414, transparent); z-index: 1; }
@@ -151,28 +161,16 @@
             display: flex; 
             gap: 12px; 
             overflow-x: auto; 
-            padding: 20px 4%; /* Padding lateral interno para que el scroll cubra toda la pantalla */
+            padding: 20px 4%; 
             flex-wrap: nowrap; 
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
         }
         
-        /* Estilizado de la barra de desplazamiento (Scrollbar) */
-        .row-scroller::-webkit-scrollbar {
-            height: 8px;
-        }
-        .row-scroller::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 4px;
-            margin: 0 4%; /* Margen para alinear con el contenido */
-        }
-        .row-scroller::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
-        }
-        .row-scroller::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
-        }
+        .row-scroller::-webkit-scrollbar { height: 8px; }
+        .row-scroller::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; margin: 0 4%; }
+        .row-scroller::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3); border-radius: 4px; }
+        .row-scroller::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.5); }
         
         .search-results-grid { display: flex; flex-wrap: wrap; gap: 20px; padding-left: 4%; padding-right: 4%; }
         
@@ -181,6 +179,7 @@
             min-width: 280px; height: 160px; background-color: #252525; border-radius: 6px;
             transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), z-index 0s, box-shadow 0.3s;
             cursor: pointer; position: relative; overflow: hidden; flex-shrink: 0;
+            contain: content; /* Optimización de renderizado */
         }
         .tile:hover { transform: scale(1.3); z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.8); transition-delay: 0.1s; border: 1px solid rgba(255,255,255,0.1); }
         .tile-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
@@ -275,7 +274,6 @@
                     <a href="interfazDeOpcionInicio.html" class="nav-item">Inicio</a>
                     <a href="#" class="nav-item active" onclick="location.reload()">Herramientas</a>
                     <span class="nav-item">Mi Lista</span>
-                    <!-- Botón Planes Agregado -->
                     <a href="ModalPrecios.html" class="nav-item nav-btn-planes">Planes</a>
                 </div>
             </div>
@@ -714,8 +712,9 @@
 
         audioPlayer.addEventListener('timeupdate', () => { localStorage.setItem('audio_time', audioPlayer.currentTime); });
 
-        // --- INICIALIZACIÓN DE SESIÓN ---
-        window.addEventListener('load', () => {
+        // --- INICIALIZACIÓN DE SESIÓN (OPTIMIZADA) ---
+        // Cambiado de 'load' a 'DOMContentLoaded' para ejecución más rápida
+        document.addEventListener('DOMContentLoaded', () => {
             gestionarMusica();
             let sessionUser = null;
             try {
@@ -807,8 +806,8 @@
                     const isFav = favoritos.includes(tool.nombre);
                     const tile = document.createElement('div'); tile.className = 'tile';
                     tile.onclick = () => verDetalles(tool.id);
-                    // SUBTITULO INCLUIDO
-                    tile.innerHTML = `<img src="${img}" class="tile-img" onerror="this.src='${fallbackImg}'"><div class="tile-content"><div class="tile-actions"><div class="tile-icon icon-play" onclick="abrirApp('${tool.nombre}','${tool.url}');event.stopPropagation()"><i class="fas fa-play"></i></div><div class="tile-icon" onclick="toggleFav('${tool.nombre}');event.stopPropagation()"><i class="fas ${isFav?'fa-check':'fa-plus'}"></i></div><div class="tile-icon" onclick="verDetalles(${tool.id});event.stopPropagation()"><i class="fas fa-chevron-down"></i></div></div><div class="tile-title">${tool.nombre}</div><div class="tile-subtitle">${tool.subtitulo || tool.descripcion}</div><div class="tile-meta">98% para ti</div></div>`;
+                    // OPTIMIZACIÓN: loading="lazy" y decoding="async"
+                    tile.innerHTML = `<img src="${img}" class="tile-img" loading="lazy" decoding="async" onerror="this.src='${fallbackImg}'"><div class="tile-content"><div class="tile-actions"><div class="tile-icon icon-play" onclick="abrirApp('${tool.nombre}','${tool.url}');event.stopPropagation()"><i class="fas fa-play"></i></div><div class="tile-icon" onclick="toggleFav('${tool.nombre}');event.stopPropagation()"><i class="fas ${isFav?'fa-check':'fa-plus'}"></i></div><div class="tile-icon" onclick="verDetalles(${tool.id});event.stopPropagation()"><i class="fas fa-chevron-down"></i></div></div><div class="tile-title">${tool.nombre}</div><div class="tile-subtitle">${tool.subtitulo || tool.descripcion}</div><div class="tile-meta">98% para ti</div></div>`;
                     grid.appendChild(tile);
                 });
                 container.appendChild(title); container.appendChild(grid);
@@ -1002,8 +1001,8 @@
                 const isFav = favoritos.includes(tool.nombre);
                 const tile = document.createElement('div'); tile.className = 'tile';
                 tile.onclick = () => verDetalles(tool.id);
-                // SUBTITULO INCLUIDO
-                tile.innerHTML = `<img src="${img}" class="tile-img" onerror="this.src='${fallbackImg}'"><div class="tile-content"><div class="tile-actions"><div class="tile-icon icon-play" onclick="abrirApp('${tool.nombre}','${tool.url}');event.stopPropagation()"><i class="fas fa-play"></i></div><div class="tile-icon" onclick="toggleFav('${tool.nombre}');event.stopPropagation()"><i class="fas ${isFav?'fa-check':'fa-plus'}"></i></div><div class="tile-icon" onclick="verDetalles(${tool.id});event.stopPropagation()"><i class="fas fa-chevron-down"></i></div></div><div class="tile-title">${tool.nombre}</div><div class="tile-subtitle">${tool.subtitulo || tool.descripcion}</div><div class="tile-meta">98% para ti</div></div>`;
+                // OPTIMIZACIÓN: loading="lazy" y decoding="async"
+                tile.innerHTML = `<img src="${img}" class="tile-img" loading="lazy" decoding="async" onerror="this.src='${fallbackImg}'"><div class="tile-content"><div class="tile-actions"><div class="tile-icon icon-play" onclick="abrirApp('${tool.nombre}','${tool.url}');event.stopPropagation()"><i class="fas fa-play"></i></div><div class="tile-icon" onclick="toggleFav('${tool.nombre}');event.stopPropagation()"><i class="fas ${isFav?'fa-check':'fa-plus'}"></i></div><div class="tile-icon" onclick="verDetalles(${tool.id});event.stopPropagation()"><i class="fas fa-chevron-down"></i></div></div><div class="tile-title">${tool.nombre}</div><div class="tile-subtitle">${tool.subtitulo || tool.descripcion}</div><div class="tile-meta">98% para ti</div></div>`;
                 scr.appendChild(tile);
             });
             row.appendChild(tEl); row.appendChild(scr); cont.appendChild(row);
