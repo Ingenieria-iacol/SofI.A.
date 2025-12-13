@@ -1,441 +1,353 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Lock, 
-  Unlock, 
-  User, 
-  Shield, 
-  Briefcase, 
-  GraduationCap, 
-  CheckCircle, 
-  LogOut, 
-  LayoutDashboard,
-  Star,
-  Zap,
-  Crown,
-  Key,
-  Eye,
-  EyeOff
-} from 'lucide-react';
-
-// --- CONFIGURACIÓN Y MOCK DATA (Simulación de Backend) ---
-
-// Niveles de acceso jerárquicos
-const PLAN_LEVELS = {
-  FREE: 1,
-  PRO: 2,
-  PLUS: 3,
-  PREMIUM: 4
-};
-
-// Datos de configuración de planes
-const PLAN_CONFIG = {
-  free: { label: 'Plan Free', level: 1, color: 'bg-gray-100 text-gray-800', icon: User },
-  pro: { label: 'Plan Pro', level: 2, color: 'bg-blue-100 text-blue-800', icon: Star },
-  plus: { label: 'Plan Plus', level: 3, color: 'bg-purple-100 text-purple-800', icon: Zap },
-  premium: { label: 'Plan Premium', level: 4, color: 'bg-yellow-100 text-yellow-800 border-yellow-300', icon: Crown },
-};
-
-// Base de datos de usuarios ficticia
-const MOCK_USERS = [
-  { 
-    id: 1, 
-    email: 'free@user.com',
-    password: '1234', // Contraseña default
-    name: 'Ana Gratuita', 
-    plan: 'free', 
-    verified: true, 
-    type: 'personal' 
-  },
-  { 
-    id: 2, 
-    email: 'unverified@user.com', 
-    password: '1234',
-    name: 'Pepe No Verificado', 
-    plan: 'free', 
-    verified: false, 
-    type: 'personal' 
-  },
-  { 
-    id: 3, 
-    email: 'pro@user.com', 
-    password: '1234',
-    name: 'Carlos Profesional', 
-    plan: 'pro', 
-    verified: true, 
-    type: 'personal' 
-  },
-  { 
-    id: 4, 
-    email: 'academic@plus.com', 
-    password: '1234',
-    name: 'Prof. Diana Plus', 
-    plan: 'plus', 
-    verified: true, 
-    type: 'academic' 
-  },
-  { 
-    id: 5, 
-    email: 'corp@premium.com', 
-    password: '1234',
-    name: 'CEO Roberto Premium', 
-    plan: 'premium', 
-    verified: true, 
-    type: 'corporate' 
-  },
-  { 
-    id: 6, 
-    email: 'josetangarife14@gmail.com', 
-    password: '1204', // Contraseña solicitada
-    name: 'Jose Tangarife', 
-    plan: 'premium', // Asignado Plan Premium para acceso total
-    verified: true, 
-    type: 'corporate' // Asignado perfil Corporativo
-  }
-];
-
-// --- COMPONENTES ---
-
-// Componente de Login
-const Login = ({ onLogin }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-    const user = MOCK_USERS.find(u => u.email === email);
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Acceso Multinivel SaaS</title>
     
-    if (!user) {
-      setError('Usuario no encontrado.');
-      return;
-    }
-
-    // Validación de Contraseña
-    if (user.password !== password) {
-      setError('Contraseña incorrecta.');
-      return;
-    }
+    <!-- Cargamos React y ReactDOM desde CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     
-    // Validación Nivel 0: Verificación de cuenta
-    if (!user.verified) {
-      setError('Tu cuenta existe pero no ha sido verificada. Revisa tu email.');
-      return;
-    }
+    <!-- Cargamos Babel para traducir JSX en el navegador -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Cargamos Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
 
-    onLogin(user);
-  };
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-  // Función helper para rellenar datos en modo debug
-  const fillCredentials = (u) => {
-    setEmail(u.email);
-    setPassword(u.password);
-  };
+        // --- ICONOS (SVG Nativos para no depender de librerías externas) ---
+        const Icons = {
+            Lock: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+            User: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+            Shield: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-.5 6-3 1.5 2.5 4 3 6 3 1 0 1 .5 1 1Z"/></svg>,
+            Briefcase: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
+            GraduationCap: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>,
+            LogOut: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>,
+            LayoutDashboard: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>,
+            Star: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+            Zap: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+            Crown: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></svg>,
+            Key: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>,
+            Eye: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>,
+            EyeOff: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+        };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-        <div className="text-center mb-8">
-          <div className="bg-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Shield className="text-white w-8 h-8" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800">Portal de Acceso Seguro</h2>
-          <p className="text-gray-500">Sistema de autenticación multinivel</p>
-        </div>
+        // --- CONFIGURACIÓN Y MOCK DATA ---
+        const PLAN_LEVELS = {
+            FREE: 1,
+            PRO: 2,
+            PLUS: 3,
+            PREMIUM: 4
+        };
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
-              placeholder="nombre@empresa.com"
-            />
-          </div>
+        const PLAN_CONFIG = {
+            free: { label: 'Plan Free', level: 1, color: 'bg-gray-100 text-gray-800', icon: Icons.User },
+            pro: { label: 'Plan Pro', level: 2, color: 'bg-blue-100 text-blue-800', icon: Icons.Star },
+            plus: { label: 'Plan Plus', level: 3, color: 'bg-purple-100 text-purple-800', icon: Icons.Zap },
+            premium: { label: 'Plan Premium', level: 4, color: 'bg-yellow-100 text-yellow-800 border-yellow-300', icon: Icons.Crown },
+        };
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition pr-10"
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
-                title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
-              >
-                {showPassword ? (
-                  <EyeOff className="w-5 h-5" />
-                ) : (
-                  <Eye className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-          </div>
-          
-          {error && (
-            <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg flex items-center gap-2">
-              <Lock className="w-4 h-4" /> {error}
-            </div>
-          )}
+        const MOCK_USERS = [
+            { id: 1, email: 'free@user.com', password: '1234', name: 'Ana Gratuita', plan: 'free', verified: true, type: 'personal' },
+            { id: 2, email: 'unverified@user.com', password: '1234', name: 'Pepe No Verificado', plan: 'free', verified: false, type: 'personal' },
+            { id: 3, email: 'pro@user.com', password: '1234', name: 'Carlos Profesional', plan: 'pro', verified: true, type: 'personal' },
+            { id: 4, email: 'academic@plus.com', password: '1234', name: 'Prof. Diana Plus', plan: 'plus', verified: true, type: 'academic' },
+            { id: 5, email: 'corp@premium.com', password: '1234', name: 'CEO Roberto Premium', plan: 'premium', verified: true, type: 'corporate' },
+            { id: 6, email: 'josetangarife14@gmail.com', password: '1204', name: 'Jose Tangarife', plan: 'premium', verified: true, type: 'corporate' }
+        ];
 
-          <button
-            type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition shadow-md"
-          >
-            Ingresar
-          </button>
-        </form>
+        // --- COMPONENTES ---
 
-        {/* Debug Tools para probar fácilmente */}
-        <div className="mt-8 pt-6 border-t border-gray-100">
-          <p className="text-xs text-gray-400 font-mono text-center mb-3 uppercase tracking-wider">Acceso Rápido (Debug Mode)</p>
-          <div className="grid grid-cols-2 gap-2">
-            {MOCK_USERS.map(u => (
-              <button
-                key={u.id}
-                onClick={() => fillCredentials(u)}
-                className="text-xs bg-gray-100 hover:bg-gray-200 p-2 rounded text-left truncate transition group"
-              >
-                <span className="font-semibold block text-gray-700">{u.name}</span>
-                <span className="text-gray-500 group-hover:text-gray-600">{u.plan.toUpperCase()}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+        const Login = ({ onLogin }) => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [showPassword, setShowPassword] = useState(false);
+            const [error, setError] = useState('');
 
-// Tarjeta de Herramienta (Componente Inteligente)
-const ToolCard = ({ tool, userLevel, userType }) => {
-  const isLocked = userLevel < PLAN_LEVELS[tool.minPlan.toUpperCase()];
-  const isTypeRestricted = tool.restrictedToType && tool.restrictedToType !== userType;
-  
-  // Si está bloqueado por plan o por tipo de perfil
-  const accessDenied = isLocked || isTypeRestricted;
+            const handleLogin = (e) => {
+                e.preventDefault();
+                const user = MOCK_USERS.find(u => u.email === email);
+                
+                if (!user) {
+                    setError('Usuario no encontrado.');
+                    return;
+                }
 
-  const PlanIcon = PLAN_CONFIG[tool.minPlan].icon;
+                if (user.password !== password) {
+                    setError('Contraseña incorrecta.');
+                    return;
+                }
+                
+                if (!user.verified) {
+                    setError('Tu cuenta existe pero no ha sido verificada.');
+                    return;
+                }
 
-  return (
-    <div className={`relative rounded-xl border p-6 transition-all duration-300 ${
-      accessDenied 
-        ? 'bg-gray-50 border-gray-200 opacity-80' 
-        : 'bg-white border-indigo-100 shadow-sm hover:shadow-md hover:-translate-y-1'
-    }`}>
-      {/* Overlay de Bloqueo */}
-      {accessDenied && (
-        <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] rounded-xl flex flex-col items-center justify-center z-10">
-          <div className="bg-gray-800 text-white p-3 rounded-full shadow-lg mb-2">
-            <Lock className="w-6 h-6" />
-          </div>
-          <span className="text-sm font-semibold text-gray-800 px-4 py-1 bg-gray-200 rounded-full">
-            {isTypeRestricted 
-              ? `Solo perfil ${tool.restrictedToType === 'academic' ? 'Académico' : 'Corporativo'}`
-              : `Requiere ${PLAN_CONFIG[tool.minPlan].label}`
-            }
-          </span>
-        </div>
-      )}
+                onLogin(user);
+            };
 
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-3 rounded-lg ${accessDenied ? 'bg-gray-200' : 'bg-indigo-50 text-indigo-600'}`}>
-          <tool.icon className="w-6 h-6" />
-        </div>
-        <div className={`text-xs font-bold px-2 py-1 rounded border ${PLAN_CONFIG[tool.minPlan].color}`}>
-          {tool.minPlan.toUpperCase()}
-        </div>
-      </div>
+            const fillCredentials = (u) => {
+                setEmail(u.email);
+                setPassword(u.password);
+            };
 
-      <h3 className="text-lg font-bold text-gray-900 mb-2">{tool.name}</h3>
-      <p className="text-sm text-gray-600 mb-4">{tool.description}</p>
-      
-      <button 
-        disabled={accessDenied}
-        className={`w-full py-2 px-4 rounded-lg font-medium text-sm transition ${
-          accessDenied
-            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
-        }`}
-      >
-        {accessDenied ? 'No disponible' : 'Acceder a Herramienta'}
-      </button>
-    </div>
-  );
-};
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+                    <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+                        <div className="text-center mb-8">
+                            <div className="bg-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Icons.Shield className="text-white w-8 h-8" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800">Portal de Acceso Seguro</h2>
+                            <p className="text-gray-500">Sistema de autenticación multinivel</p>
+                        </div>
 
-// Dashboard Principal
-const Dashboard = ({ user, onLogout }) => {
-  const userLevel = PLAN_LEVELS[user.plan.toUpperCase()];
-  const currentPlan = PLAN_CONFIG[user.plan];
+                        <form onSubmit={handleLogin} className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input
+                                    type="email"
+                                    required
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                                    placeholder="nombre@empresa.com"
+                                />
+                            </div>
 
-  // Base de datos de herramientas y sus requisitos
-  const tools = [
-    { 
-      id: 1, 
-      name: 'Noticias Básicas', 
-      description: 'Acceso a noticias generales del sector.', 
-      minPlan: 'free', 
-      icon: LayoutDashboard 
-    },
-    { 
-      id: 2, 
-      name: 'Calculadora ROI', 
-      description: 'Herramienta básica financiera.', 
-      minPlan: 'free', 
-      icon: Zap 
-    },
-    { 
-      id: 3, 
-      name: 'Análisis de Mercado', 
-      description: 'Gráficos avanzados de tendencias.', 
-      minPlan: 'pro', 
-      icon: Star 
-    },
-    { 
-      id: 4, 
-      name: 'Biblioteca Tésis', 
-      description: 'Repositorio de papers e investigaciones.', 
-      minPlan: 'plus', 
-      restrictedToType: 'academic', // Especial para perfil académico
-      icon: GraduationCap 
-    },
-    { 
-      id: 5, 
-      name: 'API ilimitada', 
-      description: 'Conexión directa a bases de datos.', 
-      minPlan: 'plus', 
-      icon: Zap 
-    },
-    { 
-      id: 6, 
-      name: 'Suite Ejecutiva', 
-      description: 'Gestión de equipos y nómina global.', 
-      minPlan: 'premium', 
-      restrictedToType: 'corporate', // Especial para perfil corporativo
-      icon: Briefcase 
-    },
-    { 
-      id: 7, 
-      name: 'Soporte 24/7 VIP', 
-      description: 'Línea directa con ingenieros.', 
-      minPlan: 'premium', 
-      icon: Crown 
-    }
-  ];
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition pr-10"
+                                        placeholder="••••••••"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                                        title={showPassword ? "Ocultar" : "Ver"}
+                                    >
+                                        {showPassword ? (
+                                            <Icons.EyeOff className="w-5 h-5" />
+                                        ) : (
+                                            <Icons.Eye className="w-5 h-5" />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {error && (
+                                <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg flex items-center gap-2">
+                                    <Icons.Lock className="w-4 h-4" /> {error}
+                                </div>
+                            )}
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-lg">
-              <Shield className="text-white w-5 h-5" />
-            </div>
-            <h1 className="text-xl font-bold text-gray-800 hidden sm:block">Plataforma SaaS</h1>
-          </div>
+                            <button
+                                type="submit"
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition shadow-md"
+                            >
+                                Ingresar
+                            </button>
+                        </form>
 
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-gray-900">{user.name}</p>
-              <div className="flex items-center justify-end gap-1">
-                 {user.type === 'corporate' && <Briefcase className="w-3 h-3 text-gray-500" />}
-                 {user.type === 'academic' && <GraduationCap className="w-3 h-3 text-gray-500" />}
-                 <p className="text-xs text-gray-500 capitalize">{user.type}</p>
-              </div>
-            </div>
-            
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${currentPlan.color}`}>
-              <currentPlan.icon className="w-4 h-4" />
-              <span className="text-sm font-bold uppercase">{currentPlan.label}</span>
-            </div>
+                        <div className="mt-8 pt-6 border-t border-gray-100">
+                            <p className="text-xs text-gray-400 font-mono text-center mb-3 uppercase tracking-wider">Acceso Rápido (Demo)</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {MOCK_USERS.map(u => (
+                                    <button
+                                        key={u.id}
+                                        onClick={() => fillCredentials(u)}
+                                        className="text-xs bg-gray-100 hover:bg-gray-200 p-2 rounded text-left truncate transition group"
+                                    >
+                                        <span className="font-semibold block text-gray-700">{u.name}</span>
+                                        <span className="text-gray-500 group-hover:text-gray-600">{u.plan.toUpperCase()}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
-            <button 
-              onClick={onLogout}
-              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition"
-              title="Cerrar Sesión"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </header>
+        const ToolCard = ({ tool, userLevel, userType }) => {
+            const isLocked = userLevel < PLAN_LEVELS[tool.minPlan.toUpperCase()];
+            const isTypeRestricted = tool.restrictedToType && tool.restrictedToType !== userType;
+            const accessDenied = isLocked || isTypeRestricted;
+            const PlanIcon = PLAN_CONFIG[tool.minPlan].icon;
+            const ToolIcon = tool.icon;
 
-      {/* Contenido */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Banner Informativo */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8 border-l-4 border-indigo-500">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Hola, {user.name.split(' ')[0]}</h2>
-          <p className="text-gray-600">
-            Estás navegando con el nivel de acceso <span className="font-bold">{user.plan.toUpperCase()}</span>. 
-            Tienes desbloqueadas las herramientas de nivel {userLevel} e inferiores.
-          </p>
-        </div>
+            return (
+                <div className={`relative rounded-xl border p-6 transition-all duration-300 ${
+                    accessDenied 
+                        ? 'bg-gray-50 border-gray-200 opacity-80' 
+                        : 'bg-white border-indigo-100 shadow-sm hover:shadow-md hover:-translate-y-1'
+                }`}>
+                    {accessDenied && (
+                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] rounded-xl flex flex-col items-center justify-center z-10">
+                            <div className="bg-gray-800 text-white p-3 rounded-full shadow-lg mb-2">
+                                <Icons.Lock className="w-6 h-6" />
+                            </div>
+                            <span className="text-sm font-semibold text-gray-800 px-4 py-1 bg-gray-200 rounded-full">
+                                {isTypeRestricted 
+                                    ? `Solo perfil ${tool.restrictedToType === 'academic' ? 'Académico' : 'Corporativo'}`
+                                    : `Requiere ${PLAN_CONFIG[tool.minPlan].label}`
+                                }
+                            </span>
+                        </div>
+                    )}
 
-        {/* Grid de Herramientas */}
-        <div className="mb-6 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-700">Herramientas Disponibles</h3>
-            <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Total: {tools.length}</span>
-        </div>
+                    <div className="flex justify-between items-start mb-4">
+                        <div className={`p-3 rounded-lg ${accessDenied ? 'bg-gray-200' : 'bg-indigo-50 text-indigo-600'}`}>
+                            <ToolIcon className="w-6 h-6" />
+                        </div>
+                        <div className={`text-xs font-bold px-2 py-1 rounded border ${PLAN_CONFIG[tool.minPlan].color}`}>
+                            {tool.minPlan.toUpperCase()}
+                        </div>
+                    </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {tools.map(tool => (
-            <ToolCard 
-              key={tool.id} 
-              tool={tool} 
-              userLevel={userLevel} 
-              userType={user.type}
-            />
-          ))}
-        </div>
-      </main>
-    </div>
-  );
-};
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">{tool.name}</h3>
+                    <p className="text-sm text-gray-600 mb-4">{tool.description}</p>
+                    
+                    <button 
+                        disabled={accessDenied}
+                        className={`w-full py-2 px-4 rounded-lg font-medium text-sm transition ${
+                            accessDenied
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
+                        }`}
+                    >
+                        {accessDenied ? 'No disponible' : 'Acceder a Herramienta'}
+                    </button>
+                </div>
+            );
+        };
 
-// Componente Principal (App)
-const App = () => {
-  const [user, setUser] = useState(null);
+        const Dashboard = ({ user, onLogout }) => {
+            const userLevel = PLAN_LEVELS[user.plan.toUpperCase()];
+            const currentPlan = PLAN_CONFIG[user.plan];
+            const PlanIcon = currentPlan.icon;
 
-  // Efecto para simular persistencia básica (opcional)
-  useEffect(() => {
-    const savedUser = localStorage.getItem('mockSessionUser');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-  }, []);
+            const tools = [
+                { id: 1, name: 'Noticias Básicas', description: 'Acceso a noticias generales del sector.', minPlan: 'free', icon: Icons.LayoutDashboard },
+                { id: 2, name: 'Calculadora ROI', description: 'Herramienta básica financiera.', minPlan: 'free', icon: Icons.Zap },
+                { id: 3, name: 'Análisis de Mercado', description: 'Gráficos avanzados de tendencias.', minPlan: 'pro', icon: Icons.Star },
+                { id: 4, name: 'Biblioteca Tésis', description: 'Repositorio de papers e investigaciones.', minPlan: 'plus', restrictedToType: 'academic', icon: Icons.GraduationCap },
+                { id: 5, name: 'API ilimitada', description: 'Conexión directa a bases de datos.', minPlan: 'plus', icon: Icons.Zap },
+                { id: 6, name: 'Suite Ejecutiva', description: 'Gestión de equipos y nómina global.', minPlan: 'premium', restrictedToType: 'corporate', icon: Icons.Briefcase },
+                { id: 7, name: 'Soporte 24/7 VIP', description: 'Línea directa con ingenieros.', minPlan: 'premium', icon: Icons.Crown }
+            ];
 
-  const handleLogin = (userData) => {
-    setUser(userData);
-    localStorage.setItem('mockSessionUser', JSON.stringify(userData));
-  };
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <header className="bg-white shadow-sm border-b sticky top-0 z-20">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-indigo-600 p-2 rounded-lg">
+                                    <Icons.Shield className="text-white w-5 h-5" />
+                                </div>
+                                <h1 className="text-xl font-bold text-gray-800 hidden sm:block">Plataforma SaaS</h1>
+                            </div>
 
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('mockSessionUser');
-  };
+                            <div className="flex items-center gap-4">
+                                <div className="text-right hidden sm:block">
+                                    <p className="text-sm font-semibold text-gray-900">{user.name}</p>
+                                    <div className="flex items-center justify-end gap-1">
+                                        {user.type === 'corporate' && <Icons.Briefcase className="w-3 h-3 text-gray-500" />}
+                                        {user.type === 'academic' && <Icons.GraduationCap className="w-3 h-3 text-gray-500" />}
+                                        <p className="text-xs text-gray-500 capitalize">{user.type}</p>
+                                    </div>
+                                </div>
+                                
+                                <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${currentPlan.color}`}>
+                                    <PlanIcon className="w-4 h-4" />
+                                    <span className="text-sm font-bold uppercase">{currentPlan.label}</span>
+                                </div>
 
-  return (
-    <div className="font-sans text-gray-900 antialiased">
-      {user ? (
-        <Dashboard user={user} onLogout={handleLogout} />
-      ) : (
-        <Login onLogin={handleLogin} />
-      )}
-    </div>
-  );
-};
+                                <button 
+                                    onClick={onLogout}
+                                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition"
+                                    title="Cerrar Sesión"
+                                >
+                                    <Icons.LogOut className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                    </header>
 
-export default App;
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        <div className="bg-white rounded-xl shadow-sm p-6 mb-8 border-l-4 border-indigo-500">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2">Hola, {user.name.split(' ')[0]}</h2>
+                            <p className="text-gray-600">
+                                Estás navegando con el nivel de acceso <span className="font-bold">{user.plan.toUpperCase()}</span>. 
+                                Tienes desbloqueadas las herramientas de nivel {userLevel} e inferiores.
+                            </p>
+                        </div>
+
+                        <div className="mb-6 flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-gray-700">Herramientas Disponibles</h3>
+                            <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Total: {tools.length}</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {tools.map(tool => (
+                                <ToolCard 
+                                    key={tool.id} 
+                                    tool={tool} 
+                                    userLevel={userLevel} 
+                                    userType={user.type}
+                                />
+                            ))}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [user, setUser] = useState(null);
+
+            useEffect(() => {
+                const savedUser = localStorage.getItem('mockSessionUser');
+                if (savedUser) {
+                    setUser(JSON.parse(savedUser));
+                }
+            }, []);
+
+            const handleLogin = (userData) => {
+                setUser(userData);
+                localStorage.setItem('mockSessionUser', JSON.stringify(userData));
+            };
+
+            const handleLogout = () => {
+                setUser(null);
+                localStorage.removeItem('mockSessionUser');
+            };
+
+            return (
+                <div className="font-sans text-gray-900 antialiased">
+                    {user ? (
+                        <Dashboard user={user} onLogout={handleLogout} />
+                    ) : (
+                        <Login onLogin={handleLogin} />
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
