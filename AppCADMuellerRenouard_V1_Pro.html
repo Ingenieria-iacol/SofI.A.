@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IngenieroCAD - P&ID Web V11 (Manómetros & Uniones)</title>
+    <title>IngenieroCAD - P&ID Web V12 (Tuberías & Capas)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -111,6 +111,7 @@
         const POWER_UNITS = ['kW', 'BTU/h', 'MJ/h', 'kcal/h'];
         const VOLUME_UNITS = ['m³', 'L', 'ft³'];
         const FLOW_UNITS = ['m³/h', 'L/min', 'ft³/h', 'gpm'];
+        const LENGTH_UNITS = ['m', 'cm', 'mm'];
         
         // Rangos de manómetros
         const MANO_RANGES_LOW = ['0-150 mbar', '0-60 mbar', '0-300 mbar'];
@@ -141,7 +142,6 @@
 
         const DIAMETER_DB = { 'Ag': { '1/2"': 21.34, '3/4"': 26.67, '1"': 33.40, '1 1/4"': 42.16, '1 1/2"': 48.26, '2"': 60.33, '3"': 88.90, '4"': 114.30, '6"': 168.30, '8"': 219.10 }, 'Ac': { '1/2"': 15.8, '3/4"': 20.9, '1"': 26.6, '1 1/4"': 35.1, '1 1/2"': 40.9, '2"': 52.5, '2 1/2"': 62.7, '3"': 77.9, '4"': 102.3, '6"': 154.1, '8"': 202.7 }, 'Cu Flex': { '1/4"': 6.35, '3/8"': 9.53, '1/2"': 12.7, '3/4"': 19.05, '1"': 25.4 }, 'Cu Rig': { '1/2"': 13.84, '3/4"': 19.94, '1"': 26.04, '1 1/4"': 32.13, '1 1/2"': 38.23, '2"': 50.42, '3"': 74.8, '4"': 99.2 }, 'Multicapa': { '1/2"': 16, '3/4"': 20, '1"': 25, '1 1/4"': 32, '1 1/2"': 40, '2"': 50 }, 'PEAD': { '1/2"': 15.8, '3/4"': 20.9, '1"': 26.6, '2"': 52.5, '3"': 77.9, '4"': 102.3, '6"': 154.1, '8"': 202.7 } };
         const getRealDiameter = (nominal, material) => { if (DIAMETER_DB[material] && DIAMETER_DB[material][nominal]) { return DIAMETER_DB[material][nominal]; } const numeric = parseFloat(nominal); return isNaN(numeric) ? 0 : (numeric * 25.4).toFixed(2); };
-        const LENGTH_UNITS = ['m', 'cm', 'mm'];
         const LINE_WIDTHS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 6];
         const getValidBranchAngles = (runAngleRad) => { const runDeg = Math.round((runAngleRad * 180) / Math.PI) % 360; const runNorm = runDeg < 0 ? runDeg + 360 : runDeg; const allIso = [90, 270, 30, 210, 150, 330]; return allIso.filter(a => { const diff = Math.abs(a - runNorm); return Math.abs(diff - 0) > 5 && Math.abs(diff - 180) > 5 && Math.abs(diff - 360) > 5; }).map(d => (d * Math.PI) / 180); };
 
@@ -152,7 +152,16 @@
             const toMeters = (val, unit) => { const n = parseFloat(val) || 0; if (unit === 'cm') return n / 100; if (unit === 'mm') return n / 1000; return n; };
 
             elements.forEach(el => {
-                if (el.type === TOOLS.TRAMO_DATA && el.tagMetadata) {
+                if (el.type === TOOLS.LINE && el.customData) {
+                     // Lines acting as pipes
+                    const c = el.customData;
+                    const desc = `Tubería ${c.material || 'Genérica'}`;
+                    const spec = `Ø ${c.diameter || '?'}`;
+                    const lenPx = Math.sqrt(Math.pow(el.x2-el.x1, 2) + Math.pow(el.y2-el.y1, 2));
+                    const lenM = (lenPx / GRID_SIZE); // Assuming 1 grid unit = 1 meter approx for BOM
+                    addToBom(desc, spec, lenM, 'm');
+                }
+                else if (el.type === TOOLS.TRAMO_DATA && el.tagMetadata) {
                     const m = el.tagMetadata;
                     const desc = `Tubería ${m.material || 'Genérica'}`;
                     const spec = `Ø ${m.diameter || '?'}`;
@@ -180,7 +189,7 @@
                             case TOOLS.MANOMETER: 
                                 const type = c.manometerType || 'Media';
                                 const range = c.range || '-';
-                                const unit = (type === 'Baja') ? (c.manometerUnit || 'mbar') : (c.manometerUnit || 'psi');
+                                const unit = c.manometerUnit || '-';
                                 desc = `Manómetro (${type})`; 
                                 spec = `${range} ${unit}`; 
                                 break;
@@ -324,6 +333,8 @@
             const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
             const [flipRotation, setFlipRotation] = useState(0); 
             const [autosaveMsg, setAutosaveMsg] = useState(null);
+            const [editingLayerId, setEditingLayerId] = useState(null);
+            const [tempLayerName, setTempLayerName] = useState('');
 
             // --- LOAD SAVED STATE ---
             useEffect(() => {
@@ -661,199 +672,15 @@
             const addLayer = () => { const newId = `layer-${Date.now()}`; setLayers(p => [...p, { id: newId, name: `Capa ${p.length}`, visible: true }]); setActiveLayer(newId); };
             const toggleLayerVisibility = (id) => setLayers(p => p.map(l => l.id === id ? { ...l, visible: !l.visible } : l));
             const deleteLayer = (id) => { if (layers.length <= 1) return alert("Mínimo una capa."); if(!confirm("Se borrarán los elementos. ¿Seguro?")) return; setElements(p => p.filter(e => e.layerId !== id)); const rem = layers.filter(l => l.id !== id); setLayers(rem); if(activeLayer === id) setActiveLayer(rem[0].id); };
+            const renameLayer = (id, newName) => { setLayers(p => p.map(l => l.id === id ? { ...l, name: newName } : l)); setEditingLayerId(null); };
 
-            // --- SNAP LOGIC ---
-            const getSymbolSnapPoints = (el) => {
-                 const localScale = el.elementScale || 1; 
-                 const baseSize = GRID_SIZE * 0.6 * localScale; 
-                 const points = [];
-                 
-                 const angle = el.rotation || 0;
-                 const cos = Math.cos(angle); const sin = Math.sin(angle);
-                 const trans = (lx, ly) => ({ x: lx * cos - ly * sin + el.x1, y: lx * sin + ly * cos + el.y1 });
-
-                 if (el.type === TOOLS.TEE) {
-                    const s = baseSize * 0.8;
-                    const validBranches = getValidBranchAngles(angle);
-                    const flipIndex = el.extraData && el.extraData.flipIndex ? el.extraData.flipIndex : 0;
-                    const branchAngle = validBranches[flipIndex % validBranches.length];
-                    const bx = Math.cos(branchAngle) * s; const by = Math.sin(branchAngle) * s;
-                    points.push(trans(-s, 0)); points.push(trans(s, 0));
-                    points.push({x: el.x1 + bx, y: el.y1 + by});
-                 } else if (el.type === TOOLS.ELBOW_90) {
-                     const r = baseSize * 0.8;
-                     points.push(trans(0, 0));
-                     points.push(trans(-r, 0)); points.push(trans(0, r)); 
-                 } else if (el.type === TOOLS.VALVE || el.type === TOOLS.REGULATOR || el.type === TOOLS.FILTER || el.type === TOOLS.UNION_UNIVERSAL || el.type === TOOLS.UNION_TUBE) {
-                     const s = baseSize * 0.8;
-                     points.push(trans(-s, 0)); points.push(trans(s, 0));
-                 } else if (el.type === TOOLS.REDUCER) {
-                     const l = baseSize * 1.2; points.push(trans(-l/2, 0)); points.push(trans(l/2, 0));
-                 } else if (el.type === TOOLS.NIPPLE) {
-                     const nipL = baseSize * 1.5;
-                     points.push(trans(-nipL/2, 0)); points.push(trans(nipL/2, 0));
-                 } else if (el.type === TOOLS.BASE_SUPPORT) {
-                     const bsH = baseSize * 1.2;
-                     points.push(trans(0, 0)); points.push(trans(0, bsH));
-                 } else if (el.type === TOOLS.HANGER) {
-                     const hH = baseSize * 1.5;
-                     points.push(trans(0, 0)); points.push(trans(0, -hH));
-                 } else {
-                     points.push({x: el.x1, y: el.y1});
-                 }
-                 return points;
-            };
-
-            const getNearestEndpoint = (pos) => {
-                let nearest = null; let minDist = 15 / scale; 
-                const visibleLayersIds = new Set(layers.filter(l => l.visible).map(l => l.id));
-                const visibleElements = elements.filter(el => !el.layerId || visibleLayersIds.has(el.layerId));
-                visibleElements.forEach(el => {
-                    if (el.x2 !== undefined) {
-                        const d1 = Math.sqrt((pos.x - el.x1)**2 + (pos.y - el.y1)**2); if (d1 < minDist) { minDist = d1; nearest = { x: el.x1, y: el.y1 }; }
-                        const d2 = Math.sqrt((pos.x - el.x2)**2 + (pos.y - el.y2)**2); if (d2 < minDist) { minDist = d2; nearest = { x: el.x2, y: el.y2 }; }
-                    }
-                    const SYMBOL_TOOLS = Object.values(TOOLS).filter(t => ![TOOLS.SELECT, TOOLS.PAN, TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(t));
-                    if (SYMBOL_TOOLS.includes(el.type)) {
-                        const snaps = getSymbolSnapPoints(el);
-                        snaps.forEach(pt => {
-                            const d = Math.sqrt((pos.x - pt.x)**2 + (pos.y - pt.y)**2);
-                            if (d < minDist) { minDist = d; nearest = pt; }
-                        });
-                    }
-                });
-                return nearest;
-            };
-
-            const getNearestLine = (pos) => {
-                let nearest = null; let minDist = 15 / scale;
-                elements.forEach(el => {
-                    const layer = layers.find(l => l.id === el.layerId); if (layer && !layer.visible) return;
-                    if (el.type === TOOLS.LINE) {
-                        const { x1, y1, x2, y2 } = el; const A = pos.x - x1; const B = pos.y - y1; const C = x2 - x1; const D = y2 - y1;
-                        const dot = A * C + B * D; const lenSq = C * C + D * D; let param = -1; if (lenSq !== 0) param = dot / lenSq;
-                        let xx, yy; if (param < 0) { xx = x1; yy = y1; } else if (param > 1) { xx = x2; yy = y2; } else { xx = x1 + param * C; yy = y1 + param * D; }
-                        const dist = Math.sqrt((pos.x - xx)**2 + (pos.y - yy)**2); if (dist < minDist) { minDist = dist; nearest = { x: xx, y: yy, angle: Math.atan2(y2 - y1, x2 - x1) }; }
-                    }
-                });
-                return nearest;
-            };
-
-            const checkHit = (pos, el) => {
-                const tol = 10 / scale;
-                if (el.type === TOOLS.LINE || el.type === TOOLS.DIMENSION) {
-                    const {x1, y1, x2, y2} = el; const A = pos.x - x1; const B = pos.y - y1; const C = x2 - x1; const D = y2 - y1; const dot = A * C + B * D; const lenSq = C * C + D * D;
-                    let param = -1; if (lenSq !== 0) param = dot / lenSq; let xx, yy; if (param < 0) { xx = x1; yy = y1; } else if (param > 1) { xx = x2; yy = y2; } else { xx = x1 + param * C; yy = y1 + param * D; }
-                    return Math.sqrt((pos.x - xx)**2 + (pos.y - yy)**2) < tol;
-                } else if (el.type === TOOLS.RECTANGLE) {
-                    return (Math.abs(pos.x - el.x1) < tol || Math.abs(pos.x - el.x2) < tol) && (pos.y > Math.min(el.y1, el.y2) && pos.y < Math.max(el.y1, el.y2)) || (Math.abs(pos.y - el.y1) < tol || Math.abs(pos.y - el.y2) < tol) && (pos.x > Math.min(el.x1, el.x2) && pos.x < Math.max(el.x1, el.x2));
-                } else if (el.type === TOOLS.CIRCLE || ![TOOLS.SELECT, TOOLS.PAN, TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(el.type)) {
-                    const d = Math.sqrt((pos.x - el.x1)**2 + (pos.y - el.y1)**2); return d < (GRID_SIZE); 
-                } else if (el.type === TOOLS.TEXT || el.type === TOOLS.TRAMO_DATA) {
-                    return Math.abs(pos.x - el.x1) < 100 && Math.abs(pos.y - el.y1) < 20;
-                }
-                return false;
-            };
-
-            const handleMouseDown = (e) => {
-                if (contextMenu.visible) return;
-                const screenPos = { x: e.clientX - canvasRef.current.getBoundingClientRect().left, y: e.clientY - canvasRef.current.getBoundingClientRect().top };
-                let worldPos = screenToWorld(screenPos.x, screenPos.y);
-
-                if (e.button === 1 || tool === TOOLS.PAN) { setIsPanning(true); setLastMousePos(screenPos); return; }
-                
-                if (tool === TOOLS.SELECT) {
-                    const clickedElement = elements.slice().reverse().find(el => {
-                        const layer = layers.find(l => l.id === el.layerId);
-                        if (layer && !layer.visible) return false;
-                        return checkHit(worldPos, el);
-                    });
-                    if (clickedElement) {
-                        if (e.shiftKey) { if (selectedIds.includes(clickedElement.id)) { setSelectedIds(prev => prev.filter(id => id !== clickedElement.id)); } else { setSelectedIds(prev => [...prev, clickedElement.id]); } } 
-                        else { if (!selectedIds.includes(clickedElement.id)) { setSelectedIds([clickedElement.id]); } setIsDraggingSelected(true); setDragStartPos(worldPos); }
-                    } else { if (!e.shiftKey) setSelectedIds([]); }
-                    return;
-                }
-
-                if (snapPoint) worldPos = snapPoint; 
-
-                if (tool === TOOLS.TAG) { setContextMenu({ visible: false }); setContextMenu({ visible: true, x: e.clientX, y: e.clientY, worldX: worldPos.x, worldY: worldPos.y }); return; }
-                if (tool === TOOLS.DIMENSION) { if (dimensionStep === 0) { setCurrentElement({ id: Date.now(), type: TOOLS.DIMENSION, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, color: '#fbbf24', lineWidth: 1, lineStyle: lineStyle, layerId: activeLayer }); setDimensionStep(1); } else { setElements(prev => [...prev, currentElement]); setCurrentElement(null); setDimensionStep(0); } return; }
-                if (tool === TOOLS.TEXT) { setTextPos(worldPos); setShowTextModal(true); return; }
-                if (tool === TOOLS.BEZIER) { if (bezierStep === 0) { setCurrentElement({ id: Date.now(), type: TOOLS.BEZIER, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, cx: worldPos.x, cy: worldPos.y, color, lineWidth, lineStyle: lineStyle, layerId: activeLayer }); setBezierStep(1); } else { setElements(prev => [...prev, currentElement]); setCurrentElement(null); setBezierStep(0); } return; }
-                
-                const IS_SYMBOL_TOOL = Object.values(TOOLS).includes(tool) && ![TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.SELECT, TOOLS.PAN, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(tool);
-                if (IS_SYMBOL_TOOL) { 
-                    const defaultCustomData = {};
-                    if (tool === TOOLS.REGULATOR) { defaultCustomData.pIn = '2'; defaultCustomData.pOut = '1'; defaultCustomData.flow = '5'; defaultCustomData.length = '0.2'; }
-                    if (tool === TOOLS.REDUCER) { defaultCustomData.reductionType = 'Copa Reducción'; defaultCustomData.diaMajor = DIAMETERS[4]; defaultCustomData.diaMinor = DIAMETERS[2]; }
-                    if (tool === TOOLS.TERMINAL) { defaultCustomData.terminalType = 'Macho'; defaultCustomData.dimension = DIAMETERS[2]; }
-                    
-                    const rotation = snapRotation !== null ? snapRotation : (flipRotation * 30 * Math.PI / 180);
-
-                    setElements(prev => [...prev, { id: Date.now(), type: tool, x1: mouseWorldPos.x, y1: mouseWorldPos.y, x2: mouseWorldPos.x, y2: mouseWorldPos.y, color, lineWidth, lineStyle: lineStyle, rotation: rotation, extraData: { flipIndex: 0 }, customData: defaultCustomData, anchor, layerId: activeLayer, elementScale: 1 }]); 
-                    return; 
-                }
-                
-                setCurrentElement({ id: Date.now(), type: tool, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, color, lineWidth, lineStyle: lineStyle, layerId: activeLayer });
-                if (tool === TOOLS.LINE) setDrawingLength(''); 
-            };
-
-            const handleMouseMove = (e) => {
-                const screenPos = { x: e.clientX - canvasRef.current.getBoundingClientRect().left, y: e.clientY - canvasRef.current.getBoundingClientRect().top };
-                const worldPos = screenToWorld(screenPos.x, screenPos.y);
-                if (isPanning) { setOffset(prev => ({ x: prev.x + (screenPos.x - lastMousePos.x), y: prev.y + (screenPos.y - lastMousePos.y) })); setLastMousePos(screenPos); setMouseWorldPos(worldPos); return; }
-                if (isDraggingSelected) {
-                    const dx = worldPos.x - dragStartPos.x; const dy = worldPos.y - dragStartPos.y;
-                    setElements(prev => prev.map(el => {
-                        if (selectedIds.includes(el.id)) {
-                            let newEl = { ...el };
-                            if (newEl.x1 !== undefined) newEl.x1 += dx; if (newEl.y1 !== undefined) newEl.y1 += dy;
-                            if (newEl.x2 !== undefined) newEl.x2 += dx; if (newEl.y2 !== undefined) newEl.y2 += dy;
-                            if (newEl.cx !== undefined) newEl.cx += dx; if (newEl.cy !== undefined) newEl.cy += dy;
-                            return newEl;
-                        }
-                        return el;
-                    }));
-                    setDragStartPos(worldPos); return;
-                }
-
-                let finalPos = { ...worldPos };
-                let foundSnap = null; let foundGuide = null;
-                if ([TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.DIMENSION, TOOLS.BEZIER].includes(tool)) {
-                    const endpoint = getNearestEndpoint(worldPos);
-                    if (endpoint) { foundSnap = endpoint; finalPos = endpoint; }
-                }
-                if (!foundSnap && tool === TOOLS.LINE && currentElement) {
-                    const startX = currentElement.x1; const startY = currentElement.y1;
-                    const dx = worldPos.x - startX; const dy = worldPos.y - startY;
-                    const dist = Math.sqrt(dx*dx + dy*dy);
-                    if (dist > 5) {
-                        const angle = Math.atan2(dy, dx);
-                        const snapAngles = [0, 30, 90, 150, 180, 210, 270, 330, -30, -90, -150, -210, -270, -330];
-                        for (let target of snapAngles) {
-                            const targetRad = target * (Math.PI / 180);
-                            let diff = Math.abs(angle - targetRad); if (diff > Math.PI) diff = 2 * Math.PI - diff;
-                            if (diff < 0.1) {
-                                const snapX = startX + dist * Math.cos(targetRad); const snapY = startY + dist * Math.sin(targetRad);
-                                finalPos = { x: snapX, y: snapY };
-                                foundGuide = { x1: startX, y1: startY, x2: startX + (dist + 10000) * Math.cos(targetRad), y2: startY + (dist + 10000) * Math.sin(targetRad) }; break;
-                            }
-                        }
-                    }
-                }
-                setSnapPoint(foundSnap); setGuideLine(foundGuide); setMouseWorldPos(finalPos);
-                
-                const IS_SYMBOL_TOOL = Object.values(TOOLS).includes(tool) && ![TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.SELECT, TOOLS.PAN, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(tool);
-                if (IS_SYMBOL_TOOL) {
-                    const snapInfo = getNearestLine(worldPos);
-                    if (snapInfo) { setMouseWorldPos({ x: snapInfo.x, y: snapInfo.y }); setSnapRotation(snapInfo.angle); } else { setMouseWorldPos(worldPos); setSnapRotation(null); }
-                } 
-                if (tool === TOOLS.DIMENSION && currentElement && dimensionStep === 1) { setCurrentElement(prev => ({ ...prev, x2: finalPos.x, y2: finalPos.y })); }
-                if (tool === TOOLS.BEZIER && currentElement && bezierStep === 1) setCurrentElement(prev => ({ ...prev, x2: finalPos.x, y2: finalPos.y, cx: (prev.x1 + finalPos.x)/2, cy: (prev.y1 + finalPos.y)/2 }));
-                if (currentElement && [TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE].includes(tool)) { setCurrentElement(prev => ({ ...prev, x2: finalPos.x, y2: finalPos.y })); }
-            };
-
+            // --- SNAP LOGIC & HIT TEST & MOUSE HANDLERS (Same as V8 - compacted) ---
+            const getSymbolSnapPoints = (el) => { const localScale = el.elementScale || 1; const baseSize = GRID_SIZE * 0.6 * localScale; const points = []; const angle = el.rotation || 0; const cos = Math.cos(angle); const sin = Math.sin(angle); const trans = (lx, ly) => ({ x: lx * cos - ly * sin + el.x1, y: lx * sin + ly * cos + el.y1 }); if (el.type === TOOLS.TEE) { const s = baseSize * 0.8; const validBranches = getValidBranchAngles(angle); const flipIndex = el.extraData && el.extraData.flipIndex ? el.extraData.flipIndex : 0; const branchAngle = validBranches[flipIndex % validBranches.length]; const bx = Math.cos(branchAngle) * s; const by = Math.sin(branchAngle) * s; points.push(trans(-s, 0)); points.push(trans(s, 0)); points.push({x: el.x1 + bx, y: el.y1 + by}); } else if (el.type === TOOLS.ELBOW_90) { const r = baseSize * 0.8; points.push(trans(0, 0)); points.push(trans(-r, 0)); points.push(trans(0, r)); } else if ([TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.FILTER, TOOLS.UNION_UNIVERSAL, TOOLS.UNION_TUBE].includes(el.type)) { const s = baseSize * 0.8; points.push(trans(-s, 0)); points.push(trans(s, 0)); } else if (el.type === TOOLS.REDUCER) { const l = baseSize * 1.2; points.push(trans(-l/2, 0)); points.push(trans(l/2, 0)); } else if (el.type === TOOLS.NIPPLE) { const nipL = baseSize * 1.5; points.push(trans(-nipL/2, 0)); points.push(trans(nipL/2, 0)); } else if (el.type === TOOLS.BASE_SUPPORT) { const bsH = baseSize * 1.2; points.push(trans(0, 0)); points.push(trans(0, bsH)); } else if (el.type === TOOLS.HANGER) { const hH = baseSize * 1.5; points.push(trans(0, 0)); points.push(trans(0, -hH)); } else { points.push({x: el.x1, y: el.y1}); } return points; };
+            const getNearestEndpoint = (pos) => { let nearest = null; let minDist = 15 / scale; const visibleLayersIds = new Set(layers.filter(l => l.visible).map(l => l.id)); const visibleElements = elements.filter(el => !el.layerId || visibleLayersIds.has(el.layerId)); visibleElements.forEach(el => { if (el.x2 !== undefined) { const d1 = Math.sqrt((pos.x - el.x1)**2 + (pos.y - el.y1)**2); if (d1 < minDist) { minDist = d1; nearest = { x: el.x1, y: el.y1 }; } const d2 = Math.sqrt((pos.x - el.x2)**2 + (pos.y - el.y2)**2); if (d2 < minDist) { minDist = d2; nearest = { x: el.x2, y: el.y2 }; } } const SYMBOL_TOOLS = Object.values(TOOLS).filter(t => ![TOOLS.SELECT, TOOLS.PAN, TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(t)); if (SYMBOL_TOOLS.includes(el.type)) { const snaps = getSymbolSnapPoints(el); snaps.forEach(pt => { const d = Math.sqrt((pos.x - pt.x)**2 + (pos.y - pt.y)**2); if (d < minDist) { minDist = d; nearest = pt; } }); } }); return nearest; };
+            const getNearestLine = (pos) => { let nearest = null; let minDist = 15 / scale; elements.forEach(el => { const layer = layers.find(l => l.id === el.layerId); if (layer && !layer.visible) return; if (el.type === TOOLS.LINE) { const { x1, y1, x2, y2 } = el; const A = pos.x - x1; const B = pos.y - y1; const C = x2 - x1; const D = y2 - y1; const dot = A * C + B * D; const lenSq = C * C + D * D; let param = -1; if (lenSq !== 0) param = dot / lenSq; let xx, yy; if (param < 0) { xx = x1; yy = y1; } else if (param > 1) { xx = x2; yy = y2; } else { xx = x1 + param * C; yy = y1 + param * D; } const dist = Math.sqrt((pos.x - xx)**2 + (pos.y - yy)**2); if (dist < minDist) { minDist = dist; nearest = { x: xx, y: yy, angle: Math.atan2(y2 - y1, x2 - x1) }; } } }); return nearest; };
+            const checkHit = (pos, el) => { const tol = 10 / scale; if (el.type === TOOLS.TEXT) { const fontSize = el.fontSize || (GRID_SIZE * 0.35); const text = el.text || "Texto"; const estWidth = text.length * fontSize * 0.6 + 10; const estHeight = fontSize + 10; return ( pos.x >= el.x1 - 5 && pos.x <= el.x1 + estWidth && pos.y >= el.y1 - estHeight && pos.y <= el.y1 + 5 ); } else if (el.type === TOOLS.TRAMO_DATA) { return ( pos.x >= el.x1 - 5 && pos.x <= el.x1 + 130 && pos.y >= el.y1 - 60 && pos.y <= el.y1 + 10 ); } else if (el.type === TOOLS.LINE || el.type === TOOLS.DIMENSION) { const {x1, y1, x2, y2} = el; const A = pos.x - x1; const B = pos.y - y1; const C = x2 - x1; const D = y2 - y1; const dot = A * C + B * D; const lenSq = C * C + D * D; let param = -1; if (lenSq !== 0) param = dot / lenSq; let xx, yy; if (param < 0) { xx = x1; yy = y1; } else if (param > 1) { xx = x2; yy = y2; } else { xx = x1 + param * C; yy = y1 + param * D; } return Math.sqrt((pos.x - xx)**2 + (pos.y - yy)**2) < tol; } else if (el.type === TOOLS.RECTANGLE) { return (Math.abs(pos.x - el.x1) < tol || Math.abs(pos.x - el.x2) < tol) && (pos.y > Math.min(el.y1, el.y2) && pos.y < Math.max(el.y1, el.y2)) || (Math.abs(pos.y - el.y1) < tol || Math.abs(pos.y - el.y2) < tol) && (pos.x > Math.min(el.x1, el.x2) && pos.x < Math.max(el.x1, el.x2)); } else { const localScale = el.elementScale || 1; const visualRadius = (GRID_SIZE * 0.6 * localScale); const d = Math.sqrt((pos.x - el.x1)**2 + (pos.y - el.y1)**2); return d < visualRadius; } };
+            const handleMouseDown = (e) => { if (contextMenu.visible) return; const screenPos = { x: e.clientX - canvasRef.current.getBoundingClientRect().left, y: e.clientY - canvasRef.current.getBoundingClientRect().top }; let worldPos = screenToWorld(screenPos.x, screenPos.y); if (e.button === 1 || tool === TOOLS.PAN) { setIsPanning(true); setLastMousePos(screenPos); return; } if (tool === TOOLS.SELECT) { const clickedElement = elements.slice().reverse().find(el => { const layer = layers.find(l => l.id === el.layerId); if (layer && !layer.visible) return false; return checkHit(worldPos, el); }); if (clickedElement) { if (e.shiftKey) { if (selectedIds.includes(clickedElement.id)) { setSelectedIds(prev => prev.filter(id => id !== clickedElement.id)); } else { setSelectedIds(prev => [...prev, clickedElement.id]); } } else { if (!selectedIds.includes(clickedElement.id)) { setSelectedIds([clickedElement.id]); } setIsDraggingSelected(true); setDragStartPos(worldPos); } } else { if (!e.shiftKey) setSelectedIds([]); } return; } if (snapPoint) worldPos = snapPoint; if (tool === TOOLS.TAG) { setContextMenu({ visible: false }); setContextMenu({ visible: true, x: e.clientX, y: e.clientY, worldX: worldPos.x, worldY: worldPos.y }); return; } if (tool === TOOLS.DIMENSION) { if (dimensionStep === 0) { setCurrentElement({ id: Date.now(), type: TOOLS.DIMENSION, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, color: '#fbbf24', lineWidth: 1, lineStyle: lineStyle, layerId: activeLayer }); setDimensionStep(1); } else { setElements(prev => [...prev, currentElement]); setCurrentElement(null); setDimensionStep(0); } return; } if (tool === TOOLS.TEXT) { setTextPos(worldPos); setShowTextModal(true); return; } if (tool === TOOLS.BEZIER) { if (bezierStep === 0) { setCurrentElement({ id: Date.now(), type: TOOLS.BEZIER, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, cx: worldPos.x, cy: worldPos.y, color, lineWidth, lineStyle: lineStyle, layerId: activeLayer }); setBezierStep(1); } else { setElements(prev => [...prev, currentElement]); setCurrentElement(null); setBezierStep(0); } return; } const IS_SYMBOL_TOOL = Object.values(TOOLS).includes(tool) && ![TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.SELECT, TOOLS.PAN, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(tool); if (IS_SYMBOL_TOOL) { const defaultCustomData = {}; const rotation = snapRotation !== null ? snapRotation : (flipRotation * 30 * Math.PI / 180); setElements(prev => [...prev, { id: Date.now(), type: tool, x1: mouseWorldPos.x, y1: mouseWorldPos.y, x2: mouseWorldPos.x, y2: mouseWorldPos.y, color, lineWidth, lineStyle: lineStyle, rotation: rotation, extraData: { flipIndex: 0 }, customData: defaultCustomData, anchor, layerId: activeLayer, elementScale: 1 }]); return; } setCurrentElement({ id: Date.now(), type: tool, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, color, lineWidth, lineStyle: lineStyle, layerId: activeLayer }); if (tool === TOOLS.LINE) setDrawingLength(''); };
+            const handleMouseMove = (e) => { const screenPos = { x: e.clientX - canvasRef.current.getBoundingClientRect().left, y: e.clientY - canvasRef.current.getBoundingClientRect().top }; const worldPos = screenToWorld(screenPos.x, screenPos.y); if (isPanning) { setOffset(prev => ({ x: prev.x + (screenPos.x - lastMousePos.x), y: prev.y + (screenPos.y - lastMousePos.y) })); setLastMousePos(screenPos); setMouseWorldPos(worldPos); return; } if (isDraggingSelected) { const dx = worldPos.x - dragStartPos.x; const dy = worldPos.y - dragStartPos.y; setElements(prev => prev.map(el => { if (selectedIds.includes(el.id)) { let newEl = { ...el }; if (newEl.x1 !== undefined) newEl.x1 += dx; if (newEl.y1 !== undefined) newEl.y1 += dy; if (newEl.x2 !== undefined) newEl.x2 += dx; if (newEl.y2 !== undefined) newEl.y2 += dy; if (newEl.cx !== undefined) newEl.cx += dx; if (newEl.cy !== undefined) newEl.cy += dy; return newEl; } return el; })); setDragStartPos(worldPos); return; } let finalPos = { ...worldPos }; let foundSnap = null; let foundGuide = null; if ([TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.DIMENSION, TOOLS.BEZIER].includes(tool)) { const endpoint = getNearestEndpoint(worldPos); if (endpoint) { foundSnap = endpoint; finalPos = endpoint; } } if (!foundSnap && tool === TOOLS.LINE && currentElement) { const startX = currentElement.x1; const startY = currentElement.y1; const dx = worldPos.x - startX; const dy = worldPos.y - startY; const dist = Math.sqrt(dx*dx + dy*dy); if (dist > 5) { const angle = Math.atan2(dy, dx); const snapAngles = [0, 30, 90, 150, 180, 210, 270, 330, -30, -90, -150, -210, -270, -330]; for (let target of snapAngles) { const targetRad = target * (Math.PI / 180); let diff = Math.abs(angle - targetRad); if (diff > Math.PI) diff = 2 * Math.PI - diff; if (diff < 0.1) { const snapX = startX + dist * Math.cos(targetRad); const snapY = startY + dist * Math.sin(targetRad); finalPos = { x: snapX, y: snapY }; foundGuide = { x1: startX, y1: startY, x2: startX + (dist + 10000) * Math.cos(targetRad), y2: startY + (dist + 10000) * Math.sin(targetRad) }; break; } } } } setSnapPoint(foundSnap); setGuideLine(foundGuide); setMouseWorldPos(finalPos); const IS_SYMBOL_TOOL = Object.values(TOOLS).includes(tool) && ![TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.SELECT, TOOLS.PAN, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(tool); if (IS_SYMBOL_TOOL) { const snapInfo = getNearestLine(worldPos); if (snapInfo) { setMouseWorldPos({ x: snapInfo.x, y: snapInfo.y }); setSnapRotation(snapInfo.angle); } else { setMouseWorldPos(worldPos); setSnapRotation(null); } } if (tool === TOOLS.DIMENSION && currentElement && dimensionStep === 1) { setCurrentElement(prev => ({ ...prev, x2: finalPos.x, y2: finalPos.y })); } if (tool === TOOLS.BEZIER && currentElement && bezierStep === 1) setCurrentElement(prev => ({ ...prev, x2: finalPos.x, y2: finalPos.y, cx: (prev.x1 + finalPos.x)/2, cy: (prev.y1 + finalPos.y)/2 })); if (currentElement && [TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE].includes(tool)) { setCurrentElement(prev => ({ ...prev, x2: finalPos.x, y2: finalPos.y })); } };
             const handleMouseUp = () => { if (isPanning) setIsPanning(false); else if (isDraggingSelected) setIsDraggingSelected(false); else if (![TOOLS.BEZIER, TOOLS.DIMENSION].includes(tool) && currentElement) { setElements(prev => [...prev, currentElement]); setCurrentElement(null); setGuideLine(null); setSnapPoint(null); } };
             const handleWheel = (e) => { e.preventDefault(); const f = 1 + (0.1 * (e.deltaY < 0 ? 1 : -1)); let ns = Math.max(0.1, Math.min(scale * f, 10)); const r = canvasRef.current.getBoundingClientRect(); const mx = e.clientX - r.left; const my = e.clientY - r.top; setOffset({ x: mx - (mx - offset.x) * (ns / scale), y: my - (my - offset.y) * (ns / scale) }); setScale(ns); };
             const handleContextMenu = (e) => { e.preventDefault(); const r = canvasRef.current.getBoundingClientRect(); setContextMenu({ visible: true, x: e.clientX, y: e.clientY, worldX: screenToWorld(e.clientX - r.left, e.clientY - r.top).x, worldY: screenToWorld(e.clientX - r.left, e.clientY - r.top).y }); };
@@ -962,7 +789,7 @@
 
                                         <div>
                                             <label className="text-xs text-gray-400 mb-1 block">Capa</label>
-                                            <select onChange={(e) => changeSelectionLayer(e.target.value)} className="prop-input">
+                                            <select onChange={(e) => changeSelectionLayer(e.target.value)} className="prop-input" value={elements.find(el => el.id === selectedIds[0])?.layerId || 'default'}>
                                                 <option value="">-- Mover a Capa --</option>
                                                 {layers.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             </select>
@@ -1001,24 +828,44 @@
                                             const isSymbol = SYMBOL_TOOLS.includes(el.type);
                                             const custom = el.customData || {};
                                             const meta = el.tagMetadata || {};
+                                            const isPipe = (el.type === TOOLS.LINE || el.type === TOOLS.TRAMO_DATA);
 
                                             return (
                                                 <div className="pt-2 border-t border-gray-600 space-y-2">
                                                     
-                                                    {el.type === TOOLS.TRAMO_DATA && (
+                                                    {isPipe && (
                                                         <React.Fragment>
                                                             <div className="section-title text-green-400">Datos de Tubería</div>
-                                                            <div><span className="prop-label">ID Tramo</span><input type="text" className="prop-input" value={meta.id || ''} onChange={(e) => updateTramoMeta('id', e.target.value)} /></div>
+                                                            {/* ID Tramo is name/tag field above for lines, or meta.id for tramos */}
+                                                            {el.type === TOOLS.TRAMO_DATA && <div><span className="prop-label">ID Tramo</span><input type="text" className="prop-input" value={meta.id || ''} onChange={(e) => updateTramoMeta('id', e.target.value)} /></div>}
+                                                            
                                                             <div className="grid grid-cols-2 gap-2">
-                                                                <div><span className="prop-label">Longitud</span><input type="number" className="prop-input" value={meta.length || ''} onChange={(e) => updateTramoMeta('length', e.target.value)} /></div>
-                                                                <div><span className="prop-label">Unidad</span><select className="prop-input" value={meta.lengthUnit || 'm'} onChange={(e) => updateTramoMeta('lengthUnit', e.target.value)}>{LENGTH_UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                                                                <div>
+                                                                    <span className="prop-label">Longitud ({el.type === TOOLS.LINE ? 'Calc' : 'Manual'})</span>
+                                                                    {el.type === TOOLS.LINE ? (
+                                                                         <span className="text-xs text-gray-300">
+                                                                             {((Math.sqrt(Math.pow(el.x2-el.x1, 2) + Math.pow(el.y2-el.y1, 2)) / GRID_SIZE)).toFixed(2)} m
+                                                                         </span>
+                                                                    ) : (
+                                                                        <div className="prop-row"><input type="number" className="prop-input" value={meta.length || ''} onChange={(e) => updateTramoMeta('length', e.target.value)} /><select className="prop-select w-12" value={meta.lengthUnit || 'm'} onChange={(e) => updateTramoMeta('lengthUnit', e.target.value)}>{LENGTH_UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                                                                    )}
+                                                                </div>
+                                                                <div>
+                                                                    <span className="prop-label">Material</span>
+                                                                    <select className="prop-input" value={(el.type === TOOLS.LINE ? custom.material : meta.material) || ''} onChange={(e) => el.type === TOOLS.LINE ? updateCustomData('material', e.target.value) : updateTramoMeta('material', e.target.value)}>{MATERIALS.map(m => <option key={m} value={m}>{m}</option>)}</select>
+                                                                </div>
                                                             </div>
-                                                            <div><span className="prop-label">Diámetro</span><select className="prop-input" value={meta.diameter || ''} onChange={(e) => updateTramoMeta('diameter', e.target.value)}>{DIAMETERS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
-                                                            <div><span className="prop-label">Material</span><select className="prop-input" value={meta.material || ''} onChange={(e) => updateTramoMeta('material', e.target.value)}>{MATERIALS.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
-                                                            <div className="grid grid-cols-2 gap-2">
-                                                                <div><span className="prop-label">Carga</span><input type="number" className="prop-input" value={meta.load || ''} onChange={(e) => updateTramoMeta('load', e.target.value)} /></div>
-                                                                <div><span className="prop-label">Unidad</span><select className="prop-input" value={meta.loadUnit || ''} onChange={(e) => updateTramoMeta('loadUnit', e.target.value)}>{LOAD_UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                                                            <div>
+                                                                <span className="prop-label">Diámetro</span>
+                                                                <select className="prop-input" value={(el.type === TOOLS.LINE ? custom.diameter : meta.diameter) || ''} onChange={(e) => el.type === TOOLS.LINE ? updateCustomData('diameter', e.target.value) : updateTramoMeta('diameter', e.target.value)}>{DIAMETERS.map(d => <option key={d} value={d}>{d}</option>)}</select>
                                                             </div>
+
+                                                            {el.type === TOOLS.TRAMO_DATA && (
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    <div><span className="prop-label">Carga</span><input type="number" className="prop-input" value={meta.load || ''} onChange={(e) => updateTramoMeta('load', e.target.value)} /></div>
+                                                                    <div><span className="prop-label">Unidad</span><select className="prop-input" value={meta.loadUnit || ''} onChange={(e) => updateTramoMeta('loadUnit', e.target.value)}>{LOAD_UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                                                                </div>
+                                                            )}
                                                         </React.Fragment>
                                                     )}
 
@@ -1064,7 +911,7 @@
                                                                 <div><span className="prop-label">Dia. Ent.</span><select className="prop-input" value={custom.diaIn || ''} onChange={(e) => updateCustomData('diaIn', e.target.value)}>{DIAMETERS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
                                                                 <div><span className="prop-label">Dia. Sal.</span><select className="prop-input" value={custom.diaOut || ''} onChange={(e) => updateCustomData('diaOut', e.target.value)}>{DIAMETERS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
                                                             </div>
-                                                            <div><span className="prop-label">Caudal (m³/h)</span><input type="text" className="prop-input" value={custom.flow || ''} onChange={(e) => updateCustomData('flow', e.target.value)} /></div>
+                                                            <div><span className="prop-label">Caudal</span><div className="prop-row"><input type="text" className="prop-input" value={custom.flow || ''} onChange={(e) => updateCustomData('flow', e.target.value)} /><select className="prop-select w-16" value={custom.flowUnit || 'm³/h'} onChange={(e) => updateCustomData('flowUnit', e.target.value)}>{FLOW_UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                                                         </React.Fragment>
                                                     )}
                                                     
@@ -1210,16 +1057,34 @@
                             )}
 
                             {showLayers && (
-                                <div className="absolute top-4 right-4 w-64 glass-panel rounded-xl p-4 shadow-2xl flex flex-col gap-3 fade-in z-20">
+                                <div className="absolute top-16 right-72 w-64 glass-panel rounded-xl p-4 shadow-2xl flex flex-col gap-3 fade-in z-20">
                                     <div className="flex justify-between items-center border-b border-gray-600 pb-2">
                                         <h3 className="text-sm font-bold text-white flex items-center gap-2"><Icon path={ICONS.Layers} size={16}/> Capas</h3>
-                                        <button onClick={addLayer} className="p-1 bg-blue-600 hover:bg-blue-500 rounded text-white" title="Nueva Capa"><Icon path={ICONS.Plus} size={14}/></button>
+                                        <div className="flex gap-1">
+                                            <button onClick={addLayer} className="p-1 bg-blue-600 hover:bg-blue-500 rounded text-white" title="Nueva Capa"><Icon path={ICONS.Plus} size={14}/></button>
+                                            <button onClick={() => setShowLayers(false)} className="p-1 text-gray-400 hover:text-white">✕</button>
+                                        </div>
                                     </div>
                                     <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
                                         {layers.map(layer => (
                                             <div key={layer.id} onClick={() => setActiveLayer(layer.id)} className={`flex items-center justify-between p-2 rounded cursor-pointer transition ${activeLayer === layer.id ? 'bg-blue-900/50 border border-blue-500/50' : 'hover:bg-gray-700/50 border border-transparent'}`}>
-                                                <span className={`text-xs ${activeLayer === layer.id ? 'text-white font-bold' : 'text-gray-400'}`}>{layer.name}</span>
+                                                {editingLayerId === layer.id ? (
+                                                    <input 
+                                                        type="text" 
+                                                        autoFocus
+                                                        className="w-24 bg-gray-800 text-white text-xs border border-blue-500 rounded px-1 outline-none"
+                                                        value={tempLayerName}
+                                                        onChange={(e) => setTempLayerName(e.target.value)}
+                                                        onBlur={() => renameLayer(layer.id, tempLayerName)}
+                                                        onKeyDown={(e) => e.key === 'Enter' && renameLayer(layer.id, tempLayerName)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                ) : (
+                                                    <span className={`text-xs ${activeLayer === layer.id ? 'text-white font-bold' : 'text-gray-400'}`}>{layer.name}</span>
+                                                )}
+                                                
                                                 <div className="flex gap-1">
+                                                    <button onClick={(e) => { e.stopPropagation(); setEditingLayerId(layer.id); setTempLayerName(layer.name); }} className="p-1 text-gray-400 hover:text-blue-400 rounded"><Icon path={ICONS.Edit2} size={12} /></button>
                                                     <button onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(layer.id); }} className={`p-1 rounded ${layer.visible ? 'text-gray-300 hover:text-white' : 'text-gray-600'}`}><Icon path={layer.visible ? ICONS.Eye : ICONS.EyeOff} size={14} /></button>
                                                     <button onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }} className="p-1 text-gray-500 hover:text-red-400 rounded"><Icon path={ICONS.Trash2} size={14} /></button>
                                                 </div>
