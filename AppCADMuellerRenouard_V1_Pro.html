@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IngenieroCAD - P&ID Web V9 (Exportación Profesional)</title>
+    <title>IngenieroCAD - P&ID Web V10 (Estable)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,7 +15,7 @@
     <!-- Babel para JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- jsPDF & SheetJS (AutoTable plugin added for better PDF tables) -->
+    <!-- jsPDF & SheetJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -33,6 +33,8 @@
         .context-menu-item { padding: 8px 16px; cursor: pointer; color: #d1d5db; font-size: 14px; display: flex; align-items: center; gap: 8px; }
         .context-menu-item:hover { background-color: #374151; color: white; }
         .prop-input { background-color: #374151; border: 1px solid #4b5563; color: white; font-size: 0.75rem; padding: 2px 4px; border-radius: 4px; width: 100%; }
+        .prop-select { background-color: #374151; border: 1px solid #4b5563; color: white; font-size: 0.75rem; padding: 2px 4px; border-radius: 4px; }
+        .prop-row { display: flex; gap: 4px; align-items: center; }
         .prop-label { font-size: 0.7rem; color: #9ca3af; margin-bottom: 2px; display: block; }
         .section-title { font-size: 0.75rem; font-weight: bold; color: #60a5fa; margin-top: 8px; margin-bottom: 4px; text-transform: uppercase; border-bottom: 1px solid #374151; padding-bottom: 2px; }
     </style>
@@ -43,15 +45,13 @@
     <script type="text/babel">
         const { useState, useRef, useEffect, useCallback } = React;
 
-        // --- ICONOS SVG (Mismo set previo) ---
+        // --- ICONS (SVG) ---
         const Icon = ({ path, className, size = 20 }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
                 {path}
             </svg>
         );
 
-        // [ICONS object omitted for brevity - Assume same ICONS as V8]
-        // Re-injecting essential icons for context
         const ICONS = {
              MousePointer2: <path d="m12 12 5.83 2.92-3.42 1.75 3 6-2.6 1.3-3-6-3 3z M22 2l-10 10" />,
             Minus: <path d="M5 12h14" />,
@@ -102,6 +102,13 @@
 
         const GRID_SIZE = 40; 
         const LINE_STYLES = { SOLID: { id: 'solid', label: 'Sólida', value: [] }, DASHED: { id: 'dashed', label: 'Guiones', value: [10, 10] }, DOTTED: { id: 'dotted', label: 'Punteada', value: [2, 4] }, DASHDOT: { id: 'dashdot', label: 'Guión-Punto', value: [10, 5, 2, 5] } };
+        
+        // --- ENGINEERING UNITS & DATA ---
+        const PRESSURE_UNITS = ['psi', 'bar', 'mbar'];
+        const POWER_UNITS = ['kW', 'BTU/h', 'MJ/h', 'kcal/h'];
+        const VOLUME_UNITS = ['m³', 'L', 'ft³'];
+        const FLOW_UNITS = ['m³/h', 'L/min', 'ft³/h', 'gpm'];
+        
         const TOOLS = { SELECT: 'select', PAN: 'pan', LINE: 'line', RECTANGLE: 'rectangle', CIRCLE: 'circle', BEZIER: 'bezier', TEXT: 'text', TAG: 'tag_tool', DIMENSION: 'dimension_tool', TRAMO_DATA: 'tramo_data_tool', VALVE: 'valve', REGULATOR: 'regulator', REDUCER: 'reducer', TERMINAL: 'terminal', TEE: 'tee', ELBOW_90: 'elbow_90', FLANGE: 'flange', UNION_UNIVERSAL: 'union_universal', UNION_TUBE: 'union_tube', NIPPLE: 'nipple', FILTER: 'filter', PLUG: 'plug', BURNER: 'burner', BOILER: 'boiler', STOVE: 'stove', HEATER: 'heater', MANOMETER: 'manometer', METER: 'meter', PRESSURE_SWITCH: 'pressure_switch', SENSOR: 'sensor', BASE_SUPPORT: 'base_support', HANGER: 'hanger', CLAMP: 'clamp' };
         const LIB_CATEGORIES = { MATERIALES: 'Materiales', EQUIPOS: 'Equipos', INSTRUMENTOS: 'Instrumentos', PERIFERICOS: 'Periféricos' };
         const SYMBOL_GROUPS = {
@@ -122,16 +129,17 @@
         const UNION_SEATS = ['Plano', 'Cónico'];
         const GENDERS = ['Hembra', 'Macho'];
         const BURNER_TYPES = ['Anillo', 'Flauta', 'Corona', 'Cañón', 'Combustión Asistida'];
+        const ELBOW_ANGLES = [ { val: 90, label: '90° (Estándar)' }, { val: 60, label: '60° (Iso Cerrado)' }, { val: 120, label: '120° (Iso Abierto)' } ];
+
         const DIAMETER_DB = { 'Ag': { '1/2"': 21.34, '3/4"': 26.67, '1"': 33.40, '1 1/4"': 42.16, '1 1/2"': 48.26, '2"': 60.33, '3"': 88.90, '4"': 114.30, '6"': 168.30, '8"': 219.10 }, 'Ac': { '1/2"': 15.8, '3/4"': 20.9, '1"': 26.6, '1 1/4"': 35.1, '1 1/2"': 40.9, '2"': 52.5, '2 1/2"': 62.7, '3"': 77.9, '4"': 102.3, '6"': 154.1, '8"': 202.7 }, 'Cu Flex': { '1/4"': 6.35, '3/8"': 9.53, '1/2"': 12.7, '3/4"': 19.05, '1"': 25.4 }, 'Cu Rig': { '1/2"': 13.84, '3/4"': 19.94, '1"': 26.04, '1 1/4"': 32.13, '1 1/2"': 38.23, '2"': 50.42, '3"': 74.8, '4"': 99.2 }, 'Multicapa': { '1/2"': 16, '3/4"': 20, '1"': 25, '1 1/4"': 32, '1 1/2"': 40, '2"': 50 }, 'PEAD': { '1/2"': 15.8, '3/4"': 20.9, '1"': 26.6, '2"': 52.5, '3"': 77.9, '4"': 102.3, '6"': 154.1, '8"': 202.7 } };
         const getRealDiameter = (nominal, material) => { if (DIAMETER_DB[material] && DIAMETER_DB[material][nominal]) { return DIAMETER_DB[material][nominal]; } const numeric = parseFloat(nominal); return isNaN(numeric) ? 0 : (numeric * 25.4).toFixed(2); };
-        const LOAD_UNITS = ['m³/h', 'BTU/h', 'kW', 'L/min'];
         const LENGTH_UNITS = ['m', 'cm', 'mm'];
         const LINE_WIDTHS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 6];
         const getValidBranchAngles = (runAngleRad) => { const runDeg = Math.round((runAngleRad * 180) / Math.PI) % 360; const runNorm = runDeg < 0 ? runDeg + 360 : runDeg; const allIso = [90, 270, 30, 210, 150, 330]; return allIso.filter(a => { const diff = Math.abs(a - runNorm); return Math.abs(diff - 0) > 5 && Math.abs(diff - 180) > 5 && Math.abs(diff - 360) > 5; }).map(d => (d * Math.PI) / 180); };
 
         // --- CALCULATION LOGIC UPGRADED ---
         const calculateDespiece = (elements) => {
-            const bom = {}; // Key: "Description|Spec", Value: { desc, spec, qty, unit }
+            const bom = {}; 
             const addToBom = (desc, spec, qty, unit) => { const key = `${desc}|${spec}`; if (!bom[key]) bom[key] = { desc, spec, qty: 0, unit }; bom[key].qty += qty; };
             const toMeters = (val, unit) => { const n = parseFloat(val) || 0; if (unit === 'cm') return n / 100; if (unit === 'mm') return n / 1000; return n; };
 
@@ -149,19 +157,18 @@
                         const c = el.customData || {};
                         switch(el.type) {
                             case TOOLS.VALVE: desc = `Válvula ${c.valveType || 'Paso'}`; spec = `Ø ${c.diameter || '-'}`; break;
-                            case TOOLS.REGULATOR: desc = 'Regulador de Presión'; spec = `In:${c.diaIn||'-'} Out:${c.diaOut||'-'} | P:${c.pIn||'-'}->${c.pOut||'-'}`; break;
-                            case TOOLS.FLANGE: desc = `Brida ${c.connection || ''}`; spec = `Ø ${c.diameter||'-'} | ${c.pressure||'-'} | ${c.bolts||'?'} pernos`; break;
+                            case TOOLS.REGULATOR: desc = 'Regulador de Presión'; spec = `In:${c.diaIn||'-'} Out:${c.diaOut||'-'}`; break;
+                            case TOOLS.FLANGE: desc = `Brida ${c.connection || ''}`; spec = `Ø ${c.diameter||'-'} | ${c.pressure||'-'}`; break;
                             case TOOLS.TEE: desc = 'Tee'; spec = `Ø ${c.diameter || '-'}`; break;
-                            case TOOLS.ELBOW_90: desc = 'Codo 90°'; spec = `Ø ${c.diameter || '-'}`; break;
+                            case TOOLS.ELBOW_90: desc = 'Codo'; spec = `Ø ${c.diameter || '-'} (${c.bendAngle || 90}°)`; break;
                             case TOOLS.REDUCER: desc = 'Reducción'; spec = `${c.diaMajor||'?'} x ${c.diaMinor||'?'}`; break;
-                            case TOOLS.UNION_UNIVERSAL: desc = 'Unión Universal'; spec = `Ø ${c.diameter||'-'} | ${c.seat||'-'} | ${c.gender||'-'}`; break;
+                            case TOOLS.UNION_UNIVERSAL: desc = 'Unión Universal'; spec = `Ø ${c.diameter||'-'}`; break;
                             case TOOLS.UNION_TUBE: desc = 'Unión Tubo'; spec = `Ø ${c.diameter || '-'}`; break;
-                            case TOOLS.FILTER: desc = 'Filtro en Y'; spec = `Ø ${c.diameter||'-'} | ${c.microns||'-'} micras`; break;
-                            case TOOLS.BURNER: desc = `Quemador ${c.burnerType || ''}`; spec = `${c.btu||'-'} BTU/h | ${c.manufacturer||''} ${c.reference||''}`; break;
-                            case TOOLS.BOILER: desc = 'Caldera'; spec = `${c.bhp||'-'} BHP | ${c.manufacturer||''} ${c.reference||''}`; break;
-                            case TOOLS.STOVE: desc = 'Estufa'; spec = `${c.btu||'-'} BTU/h`; break;
-                            case TOOLS.HEATER: desc = 'Calentador'; spec = `${c.capacityLmin||'-'} L/min | ${c.btu||'-'} BTU/h`; break;
-                            case TOOLS.MANOMETER: desc = 'Manómetro'; spec = 'Instrumento'; break;
+                            case TOOLS.FILTER: desc = 'Filtro en Y'; spec = `Ø ${c.diameter||'-'}`; break;
+                            case TOOLS.BURNER: desc = `Quemador ${c.burnerType || ''}`; spec = `${c.btu||'-'} ${c.btuUnit||'BTU/h'}`; break;
+                            case TOOLS.BOILER: desc = 'Caldera'; spec = `${c.bhp||'-'} BHP`; break;
+                            case TOOLS.STOVE: desc = 'Estufa'; spec = `${c.btu||'-'} ${c.btuUnit||'BTU/h'}`; break;
+                            case TOOLS.HEATER: desc = 'Calentador'; spec = `${c.capacity||'-'} ${c.capacityUnit||'L/min'}`; break;
                             default:
                                 const group = Object.keys(SYMBOL_GROUPS).find(k => SYMBOL_GROUPS[k].find(i => i.id === el.type));
                                 const itemDef = group ? SYMBOL_GROUPS[group].find(i => i.id === el.type) : null;
@@ -354,7 +361,7 @@
                         if (currentElement && tool === TOOLS.LINE && drawingLength.length > 0) { e.preventDefault(); setDrawingLength(prev => prev.slice(0, -1)); return; }
                         if (selectedIds.length > 0) { setElements(prev => prev.filter(el => !selectedIds.includes(el.id))); setSelectedIds([]); }
                     }
-                    const IS_SYMBOL_TOOL = Object.values(TOOLS).includes(tool) && ![TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.SELECT, TOOLS.PAN].includes(tool);
+                    const IS_SYMBOL_TOOL = Object.values(TOOLS).includes(tool) && ![TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.SELECT, TOOLS.PAN, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(tool);
                     if ((e.key === 'r' || e.key === 'R') && !currentElement && IS_SYMBOL_TOOL) {
                         setFlipRotation(prev => (prev + 1) % 12);
                     }
@@ -424,7 +431,7 @@
                 ctx.stroke();
             };
 
-            // --- DRAWING LOGIC (Identical to V7) ---
+            // --- DRAWING LOGIC ---
             const drawElement = (ctx, element, isSelected) => {
                 ctx.save(); 
                 ctx.strokeStyle = isSelected ? '#06b6d4' : element.color; 
@@ -461,7 +468,29 @@
                     case TOOLS.VALVE: ctx.translate(x1, y1); ctx.rotate(rotation); const vS = baseSize * 0.8; ctx.moveTo(-vS, -vS/2); ctx.lineTo(-vS, vS/2); ctx.lineTo(0, 0); ctx.lineTo(vS, vS/2); ctx.lineTo(vS, -vS/2); ctx.lineTo(0, 0); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -vS*0.8); ctx.moveTo(-vS/3, -vS*0.8); ctx.lineTo(vS/3, -vS*0.8); ctx.stroke(); ctx.rotate(-rotation); ctx.translate(-x1, -y1); break;
                     case TOOLS.TEE: ctx.translate(x1, y1); ctx.rotate(rotation); const tS = baseSize * 0.8; ctx.moveTo(-tS, 0); ctx.lineTo(tS, 0); ctx.moveTo(0, 0); ctx.lineTo(0, tS); ctx.stroke(); ctx.rotate(-rotation); ctx.translate(-x1, -y1); break;
                     case TOOLS.REGULATOR: const regR = baseSize * 0.8; ctx.translate(x1, y1); ctx.rotate(rotation); ctx.arc(0, 0, regR, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -regR); ctx.moveTo(-regR, 0); ctx.lineTo(regR, 0); ctx.stroke(); ctx.rotate(-rotation); ctx.translate(-x1, -y1); break;
-                    case TOOLS.ELBOW_90: const elR = baseSize * 0.8; ctx.beginPath(); ctx.moveTo(-elR, 0); ctx.lineTo(-elR/3, 0); ctx.quadraticCurveTo(0, 0, 0, elR/3); ctx.lineTo(0, elR); ctx.stroke(); break;
+                    
+                    case TOOLS.ELBOW_90: 
+                        // Adjustable ISO Elbow
+                        const elR = baseSize * 0.8;
+                        const bendDeg = element.customData && element.customData.bendAngle ? parseFloat(element.customData.bendAngle) : 90;
+                        const bendRad = (bendDeg * Math.PI) / 180;
+                        
+                        ctx.beginPath();
+                        // Start point (relative to origin)
+                        ctx.moveTo(-elR, 0);
+                        // We draw an arc or curve depending on angle
+                        if (bendDeg === 90) {
+                            ctx.lineTo(-elR/3, 0); ctx.quadraticCurveTo(0, 0, 0, elR/3); ctx.lineTo(0, elR);
+                        } else {
+                            // Simple geometric approximation for Iso angles
+                            ctx.lineTo(-elR/3, 0);
+                            const ex = elR * Math.cos((90 - bendDeg) * Math.PI / 180 + Math.PI/2);
+                            const ey = elR * Math.sin((90 - bendDeg) * Math.PI / 180 + Math.PI/2);
+                            ctx.quadraticCurveTo(0, 0, ex, ey);
+                        }
+                        ctx.stroke();
+                        break;
+                        
                     case TOOLS.NIPPLE: const nipL = baseSize * 1.5; ctx.moveTo(-nipL/2, 0); ctx.lineTo(nipL/2, 0); ctx.stroke(); break;
                     case TOOLS.BASE_SUPPORT: const bsW = baseSize * 0.8; const bsH = baseSize * 1.2; const pipeR = baseSize * 0.4; ctx.beginPath(); ctx.arc(0, 0, pipeR, 0, Math.PI); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, pipeR); ctx.lineTo(0, bsH); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-bsW, bsH); ctx.lineTo(bsW, bsH); ctx.stroke(); break;
                     case TOOLS.HANGER: const hH = baseSize * 1.8; const hW = baseSize * 0.4; const strapR = baseSize * 0.45; ctx.beginPath(); ctx.arc(0, 0, strapR, 0, 2*Math.PI); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, -strapR); ctx.lineTo(0, -hH); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-hW, -hH); ctx.lineTo(hW, -hH); ctx.moveTo(-hW/2, -hH); ctx.lineTo(hW/2, -hH + 5); ctx.moveTo(-hW/2, -hH + 5); ctx.lineTo(hW/2, -hH + 10); ctx.stroke(); break;
@@ -486,42 +515,30 @@
                 if (isSymbol) ctx.restore(); 
                 ctx.restore(); 
             };
-
+            
             const exportPDF = (metadata) => {
                 try {
                     setDownloadModal({ visible: false, type: null });
-                    if (!window.jspdf || elements.length === 0) return alert("Nada que exportar o librería PDF no cargada.");
+                    if (!window.jspdf || elements.length === 0) return alert("Nada que exportar.");
                     const visibleLayersIds = new Set(layers.filter(l => l.visible).map(l => l.id));
                     const visibleElements = elements.filter(el => !el.layerId || visibleLayersIds.has(el.layerId));
                     if (visibleElements.length === 0) return alert("No hay elementos visibles.");
-                    
-                    // --- CAPTURA DE IMAGEN ---
                     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                     visibleElements.forEach(el => { const r = GRID_SIZE; [el.x1, el.x2].forEach(p => { if(p!=null) { minX = Math.min(minX, p-r); maxX = Math.max(maxX, p+r); }}); [el.y1, el.y2].forEach(p => { if(p!=null) { minY = Math.min(minY, p-r); maxY = Math.max(maxY, p+r); }}); if(el.cx!=null) { minX = Math.min(minX, el.cx-r); maxX = Math.max(maxX, el.cx+r); } if(el.cy!=null) { minY = Math.min(minY, el.cy-r); maxY = Math.max(maxY, el.cy+r); }});
                     if (!isFinite(minX)) { minX = 0; maxX = 800; minY = 0; maxY = 600; }
                     const padding = 40; minX -= padding; minY -= padding; maxX += padding; maxY += padding;
                     const width = Math.max(100, maxX - minX + 100); const height = Math.max(100, maxY - minY + 100);
-                    const tempCanvas = document.createElement('canvas'); const MAX_DIM = 3000; const scaleFactor = Math.min(1, MAX_DIM / width, MAX_DIM / height);
+                    const tempCanvas = document.createElement('canvas'); const MAX_DIM = 4000; const scaleFactor = Math.min(1, MAX_DIM / width, MAX_DIM / height);
                     tempCanvas.width = width * scaleFactor; tempCanvas.height = height * scaleFactor; const ctx = tempCanvas.getContext('2d');
                     ctx.scale(scaleFactor, scaleFactor); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, width, height);
                     ctx.save(); ctx.translate(-minX + 50, -minY + 50); visibleElements.forEach(el => drawElement(ctx, el, false)); ctx.restore();
-                    
-                    // --- PDF GENERATION ---
-                    const { jsPDF } = window.jspdf; 
-                    const doc = new jsPDF('l', 'mm', 'a4'); 
-                    const pageW = 297, pageH = 210, margin = 10, headerH = 35;
-                    const imgData = tempCanvas.toDataURL('image/png'); 
-                    const availW = pageW - margin*2; const availH = pageH - margin*2 - headerH;
+                    const { jsPDF } = window.jspdf; const doc = new jsPDF('l', 'mm', 'a4'); const pageW = 297, pageH = 210, margin = 10, headerH = 35;
+                    const imgData = tempCanvas.toDataURL('image/png'); const availW = pageW - margin*2; const availH = pageH - margin*2 - headerH;
                     const imgProps = doc.getImageProperties(imgData); const imgRatio = imgProps.width / imgProps.height; const pageRatio = availW / availH;
                     let finalW, finalH; if (imgRatio > pageRatio) { finalW = availW; finalH = availW / imgRatio; } else { finalH = availH; finalW = availH * imgRatio; }
                     const ix = margin + (availW - finalW)/2; const iy = margin + (availH - finalH)/2;
                     doc.addImage(imgData, 'PNG', ix, iy, finalW, finalH);
-                    
-                    // Header Block
-                    const hy = pageH - margin - headerH; 
-                    doc.setLineWidth(0.5); doc.setDrawColor(0); doc.setFillColor(245, 245, 245); 
-                    doc.rect(margin, hy, availW, headerH, 'FD'); 
-                    doc.line(margin + availW/2, hy, margin + availW/2, hy+headerH);
+                    const hy = pageH - margin - headerH; doc.setLineWidth(0.5); doc.setDrawColor(0); doc.setFillColor(245, 245, 245); doc.rect(margin, hy, availW, headerH, 'FD'); doc.line(margin + availW/2, hy, margin + availW/2, hy+headerH);
                     doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.text("PROYECTO:", margin+5, hy+8); doc.setFont("helvetica", "normal"); doc.text(metadata.project || "-", margin+30, hy+8);
                     doc.setFont("helvetica", "bold"); doc.text("CLIENTE:", margin+5, hy+12); doc.setFont("helvetica", "normal"); doc.text(metadata.client || "-", margin+30, hy+12);
                     doc.setFont("helvetica", "bold"); doc.text("UBICACIÓN:", margin+5, hy+16); doc.setFont("helvetica", "normal"); doc.text(metadata.location || "-", margin+30, hy+16);
@@ -529,91 +546,60 @@
                     doc.setFont("helvetica", "bold"); doc.text("FECHA:", col2, hy+12); doc.setFont("helvetica", "normal"); doc.text(metadata.date || "-", col2+25, hy+12);
                     doc.setFont("helvetica", "bold"); doc.text("ID:", col2, hy+16); doc.setFont("helvetica", "normal"); doc.text(metadata.id || "-", col2+25, hy+16);
                     
-                    // --- TABLAS DETALLADAS (AutoTable) ---
+                    const tramos = visibleElements.filter(el => el.type === TOOLS.TRAMO_DATA && el.tagMetadata);
+                    if (tramos.length > 0) { 
+                        doc.addPage(); doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text("TABLA DE TRAMOS", margin, margin+10); 
+                        let ty = margin+20; const cols = [{n:'ID',w:20}, {n:'Longitud',w:30}, {n:'Diámetro',w:30}, {n:'Real(mm)',w:30}, {n:'Material',w:40}, {n:'Carga',w:40}, {n:'Capa',w:40}]; 
+                        doc.setFontSize(10); doc.setFillColor(41, 128, 185); doc.setTextColor(255, 255, 255); 
+                        let tx = margin; cols.forEach(c => { doc.rect(tx, ty, c.w, 8, 'F'); doc.text(c.n, tx+2, ty+5); tx += c.w; }); 
+                        ty += 8; doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal"); 
+                        tramos.forEach(t => { 
+                            const m = t.tagMetadata; const layer = layers.find(l => l.id === t.layerId); const real = getRealDiameter(m.diameter, m.material); 
+                            const row = [m.id, `${m.length} ${m.lengthUnit}`, m.diameter, real, m.material, `${m.load} ${m.loadUnit}`, (layer ? layer.name : 'Def')]; 
+                            tx = margin; cols.forEach((c, i) => { doc.rect(tx, ty, c.w, 8); doc.text(String(row[i]), tx+2, ty+5); tx += c.w; }); ty += 8; 
+                        }); 
+                    }
+
                     const bom = calculateDespiece(visibleElements);
                     if (bom.length > 0) {
-                        doc.addPage();
-                        doc.setFontSize(14); doc.text("LISTA DE MATERIALES (DESPIECE)", margin, margin + 10);
-                        doc.autoTable({
-                            startY: margin + 15,
-                            head: [['Ítem', 'Descripción', 'Especificación Técnica', 'Cant.', 'Unid.']],
-                            body: bom.map((item, i) => [i+1, item.desc, item.spec, (item.qty % 1 === 0 ? item.qty : item.qty.toFixed(2)), item.unit]),
-                            theme: 'grid',
-                            headStyles: { fillColor: [41, 128, 185] },
+                        doc.addPage(); doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text("LISTA DE MATERIALES (DESPIECE)", margin, margin+10);
+                        let ty = margin+20;
+                        const colsB = [{n:'Ítem', w:15}, {n:'Descripción', w:80}, {n:'Especificación', w:60}, {n:'Cantidad', w:30}, {n:'Unidad', w:30}];
+                        doc.setFontSize(10); doc.setFillColor(41, 128, 185); doc.setTextColor(255, 255, 255);
+                        let tx = margin; colsB.forEach(c => { doc.rect(tx, ty, c.w, 8, 'F'); doc.text(c.n, tx+2, ty+5); tx += c.w; });
+                        ty += 8; doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal");
+                        bom.forEach((item, idx) => {
+                            const row = [idx+1, item.desc, item.spec, item.qty % 1 === 0 ? item.qty : item.qty.toFixed(2), item.unit];
+                            tx = margin; colsB.forEach((c, i) => { doc.rect(tx, ty, c.w, 8); doc.text(String(row[i]), tx+2, ty+5); tx += c.w; });
+                            ty += 8;
                         });
                     }
 
                     doc.save(`Plano_${metadata.id}.pdf`);
-                } catch (e) { alert("Error PDF: " + e.message); console.error(e); }
+                } catch (e) { alert("Error PDF: " + e.message); }
             };
 
             const exportExcel = (metadata) => {
                 setDownloadModal({ visible: false, type: null });
-                if (!window.XLSX || elements.length === 0) return alert("Nada que exportar o librería XLSX faltante.");
+                if (!window.XLSX || elements.length === 0) return alert("Nada que exportar.");
                 
-                // --- HOJA 1: DESPIECE (PRESUPUESTO) ---
+                const metaRows = [ ['DATOS DEL PROYECTO'], ['Proyecto:', metadata.project], ['Cliente:', metadata.client], ['Ubicación:', metadata.location], ['Dibujante:', metadata.draftsman], ['Fecha:', metadata.date], ['ID Plano:', metadata.id], [] ];
+                
+                const headers = ['ID Tramo', 'Longitud', 'Unidad Longitud', 'Diámetro Nominal', 'Diámetro Real (mm)', 'Material', 'Carga / Caudal', 'Unidad Carga', 'Capa'];
+                const data = [...metaRows, headers];
+                elements.forEach((el) => { if (el.type === TOOLS.TRAMO_DATA && el.tagMetadata) { const layer = layers.find(l => l.id === el.layerId); if (layer && !layer.visible) return; const m = el.tagMetadata; const realDia = getRealDiameter(m.diameter, m.material); data.push([m.id, m.length, m.lengthUnit, m.diameter, realDia, m.material, m.load, m.loadUnit, layer ? layer.name : 'Default']); } });
+                
                 const bom = calculateDespiece(elements);
-                const bomData = [['ÍTEM', 'DESCRIPCIÓN', 'ESPECIFICACIÓN', 'CANTIDAD', 'UNIDAD']];
+                const bomHeaders = ['Ítem', 'Descripción', 'Especificación', 'Cantidad', 'Unidad'];
+                const bomData = [bomHeaders];
                 bom.forEach((item, idx) => bomData.push([idx+1, item.desc, item.spec, item.qty, item.unit]));
-                
-                // --- HOJA 2: LISTADO DETALLADO (MODELADORES) ---
-                const detailHeaders = ['ID', 'TAG', 'TIPO', 'CAPA', 'DIÁMETRO', 'MATERIAL/RATING', 'PRESIÓN', 'CAUDAL', 'FABRICANTE', 'REFERENCIA', 'COORD X', 'COORD Y'];
-                const detailData = [detailHeaders];
-                
-                elements.forEach(el => {
-                    // Only list relevant engineering items
-                    if ([TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.TEXT, TOOLS.DIMENSION].includes(el.type)) return;
-                    
-                    const c = el.customData || {};
-                    const m = el.tagMetadata || {};
-                    const layer = layers.find(l => l.id === el.layerId);
-                    
-                    let row = [];
-                    // ID & Tag
-                    row.push(el.id);
-                    row.push(el.name || (el.type === TOOLS.TRAMO_DATA ? m.id : '-'));
-                    
-                    // Type
-                    let typeName = el.type;
-                    if (el.type === TOOLS.TRAMO_DATA) typeName = 'Tubería';
-                    // ... (simplified mapping) ...
-                    row.push(typeName);
-                    
-                    // Layer
-                    row.push(layer ? layer.name : '0');
-                    
-                    // Props
-                    if (el.type === TOOLS.TRAMO_DATA) {
-                        row.push(m.diameter || '-');
-                        row.push(m.material || '-');
-                        row.push(m.load ? `${m.load} ${m.loadUnit}` : '-'); // Pressure/Load col reuse
-                        row.push('-'); // Flow
-                        row.push('-'); // Manuf
-                        row.push('-'); // Ref
-                    } else {
-                        row.push(c.diameter || c.diaMajor || '-');
-                        row.push(c.pressure || c.seat || '-'); // Multipurpose Rating col
-                        row.push(c.pIn ? `${c.pIn}->${c.pOut}` : '-');
-                        row.push(c.flow || c.capacityLmin || '-');
-                        row.push(c.manufacturer || '-');
-                        row.push(c.reference || '-');
-                    }
-                    
-                    // Coords
-                    row.push(Math.round(el.x1 || 0));
-                    row.push(Math.round(el.y1 || 0));
-                    
-                    detailData.push(row);
-                });
 
                 const wb = XLSX.utils.book_new(); 
+                const ws = XLSX.utils.aoa_to_sheet(data); 
+                XLSX.utils.book_append_sheet(wb, ws, "Tramos"); 
                 const wsBom = XLSX.utils.aoa_to_sheet(bomData);
-                XLSX.utils.book_append_sheet(wb, wsBom, "Despiece (Presupuesto)");
-                
-                const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
-                XLSX.utils.book_append_sheet(wb, wsDetail, "Listado Detallado");
-                
-                XLSX.writeFile(wb, `Ingenieria_${metadata.id}.xlsx`);
+                XLSX.utils.book_append_sheet(wb, wsBom, "Despiece");
+                XLSX.writeFile(wb, `Datos_${metadata.id}.xlsx`);
             };
 
             // --- Helper: Update Selection Properties ---
@@ -630,7 +616,7 @@
             const updateSelectedFontSize = (val) => { setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, fontSize: parseFloat(val) } : el)); };
             const updateSelectedCoord = (prop, val) => { const num = parseFloat(val); if (isNaN(num)) return; setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, [prop]: num } : el)); };
             const updateTramoMeta = (prop, val) => { setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, tagMetadata: { ...el.tagMetadata, [prop]: val } } : el)); };
-            const updateCustomData = (prop, val) => { setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, customData: { ...(el.customData || {}), [prop]: val } } : el)); };
+            const updateCustomData = (prop, val) => { setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, customData: { ...el.customData, [prop]: val } } : el)); };
             const updateName = (val) => { setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, name: val } : el)); };
             const deleteSelection = () => { setElements(prev => prev.filter(el => !selectedIds.includes(el.id))); setSelectedIds([]); };
             const undo = () => setElements(prev => prev.slice(0, -1));
@@ -641,13 +627,197 @@
             const toggleLayerVisibility = (id) => setLayers(p => p.map(l => l.id === id ? { ...l, visible: !l.visible } : l));
             const deleteLayer = (id) => { if (layers.length <= 1) return alert("Mínimo una capa."); if(!confirm("Se borrarán los elementos. ¿Seguro?")) return; setElements(p => p.filter(e => e.layerId !== id)); const rem = layers.filter(l => l.id !== id); setLayers(rem); if(activeLayer === id) setActiveLayer(rem[0].id); };
 
-            // --- SNAP LOGIC & HIT TEST & MOUSE HANDLERS (Same as V8 - compacted) ---
-            const getSymbolSnapPoints = (el) => { const localScale = el.elementScale || 1; const baseSize = GRID_SIZE * 0.6 * localScale; const points = []; const angle = el.rotation || 0; const cos = Math.cos(angle); const sin = Math.sin(angle); const trans = (lx, ly) => ({ x: lx * cos - ly * sin + el.x1, y: lx * sin + ly * cos + el.y1 }); if (el.type === TOOLS.TEE) { const s = baseSize * 0.8; const validBranches = getValidBranchAngles(angle); const flipIndex = el.extraData && el.extraData.flipIndex ? el.extraData.flipIndex : 0; const branchAngle = validBranches[flipIndex % validBranches.length]; const bx = Math.cos(branchAngle) * s; const by = Math.sin(branchAngle) * s; points.push(trans(-s, 0)); points.push(trans(s, 0)); points.push({x: el.x1 + bx, y: el.y1 + by}); } else if (el.type === TOOLS.ELBOW_90) { const r = baseSize * 0.8; points.push(trans(0, 0)); points.push(trans(-r, 0)); points.push(trans(0, r)); } else if ([TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.FILTER, TOOLS.UNION_UNIVERSAL, TOOLS.UNION_TUBE].includes(el.type)) { const s = baseSize * 0.8; points.push(trans(-s, 0)); points.push(trans(s, 0)); } else if (el.type === TOOLS.REDUCER) { const l = baseSize * 1.2; points.push(trans(-l/2, 0)); points.push(trans(l/2, 0)); } else if (el.type === TOOLS.NIPPLE) { const nipL = baseSize * 1.5; points.push(trans(-nipL/2, 0)); points.push(trans(nipL/2, 0)); } else if (el.type === TOOLS.BASE_SUPPORT) { const bsH = baseSize * 1.2; points.push(trans(0, 0)); points.push(trans(0, bsH)); } else if (el.type === TOOLS.HANGER) { const hH = baseSize * 1.5; points.push(trans(0, 0)); points.push(trans(0, -hH)); } else { points.push({x: el.x1, y: el.y1}); } return points; };
-            const getNearestEndpoint = (pos) => { let nearest = null; let minDist = 15 / scale; const visibleLayersIds = new Set(layers.filter(l => l.visible).map(l => l.id)); const visibleElements = elements.filter(el => !el.layerId || visibleLayersIds.has(el.layerId)); visibleElements.forEach(el => { if (el.x2 !== undefined) { const d1 = Math.sqrt((pos.x - el.x1)**2 + (pos.y - el.y1)**2); if (d1 < minDist) { minDist = d1; nearest = { x: el.x1, y: el.y1 }; } const d2 = Math.sqrt((pos.x - el.x2)**2 + (pos.y - el.y2)**2); if (d2 < minDist) { minDist = d2; nearest = { x: el.x2, y: el.y2 }; } } const SYMBOL_TOOLS = Object.values(TOOLS).filter(t => ![TOOLS.SELECT, TOOLS.PAN, TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(t)); if (SYMBOL_TOOLS.includes(el.type)) { const snaps = getSymbolSnapPoints(el); snaps.forEach(pt => { const d = Math.sqrt((pos.x - pt.x)**2 + (pos.y - pt.y)**2); if (d < minDist) { minDist = d; nearest = pt; } }); } }); return nearest; };
-            const getNearestLine = (pos) => { let nearest = null; let minDist = 15 / scale; elements.forEach(el => { const layer = layers.find(l => l.id === el.layerId); if (layer && !layer.visible) return; if (el.type === TOOLS.LINE) { const { x1, y1, x2, y2 } = el; const A = pos.x - x1; const B = pos.y - y1; const C = x2 - x1; const D = y2 - y1; const dot = A * C + B * D; const lenSq = C * C + D * D; let param = -1; if (lenSq !== 0) param = dot / lenSq; let xx, yy; if (param < 0) { xx = x1; yy = y1; } else if (param > 1) { xx = x2; yy = y2; } else { xx = x1 + param * C; yy = y1 + param * D; } const dist = Math.sqrt((pos.x - xx)**2 + (pos.y - yy)**2); if (dist < minDist) { minDist = dist; nearest = { x: xx, y: yy, angle: Math.atan2(y2 - y1, x2 - x1) }; } } }); return nearest; };
-            const checkHit = (pos, el) => { const tol = 10 / scale; if (el.type === TOOLS.TEXT) { const fontSize = el.fontSize || (GRID_SIZE * 0.35); const text = el.text || "Texto"; const estWidth = text.length * fontSize * 0.6 + 10; const estHeight = fontSize + 10; return ( pos.x >= el.x1 - 5 && pos.x <= el.x1 + estWidth && pos.y >= el.y1 - estHeight && pos.y <= el.y1 + 5 ); } else if (el.type === TOOLS.TRAMO_DATA) { return ( pos.x >= el.x1 - 5 && pos.x <= el.x1 + 130 && pos.y >= el.y1 - 60 && pos.y <= el.y1 + 10 ); } else if (el.type === TOOLS.LINE || el.type === TOOLS.DIMENSION) { const {x1, y1, x2, y2} = el; const A = pos.x - x1; const B = pos.y - y1; const C = x2 - x1; const D = y2 - y1; const dot = A * C + B * D; const lenSq = C * C + D * D; let param = -1; if (lenSq !== 0) param = dot / lenSq; let xx, yy; if (param < 0) { xx = x1; yy = y1; } else if (param > 1) { xx = x2; yy = y2; } else { xx = x1 + param * C; yy = y1 + param * D; } return Math.sqrt((pos.x - xx)**2 + (pos.y - yy)**2) < tol; } else if (el.type === TOOLS.RECTANGLE) { return (Math.abs(pos.x - el.x1) < tol || Math.abs(pos.x - el.x2) < tol) && (pos.y > Math.min(el.y1, el.y2) && pos.y < Math.max(el.y1, el.y2)) || (Math.abs(pos.y - el.y1) < tol || Math.abs(pos.y - el.y2) < tol) && (pos.x > Math.min(el.x1, el.x2) && pos.x < Math.max(el.x1, el.x2)); } else { const localScale = el.elementScale || 1; const visualRadius = (GRID_SIZE * 0.6 * localScale); const d = Math.sqrt((pos.x - el.x1)**2 + (pos.y - el.y1)**2); return d < visualRadius; } };
-            const handleMouseDown = (e) => { if (contextMenu.visible) return; const screenPos = { x: e.clientX - canvasRef.current.getBoundingClientRect().left, y: e.clientY - canvasRef.current.getBoundingClientRect().top }; let worldPos = screenToWorld(screenPos.x, screenPos.y); if (e.button === 1 || tool === TOOLS.PAN) { setIsPanning(true); setLastMousePos(screenPos); return; } if (tool === TOOLS.SELECT) { const clickedElement = elements.slice().reverse().find(el => { const layer = layers.find(l => l.id === el.layerId); if (layer && !layer.visible) return false; return checkHit(worldPos, el); }); if (clickedElement) { if (e.shiftKey) { if (selectedIds.includes(clickedElement.id)) { setSelectedIds(prev => prev.filter(id => id !== clickedElement.id)); } else { setSelectedIds(prev => [...prev, clickedElement.id]); } } else { if (!selectedIds.includes(clickedElement.id)) { setSelectedIds([clickedElement.id]); } setIsDraggingSelected(true); setDragStartPos(worldPos); } } else { if (!e.shiftKey) setSelectedIds([]); } return; } if (snapPoint) worldPos = snapPoint; if (tool === TOOLS.TAG) { setContextMenu({ visible: false }); setContextMenu({ visible: true, x: e.clientX, y: e.clientY, worldX: worldPos.x, worldY: worldPos.y }); return; } if (tool === TOOLS.DIMENSION) { if (dimensionStep === 0) { setCurrentElement({ id: Date.now(), type: TOOLS.DIMENSION, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, color: '#fbbf24', lineWidth: 1, lineStyle: lineStyle, layerId: activeLayer }); setDimensionStep(1); } else { setElements(prev => [...prev, currentElement]); setCurrentElement(null); setDimensionStep(0); } return; } if (tool === TOOLS.TEXT) { setTextPos(worldPos); setShowTextModal(true); return; } if (tool === TOOLS.BEZIER) { if (bezierStep === 0) { setCurrentElement({ id: Date.now(), type: TOOLS.BEZIER, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, cx: worldPos.x, cy: worldPos.y, color, lineWidth, lineStyle: lineStyle, layerId: activeLayer }); setBezierStep(1); } else { setElements(prev => [...prev, currentElement]); setCurrentElement(null); setBezierStep(0); } return; } const IS_SYMBOL_TOOL = Object.values(TOOLS).includes(tool) && ![TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.SELECT, TOOLS.PAN, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(tool); if (IS_SYMBOL_TOOL) { const defaultCustomData = {}; const rotation = snapRotation !== null ? snapRotation : (flipRotation * 30 * Math.PI / 180); setElements(prev => [...prev, { id: Date.now(), type: tool, x1: mouseWorldPos.x, y1: mouseWorldPos.y, x2: mouseWorldPos.x, y2: mouseWorldPos.y, color, lineWidth, lineStyle: lineStyle, rotation: rotation, extraData: { flipIndex: 0 }, customData: defaultCustomData, anchor, layerId: activeLayer, elementScale: 1 }]); return; } setCurrentElement({ id: Date.now(), type: tool, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, color, lineWidth, lineStyle: lineStyle, layerId: activeLayer }); if (tool === TOOLS.LINE) setDrawingLength(''); };
-            const handleMouseMove = (e) => { const screenPos = { x: e.clientX - canvasRef.current.getBoundingClientRect().left, y: e.clientY - canvasRef.current.getBoundingClientRect().top }; const worldPos = screenToWorld(screenPos.x, screenPos.y); if (isPanning) { setOffset(prev => ({ x: prev.x + (screenPos.x - lastMousePos.x), y: prev.y + (screenPos.y - lastMousePos.y) })); setLastMousePos(screenPos); setMouseWorldPos(worldPos); return; } if (isDraggingSelected) { const dx = worldPos.x - dragStartPos.x; const dy = worldPos.y - dragStartPos.y; setElements(prev => prev.map(el => { if (selectedIds.includes(el.id)) { let newEl = { ...el }; if (newEl.x1 !== undefined) newEl.x1 += dx; if (newEl.y1 !== undefined) newEl.y1 += dy; if (newEl.x2 !== undefined) newEl.x2 += dx; if (newEl.y2 !== undefined) newEl.y2 += dy; if (newEl.cx !== undefined) newEl.cx += dx; if (newEl.cy !== undefined) newEl.cy += dy; return newEl; } return el; })); setDragStartPos(worldPos); return; } let finalPos = { ...worldPos }; let foundSnap = null; let foundGuide = null; if ([TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.DIMENSION, TOOLS.BEZIER].includes(tool)) { const endpoint = getNearestEndpoint(worldPos); if (endpoint) { foundSnap = endpoint; finalPos = endpoint; } } if (!foundSnap && tool === TOOLS.LINE && currentElement) { const startX = currentElement.x1; const startY = currentElement.y1; const dx = worldPos.x - startX; const dy = worldPos.y - startY; const dist = Math.sqrt(dx*dx + dy*dy); if (dist > 5) { const angle = Math.atan2(dy, dx); const snapAngles = [0, 30, 90, 150, 180, 210, 270, 330, -30, -90, -150, -210, -270, -330]; for (let target of snapAngles) { const targetRad = target * (Math.PI / 180); let diff = Math.abs(angle - targetRad); if (diff > Math.PI) diff = 2 * Math.PI - diff; if (diff < 0.1) { const snapX = startX + dist * Math.cos(targetRad); const snapY = startY + dist * Math.sin(targetRad); finalPos = { x: snapX, y: snapY }; foundGuide = { x1: startX, y1: startY, x2: startX + (dist + 10000) * Math.cos(targetRad), y2: startY + (dist + 10000) * Math.sin(targetRad) }; break; } } } } setSnapPoint(foundSnap); setGuideLine(foundGuide); setMouseWorldPos(finalPos); const IS_SYMBOL_TOOL = Object.values(TOOLS).includes(tool) && ![TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.SELECT, TOOLS.PAN, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(tool); if (IS_SYMBOL_TOOL) { const snapInfo = getNearestLine(worldPos); if (snapInfo) { setMouseWorldPos({ x: snapInfo.x, y: snapInfo.y }); setSnapRotation(snapInfo.angle); } else { setMouseWorldPos(worldPos); setSnapRotation(null); } } if (tool === TOOLS.DIMENSION && currentElement && dimensionStep === 1) { setCurrentElement(prev => ({ ...prev, x2: finalPos.x, y2: finalPos.y })); } if (tool === TOOLS.BEZIER && currentElement && bezierStep === 1) setCurrentElement(prev => ({ ...prev, x2: finalPos.x, y2: finalPos.y, cx: (prev.x1 + finalPos.x)/2, cy: (prev.y1 + finalPos.y)/2 })); if (currentElement && [TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE].includes(tool)) { setCurrentElement(prev => ({ ...prev, x2: finalPos.x, y2: finalPos.y })); } };
+            // --- SNAP LOGIC ---
+            const getSymbolSnapPoints = (el) => {
+                 const localScale = el.elementScale || 1; 
+                 const baseSize = GRID_SIZE * 0.6 * localScale; 
+                 const points = [];
+                 const angle = el.rotation || 0;
+                 const cos = Math.cos(angle); const sin = Math.sin(angle);
+                 const trans = (lx, ly) => ({ x: lx * cos - ly * sin + el.x1, y: lx * sin + ly * cos + el.y1 });
+
+                 if (el.type === TOOLS.TEE) {
+                    const s = baseSize * 0.8;
+                    const validBranches = getValidBranchAngles(angle);
+                    const flipIndex = el.extraData && el.extraData.flipIndex ? el.extraData.flipIndex : 0;
+                    const branchAngle = validBranches[flipIndex % validBranches.length];
+                    const bx = Math.cos(branchAngle) * s; const by = Math.sin(branchAngle) * s;
+                    points.push(trans(-s, 0)); points.push(trans(s, 0));
+                    points.push({x: el.x1 + bx, y: el.y1 + by});
+                 } else if (el.type === TOOLS.ELBOW_90) {
+                     const r = baseSize * 0.8;
+                     points.push(trans(0, 0));
+                     points.push(trans(-r, 0)); points.push(trans(0, r)); 
+                 } else if (el.type === TOOLS.VALVE || el.type === TOOLS.REGULATOR || el.type === TOOLS.FILTER || el.type === TOOLS.UNION_UNIVERSAL || el.type === TOOLS.UNION_TUBE) {
+                     const s = baseSize * 0.8;
+                     points.push(trans(-s, 0)); points.push(trans(s, 0));
+                 } else if (el.type === TOOLS.REDUCER) {
+                     const l = baseSize * 1.2; points.push(trans(-l/2, 0)); points.push(trans(l/2, 0));
+                 } else if (el.type === TOOLS.NIPPLE) {
+                     const nipL = baseSize * 1.5;
+                     points.push(trans(-nipL/2, 0)); points.push(trans(nipL/2, 0));
+                 } else if (el.type === TOOLS.BASE_SUPPORT) {
+                     const bsH = baseSize * 1.2;
+                     points.push(trans(0, 0)); points.push(trans(0, bsH));
+                 } else if (el.type === TOOLS.HANGER) {
+                     const hH = baseSize * 1.5;
+                     points.push(trans(0, 0)); points.push(trans(0, -hH));
+                 } else {
+                     points.push({x: el.x1, y: el.y1});
+                 }
+                 return points;
+            };
+
+            const getNearestEndpoint = (pos) => {
+                let nearest = null; let minDist = 15 / scale; 
+                const visibleLayersIds = new Set(layers.filter(l => l.visible).map(l => l.id));
+                const visibleElements = elements.filter(el => !el.layerId || visibleLayersIds.has(el.layerId));
+                visibleElements.forEach(el => {
+                    if (el.x2 !== undefined) {
+                        const d1 = Math.sqrt((pos.x - el.x1)**2 + (pos.y - el.y1)**2); if (d1 < minDist) { minDist = d1; nearest = { x: el.x1, y: el.y1 }; }
+                        const d2 = Math.sqrt((pos.x - el.x2)**2 + (pos.y - el.y2)**2); if (d2 < minDist) { minDist = d2; nearest = { x: el.x2, y: el.y2 }; }
+                    }
+                    const SYMBOL_TOOLS = Object.values(TOOLS).filter(t => ![TOOLS.SELECT, TOOLS.PAN, TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(t));
+                    if (SYMBOL_TOOLS.includes(el.type)) {
+                        const snaps = getSymbolSnapPoints(el);
+                        snaps.forEach(pt => {
+                            const d = Math.sqrt((pos.x - pt.x)**2 + (pos.y - pt.y)**2);
+                            if (d < minDist) { minDist = d; nearest = pt; }
+                        });
+                    }
+                });
+                return nearest;
+            };
+
+            const getNearestLine = (pos) => {
+                let nearest = null; let minDist = 15 / scale;
+                elements.forEach(el => {
+                    const layer = layers.find(l => l.id === el.layerId); if (layer && !layer.visible) return;
+                    if (el.type === TOOLS.LINE) {
+                        const { x1, y1, x2, y2 } = el; const A = pos.x - x1; const B = pos.y - y1; const C = x2 - x1; const D = y2 - y1;
+                        const dot = A * C + B * D; const lenSq = C * C + D * D; let param = -1; if (lenSq !== 0) param = dot / lenSq;
+                        let xx, yy; if (param < 0) { xx = x1; yy = y1; } else if (param > 1) { xx = x2; yy = y2; } else { xx = x1 + param * C; yy = y1 + param * D; }
+                        const dist = Math.sqrt((pos.x - xx)**2 + (pos.y - yy)**2); if (dist < minDist) { minDist = dist; nearest = { x: xx, y: yy, angle: Math.atan2(y2 - y1, x2 - x1) }; }
+                    }
+                });
+                return nearest;
+            };
+
+            const checkHit = (pos, el) => {
+                const tol = 10 / scale;
+                if (el.type === TOOLS.LINE || el.type === TOOLS.DIMENSION) {
+                    const {x1, y1, x2, y2} = el; const A = pos.x - x1; const B = pos.y - y1; const C = x2 - x1; const D = y2 - y1; const dot = A * C + B * D; const lenSq = C * C + D * D;
+                    let param = -1; if (lenSq !== 0) param = dot / lenSq; let xx, yy; if (param < 0) { xx = x1; yy = y1; } else if (param > 1) { xx = x2; yy = y2; } else { xx = x1 + param * C; yy = y1 + param * D; }
+                    return Math.sqrt((pos.x - xx)**2 + (pos.y - yy)**2) < tol;
+                } else if (el.type === TOOLS.RECTANGLE) {
+                    return (Math.abs(pos.x - el.x1) < tol || Math.abs(pos.x - el.x2) < tol) && (pos.y > Math.min(el.y1, el.y2) && pos.y < Math.max(el.y1, el.y2)) || (Math.abs(pos.y - el.y1) < tol || Math.abs(pos.y - el.y2) < tol) && (pos.x > Math.min(el.x1, el.x2) && pos.x < Math.max(el.x1, el.x2));
+                } else if (el.type === TOOLS.CIRCLE || ![TOOLS.SELECT, TOOLS.PAN, TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(el.type)) {
+                    const d = Math.sqrt((pos.x - el.x1)**2 + (pos.y - el.y1)**2); return d < (GRID_SIZE); 
+                } else if (el.type === TOOLS.TEXT || el.type === TOOLS.TRAMO_DATA) {
+                    return Math.abs(pos.x - el.x1) < 100 && Math.abs(pos.y - el.y1) < 20;
+                }
+                return false;
+            };
+
+            const handleMouseDown = (e) => {
+                if (contextMenu.visible) return;
+                const screenPos = { x: e.clientX - canvasRef.current.getBoundingClientRect().left, y: e.clientY - canvasRef.current.getBoundingClientRect().top };
+                let worldPos = screenToWorld(screenPos.x, screenPos.y);
+
+                if (e.button === 1 || tool === TOOLS.PAN) { setIsPanning(true); setLastMousePos(screenPos); return; }
+                
+                if (tool === TOOLS.SELECT) {
+                    const clickedElement = elements.slice().reverse().find(el => {
+                        const layer = layers.find(l => l.id === el.layerId);
+                        if (layer && !layer.visible) return false;
+                        return checkHit(worldPos, el);
+                    });
+                    if (clickedElement) {
+                        if (e.shiftKey) { if (selectedIds.includes(clickedElement.id)) { setSelectedIds(prev => prev.filter(id => id !== clickedElement.id)); } else { setSelectedIds(prev => [...prev, clickedElement.id]); } } 
+                        else { if (!selectedIds.includes(clickedElement.id)) { setSelectedIds([clickedElement.id]); } setIsDraggingSelected(true); setDragStartPos(worldPos); }
+                    } else { if (!e.shiftKey) setSelectedIds([]); }
+                    return;
+                }
+
+                if (snapPoint) worldPos = snapPoint; 
+
+                if (tool === TOOLS.TAG) { setContextMenu({ visible: false }); setContextMenu({ visible: true, x: e.clientX, y: e.clientY, worldX: worldPos.x, worldY: worldPos.y }); return; }
+                if (tool === TOOLS.DIMENSION) { if (dimensionStep === 0) { setCurrentElement({ id: Date.now(), type: TOOLS.DIMENSION, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, color: '#fbbf24', lineWidth: 1, lineStyle: lineStyle, layerId: activeLayer }); setDimensionStep(1); } else { setElements(prev => [...prev, currentElement]); setCurrentElement(null); setDimensionStep(0); } return; }
+                if (tool === TOOLS.TEXT) { setTextPos(worldPos); setShowTextModal(true); return; }
+                if (tool === TOOLS.BEZIER) { if (bezierStep === 0) { setCurrentElement({ id: Date.now(), type: TOOLS.BEZIER, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, cx: worldPos.x, cy: worldPos.y, color, lineWidth, lineStyle: lineStyle, layerId: activeLayer }); setBezierStep(1); } else { setElements(prev => [...prev, currentElement]); setCurrentElement(null); setBezierStep(0); } return; }
+                
+                const IS_SYMBOL_TOOL = Object.values(TOOLS).includes(tool) && ![TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.SELECT, TOOLS.PAN, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(tool);
+                if (IS_SYMBOL_TOOL) { 
+                    const defaultCustomData = {};
+                    if (tool === TOOLS.REGULATOR) { defaultCustomData.pIn = '2'; defaultCustomData.pOut = '1'; defaultCustomData.flow = '5'; defaultCustomData.length = '0.2'; }
+                    if (tool === TOOLS.REDUCER) { defaultCustomData.reductionType = 'Copa Reducción'; defaultCustomData.diaMajor = DIAMETERS[4]; defaultCustomData.diaMinor = DIAMETERS[2]; }
+                    if (tool === TOOLS.TERMINAL) { defaultCustomData.terminalType = 'Macho'; defaultCustomData.dimension = DIAMETERS[2]; }
+                    
+                    const rotation = snapRotation !== null ? snapRotation : (flipRotation * 30 * Math.PI / 180);
+
+                    setElements(prev => [...prev, { id: Date.now(), type: tool, x1: mouseWorldPos.x, y1: mouseWorldPos.y, x2: mouseWorldPos.x, y2: mouseWorldPos.y, color, lineWidth, lineStyle: lineStyle, rotation: rotation, extraData: { flipIndex: 0 }, customData: defaultCustomData, anchor, layerId: activeLayer, elementScale: 1 }]); 
+                    return; 
+                }
+                
+                setCurrentElement({ id: Date.now(), type: tool, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, color, lineWidth, lineStyle: lineStyle, layerId: activeLayer });
+                if (tool === TOOLS.LINE) setDrawingLength(''); 
+            };
+
+            const handleMouseMove = (e) => {
+                const screenPos = { x: e.clientX - canvasRef.current.getBoundingClientRect().left, y: e.clientY - canvasRef.current.getBoundingClientRect().top };
+                const worldPos = screenToWorld(screenPos.x, screenPos.y);
+                if (isPanning) { setOffset(prev => ({ x: prev.x + (screenPos.x - lastMousePos.x), y: prev.y + (screenPos.y - lastMousePos.y) })); setLastMousePos(screenPos); setMouseWorldPos(worldPos); return; }
+                if (isDraggingSelected) {
+                    const dx = worldPos.x - dragStartPos.x; const dy = worldPos.y - dragStartPos.y;
+                    setElements(prev => prev.map(el => {
+                        if (selectedIds.includes(el.id)) {
+                            let newEl = { ...el };
+                            if (newEl.x1 !== undefined) newEl.x1 += dx; if (newEl.y1 !== undefined) newEl.y1 += dy;
+                            if (newEl.x2 !== undefined) newEl.x2 += dx; if (newEl.y2 !== undefined) newEl.y2 += dy;
+                            if (newEl.cx !== undefined) newEl.cx += dx; if (newEl.cy !== undefined) newEl.cy += dy;
+                            return newEl;
+                        }
+                        return el;
+                    }));
+                    setDragStartPos(worldPos); return;
+                }
+
+                let finalPos = { ...worldPos };
+                let foundSnap = null; let foundGuide = null;
+                if ([TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.DIMENSION, TOOLS.BEZIER].includes(tool)) {
+                    const endpoint = getNearestEndpoint(worldPos);
+                    if (endpoint) { foundSnap = endpoint; finalPos = endpoint; }
+                }
+                if (!foundSnap && tool === TOOLS.LINE && currentElement) {
+                    const startX = currentElement.x1; const startY = currentElement.y1;
+                    const dx = worldPos.x - startX; const dy = worldPos.y - startY;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist > 5) {
+                        const angle = Math.atan2(dy, dx);
+                        const snapAngles = [0, 30, 90, 150, 180, 210, 270, 330, -30, -90, -150, -210, -270, -330];
+                        for (let target of snapAngles) {
+                            const targetRad = target * (Math.PI / 180);
+                            let diff = Math.abs(angle - targetRad); if (diff > Math.PI) diff = 2 * Math.PI - diff;
+                            if (diff < 0.1) {
+                                const snapX = startX + dist * Math.cos(targetRad); const snapY = startY + dist * Math.sin(targetRad);
+                                finalPos = { x: snapX, y: snapY };
+                                foundGuide = { x1: startX, y1: startY, x2: startX + (dist + 10000) * Math.cos(targetRad), y2: startY + (dist + 10000) * Math.sin(targetRad) }; break;
+                            }
+                        }
+                    }
+                }
+                setSnapPoint(foundSnap); setGuideLine(foundGuide); setMouseWorldPos(finalPos);
+                
+                const IS_SYMBOL_TOOL = Object.values(TOOLS).includes(tool) && ![TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE, TOOLS.BEZIER, TOOLS.TEXT, TOOLS.DIMENSION, TOOLS.SELECT, TOOLS.PAN, TOOLS.TAG, TOOLS.TRAMO_DATA].includes(tool);
+                if (IS_SYMBOL_TOOL) {
+                    const snapInfo = getNearestLine(worldPos);
+                    if (snapInfo) { setMouseWorldPos({ x: snapInfo.x, y: snapInfo.y }); setSnapRotation(snapInfo.angle); } else { setMouseWorldPos(worldPos); setSnapRotation(null); }
+                } 
+                if (tool === TOOLS.DIMENSION && currentElement && dimensionStep === 1) { setCurrentElement(prev => ({ ...prev, x2: finalPos.x, y2: finalPos.y })); }
+                if (tool === TOOLS.BEZIER && currentElement && bezierStep === 1) setCurrentElement(prev => ({ ...prev, x2: finalPos.x, y2: finalPos.y, cx: (prev.x1 + finalPos.x)/2, cy: (prev.y1 + finalPos.y)/2 }));
+                if (currentElement && [TOOLS.LINE, TOOLS.RECTANGLE, TOOLS.CIRCLE].includes(tool)) { setCurrentElement(prev => ({ ...prev, x2: finalPos.x, y2: finalPos.y })); }
+            };
+
             const handleMouseUp = () => { if (isPanning) setIsPanning(false); else if (isDraggingSelected) setIsDraggingSelected(false); else if (![TOOLS.BEZIER, TOOLS.DIMENSION].includes(tool) && currentElement) { setElements(prev => [...prev, currentElement]); setCurrentElement(null); setGuideLine(null); setSnapPoint(null); } };
             const handleWheel = (e) => { e.preventDefault(); const f = 1 + (0.1 * (e.deltaY < 0 ? 1 : -1)); let ns = Math.max(0.1, Math.min(scale * f, 10)); const r = canvasRef.current.getBoundingClientRect(); const mx = e.clientX - r.left; const my = e.clientY - r.top; setOffset({ x: mx - (mx - offset.x) * (ns / scale), y: my - (my - offset.y) * (ns / scale) }); setScale(ns); };
             const handleContextMenu = (e) => { e.preventDefault(); const r = canvasRef.current.getBoundingClientRect(); setContextMenu({ visible: true, x: e.clientX, y: e.clientY, worldX: screenToWorld(e.clientX - r.left, e.clientY - r.top).x, worldY: screenToWorld(e.clientX - r.left, e.clientY - r.top).y }); };
@@ -718,33 +888,15 @@
                         <main ref={containerRef} className="flex-1 relative bg-[#1a1a1a] cursor-crosshair overflow-hidden">
                             <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onWheel={handleWheel} onContextMenu={handleContextMenu} className="block touch-none" style={{ backgroundColor: '#1e1e1e' }} />
                             
-                            {/* Panel Propiedades de Selección - FIXED & IMPROVED */}
+                            {/* Panel Propiedades de Selección */}
                             {selectedIds.length > 0 && (
-                                <div className="absolute top-16 right-4 w-64 glass-panel rounded-xl p-4 shadow-2xl flex flex-col gap-3 fade-in z-20 overflow-y-auto max-h-[80vh]">
+                                <div className="absolute top-4 right-16 w-64 glass-panel rounded-xl p-4 shadow-2xl flex flex-col gap-3 fade-in z-20 overflow-y-auto max-h-[80vh]">
                                     <div className="flex justify-between items-center border-b border-gray-600 pb-2">
                                         <h3 className="text-sm font-bold text-white flex items-center gap-2"><Icon path={ICONS.Edit2} size={16}/> Propiedades ({selectedIds.length})</h3>
-                                        <div className="flex gap-1">
-                                            <button onClick={deleteSelection} className="p-1 bg-red-600 hover:bg-red-500 rounded text-white" title="Eliminar Selección"><Icon path={ICONS.Trash2} size={14}/></button>
-                                            <button onClick={() => setSelectedIds([])} className="p-1 bg-gray-600 hover:bg-gray-500 rounded text-white" title="Cerrar Panel">✕</button>
-                                        </div>
+                                        <button onClick={deleteSelection} className="p-1 bg-red-600 hover:bg-red-500 rounded text-white" title="Eliminar Selección"><Icon path={ICONS.Trash2} size={14}/></button>
                                     </div>
                                     
                                     <div className="space-y-3 mt-2">
-                                        
-                                        {/* Common Name/Tag Field */}
-                                        {selectedIds.length === 1 && (
-                                            <div>
-                                                <label className="text-xs font-bold text-blue-400 mb-1 block uppercase">Nombre / Tag</label>
-                                                <input 
-                                                    type="text" 
-                                                    className="prop-input font-bold text-yellow-400" 
-                                                    placeholder="Ej: V-101"
-                                                    value={elements.find(e => e.id === selectedIds[0])?.name || ''} 
-                                                    onChange={(e) => updateName(e.target.value)} 
-                                                />
-                                            </div>
-                                        )}
-
                                         {/* PROPIEDADES GENERALES */}
                                         <div className="section-title">General</div>
                                         <div>
@@ -839,8 +991,20 @@
                                                             <div><span className="prop-label">Tipo</span><select className="prop-input" value={custom.valveType || ''} onChange={(e) => updateCustomData('valveType', e.target.value)}>{VALVE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                                                         </React.Fragment>
                                                     )}
+                                                    
+                                                    {el.type === TOOLS.ELBOW_90 && (
+                                                         <React.Fragment>
+                                                             <div className="section-title text-green-400">Datos Codo</div>
+                                                             <div><span className="prop-label">Diámetro</span><select className="prop-input" value={custom.diameter || ''} onChange={(e) => updateCustomData('diameter', e.target.value)}>{DIAMETERS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+                                                             <div><span className="prop-label">Apertura Codo</span>
+                                                                 <select className="prop-input" value={custom.bendAngle || 90} onChange={(e) => updateCustomData('bendAngle', parseFloat(e.target.value))}>
+                                                                     {ELBOW_ANGLES.map(a => <option key={a.val} value={a.val}>{a.label}</option>)}
+                                                                 </select>
+                                                             </div>
+                                                         </React.Fragment>
+                                                    )}
 
-                                                    {(el.type === TOOLS.TEE || el.type === TOOLS.ELBOW_90 || el.type === TOOLS.UNION_TUBE) && (
+                                                    {(el.type === TOOLS.TEE || el.type === TOOLS.UNION_TUBE) && (
                                                         <React.Fragment>
                                                             <div className="section-title text-green-400">Datos Accesorio</div>
                                                             <div><span className="prop-label">Diámetro</span><select className="prop-input" value={custom.diameter || ''} onChange={(e) => updateCustomData('diameter', e.target.value)}>{DIAMETERS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
@@ -941,7 +1105,7 @@
 
                                                     {el.type === TOOLS.TEXT && (
                                                         <div className="space-y-2">
-                                                            <div><span className="prop-label">Contenido</span><input type="text" className="prop-input" value={el.text || ''} onChange={(e) => updateSelectedText(e.target.value)} /></div>
+                                                            <div><span className="prop-label">Contenido</span><input type="text" className="prop-input" value={el.text} onChange={(e) => updateSelectedText(e.target.value)} /></div>
                                                             <div><span className="prop-label">Tamaño Fuente</span><input type="number" className="prop-input" value={el.fontSize || (GRID_SIZE * 0.35)} onChange={(e) => updateSelectedFontSize(e.target.value)} /></div>
                                                         </div>
                                                     )}
@@ -962,13 +1126,10 @@
                             )}
 
                             {showLayers && (
-                                <div className="absolute top-16 right-72 w-64 glass-panel rounded-xl p-4 shadow-2xl flex flex-col gap-3 fade-in z-20">
+                                <div className="absolute top-4 right-4 w-64 glass-panel rounded-xl p-4 shadow-2xl flex flex-col gap-3 fade-in z-20">
                                     <div className="flex justify-between items-center border-b border-gray-600 pb-2">
                                         <h3 className="text-sm font-bold text-white flex items-center gap-2"><Icon path={ICONS.Layers} size={16}/> Capas</h3>
-                                        <div className="flex gap-1">
-                                            <button onClick={addLayer} className="p-1 bg-blue-600 hover:bg-blue-500 rounded text-white" title="Nueva Capa"><Icon path={ICONS.Plus} size={14}/></button>
-                                            <button onClick={() => setShowLayers(false)} className="p-1 text-gray-400 hover:text-white">✕</button>
-                                        </div>
+                                        <button onClick={addLayer} className="p-1 bg-blue-600 hover:bg-blue-500 rounded text-white" title="Nueva Capa"><Icon path={ICONS.Plus} size={14}/></button>
                                     </div>
                                     <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
                                         {layers.map(layer => (
