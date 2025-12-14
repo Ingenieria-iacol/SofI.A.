@@ -55,11 +55,6 @@
         .slide-enter { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        .avatar-glow {
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-            border-color: #60a5fa;
-        }
-
         /* Estilos para tablas técnicas */
         .tech-table th { background-color: #1e293b; color: #94a3b8; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
         .tech-table td { border-bottom: 1px solid #1e293b; color: #e2e8f0; }
@@ -87,6 +82,78 @@
                     dangerouslySetInnerHTML={{ __html: iconData.map(i => `<${i[0]} ${Object.entries(i[1]).map(([k,v]) => `${k}="${v}"`).join(' ')} />`).join('') }}
                 />
             );
+        };
+
+        // --- COMPONENTE DE ONDA SONORA FUTURISTA ---
+        const VoiceWaveform = ({ isPlaying, height = 100 }) => {
+            const canvasRef = useRef(null);
+            
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let animationFrameId;
+                let phase = 0;
+                
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                ctx.scale(dpr, dpr);
+                
+                const draw = () => {
+                    const w = rect.width;
+                    const h = rect.height;
+                    const centerY = h / 2;
+                    
+                    ctx.clearRect(0, 0, w, h);
+                    
+                    // Configuración de la onda futurista
+                    const lines = 5; // Más líneas para complejidad
+                    const baseAmplitude = isPlaying ? h * 0.3 : h * 0.02;
+                    const speed = isPlaying ? 0.05 : 0.01; // Velocidad mucho más lenta
+                    
+                    phase += speed;
+                    
+                    // Paleta de colores futurista (Azul, Cian, Morado)
+                    const colors = ["#60a5fa", "#22d3ee", "#818cf8", "#3b82f6", "#a78bfa"];
+
+                    for (let i = 0; i < lines; i++) {
+                        ctx.beginPath();
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = colors[i % colors.length];
+                        ctx.globalAlpha = 0.7 - (i * 0.1); // Opacidad escalonada
+                        
+                        // Efecto de resplandor (Glow)
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = colors[i % colors.length];
+
+                        for (let x = 0; x < w; x++) {
+                            // Fórmula de onda más compleja y lenta
+                            const frequency = 0.01 + (i * 0.002);
+                            const amplitudeVariation = Math.sin(x * 0.05 + phase) * 0.3 + 0.7; // Efecto "ecualizador" sutil
+
+                            const y = centerY + 
+                                Math.sin(x * frequency + phase + i) * (baseAmplitude * amplitudeVariation) +
+                                Math.cos(x * (frequency * 1.5) - phase * 0.5) * (baseAmplitude * 0.2);
+                            
+                            if (x === 0) ctx.moveTo(x, y);
+                            else ctx.lineTo(x, y);
+                        }
+                        ctx.stroke();
+                    }
+                    
+                    // Resetear sombra para el siguiente frame
+                    ctx.shadowBlur = 0;
+                    
+                    animationFrameId = requestAnimationFrame(draw);
+                };
+                
+                draw();
+                
+                return () => cancelAnimationFrame(animationFrameId);
+            }, [isPlaying]);
+            
+            return <canvas ref={canvasRef} style={{ width: '100%', height: `${height}px` }} />;
         };
 
         // --- COMPONENTES GRÁFICOS SVG (Esquemas NTC 3631) ---
@@ -507,20 +574,6 @@
             const [isPlaying, setIsPlaying] = useState(false);
             const [showQuiz, setShowQuiz] = useState(false);
             
-            const videoRef = useRef(null);
-            const videoBannerRef = useRef(null); // Nuevo Ref para el Banner
-
-            useEffect(() => {
-                // Header video logic
-                if (videoRef.current) {
-                    isPlaying ? videoRef.current.play().catch(()=>{}) : videoRef.current.pause();
-                }
-                // Banner video logic
-                if (videoBannerRef.current) {
-                    isPlaying ? videoBannerRef.current.play().catch(()=>{}) : videoBannerRef.current.pause();
-                }
-            }, [isPlaying]);
-
             const speak = (text) => {
                 if ('speechSynthesis' in window) {
                     window.speechSynthesis.cancel();
@@ -710,15 +763,8 @@
                                 <h2 className="font-bold text-xl text-white truncate max-w-md">{activeModule.title}</h2>
                             </div>
                             <div className="flex items-center gap-4">
-                                <div className={`relative w-14 h-14 rounded-full overflow-hidden border-2 bg-black transition-all duration-300 ${isPlaying ? 'border-blue-500 avatar-glow scale-105' : 'border-gray-800 grayscale'}`}>
-                                    <video 
-                                        ref={videoRef}
-                                        src="VideoSaberMas.mp4" 
-                                        className="w-full h-full object-cover" 
-                                        muted 
-                                        playsInline 
-                                        loop
-                                    />
+                                <div className="relative w-20 h-10 overflow-hidden">
+                                    <VoiceWaveform isPlaying={isPlaying} height={40} />
                                 </div>
                                 <div className="hidden sm:block text-right">
                                     <div className="font-bold text-sm text-gray-200">Ing. Ana</div>
@@ -733,20 +779,15 @@
                         <div className="flex-1 overflow-y-auto p-6 md:p-12 custom-scrollbar flex flex-col items-center">
                             <div className="max-w-4xl w-full slide-enter key={currentStep}">
                                 
-                                {/* NUEVO BANNER SUPERIOR GRANDE (VIDEO) */}
-                                <div className="w-full h-48 md:h-64 relative mb-6 rounded-xl overflow-hidden shadow-2xl border border-gray-800 group">
-                                    <video
-                                        ref={videoBannerRef}
-                                        src="V4_Video_de_Herramientas_Educativas.mp4"
-                                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                                        muted
-                                        playsInline
-                                        loop
-                                    />
+                                {/* NUEVO BANNER SUPERIOR GRANDE (WAVEFORM) */}
+                                <div className="w-full h-48 md:h-64 relative mb-6 rounded-xl overflow-hidden shadow-2xl border border-gray-800 group bg-[#050505]">
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <VoiceWaveform isPlaying={isPlaying} height={200} />
+                                    </div>
                                     <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent"></div>
                                     <div className="absolute bottom-4 left-6">
-                                        <span className="text-blue-400 text-xs font-bold uppercase tracking-wider bg-blue-900/40 px-2 py-1 rounded backdrop-blur-md border border-blue-500/30">
-                                            Instructor Virtual
+                                        <span className="text-blue-400 text-xs font-bold uppercase tracking-wider bg-blue-900/20 px-2 py-1 rounded backdrop-blur-md border border-blue-500/20">
+                                            IA Instructor
                                         </span>
                                         <h2 className="text-2xl font-bold text-white mt-1 drop-shadow-md">
                                             Ingeniera Ana
