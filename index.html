@@ -20,11 +20,19 @@
             theme: {
                 extend: {
                     colors: {
+                        netflix: {
+                            dark: '#141414', // Fondo clásico oscuro
+                            card: 'rgba(0, 0, 0, 0.75)', // Fondo tarjeta semitransparente
+                            input: '#333333', // Gris inputs
+                        },
                         metal: {
                             light: '#60a5fa', 
                             DEFAULT: '#2563eb', 
                             dark: '#1e3a8a',  
                         }
+                    },
+                    boxShadow: {
+                        'neon-blue': '0 0 20px rgba(37, 99, 235, 0.5)',
                     }
                 }
             }
@@ -34,32 +42,36 @@
     <style>
         body {
             background-color: #000;
-            /* Fondo con LogoEntalpia.png y capa oscura */
-            background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(0, 0, 0, 0.95)), url('LogoEntalpia.png');
+            /* Fondo de pantalla general */
+            background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.8)), url('LogoEntalpia.png');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
             background-repeat: no-repeat;
-            color: #e2e8f0;
+            color: #fff;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
         }
         
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(59, 130, 246, 0.15);
+        .streaming-panel {
+            background-color: rgba(0, 0, 0, 0.75); /* Negro semitransparente estilo Netflix */
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         /* Animación de entrada */
-        .fade-in { animation: fadeIn 0.6s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.8s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
         /* Animación del modal */
         .modal-enter { animation: modalIn 0.3s ease-out forwards; }
         @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        /* Input focus transition */
+        .input-transition { transition: all 0.2s ease-in-out; }
     </style>
 </head>
 <body>
@@ -128,13 +140,11 @@
                 localStorage.setItem('mockSessionUser', JSON.stringify(user));
                 localStorage.setItem('lastActivity', Date.now().toString());
 
-                // Intento de redirección robusta
                 setTimeout(() => {
                     try {
                         const currentUrl = window.location.href;
                         const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
                         const targetUrl = baseUrl + 'AppHerramientasDeIngenieria.html';
-                        console.log("Redirigiendo a:", targetUrl);
                         window.location.href = targetUrl;
                     } catch (err) {
                         console.error("Redirección fallida:", err);
@@ -149,150 +159,154 @@
 
             return (
                 <>
-                    <div className="max-w-md w-full glass-panel rounded-xl shadow-2xl p-8 border border-slate-700 fade-in relative z-10">
+                    <div className="max-w-md w-full streaming-panel rounded-lg shadow-2xl p-10 md:p-14 border border-transparent fade-in relative z-10 overflow-hidden">
                         
-                        <div className="text-center mb-8">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-900/50">
-                                <Icons.Shield className="text-white w-8 h-8" />
-                            </div>
-                            <h1 className="text-2xl font-bold text-white tracking-tight">Portal de Ingeniería</h1>
-                            <p className="text-slate-400 text-sm mt-1">Acceso seguro a herramientas</p>
+                        {/* MARCA DE AGUA (WATERMARK) */}
+                        <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
+                            <img 
+                                src="LogoEntalpia.png" 
+                                alt="" 
+                                className="w-3/4 opacity-[0.05] grayscale object-contain"
+                            />
                         </div>
 
-                        {!loginSuccess ? (
-                            <form onSubmit={handleLogin} className="space-y-5">
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Email Corporativo</label>
-                                    <input 
-                                        type="email" 
-                                        required 
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                                        placeholder="usuario@entalpia.com"
-                                        disabled={isRedirecting}
-                                    />
-                                </div>
+                        {/* CONTENIDO PRINCIPAL */}
+                        <div className="relative z-10">
+                            <div className="text-center mb-8">
+                                <h1 className="text-3xl font-bold text-white tracking-tight mb-2 drop-shadow-md">Portal de Ingeniería</h1>
+                                <div className="h-1 w-20 bg-blue-600 mx-auto rounded-full shadow-[0_0_10px_rgba(37,99,235,0.8)]"></div>
+                            </div>
 
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Contraseña</label>
-                                    <div className="relative">
-                                        <input 
-                                            type={showPassword ? "text" : "password"} 
-                                            required 
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all pr-10"
-                                            placeholder="••••••••"
-                                            disabled={isRedirecting}
-                                        />
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-3 top-3 text-slate-500 hover:text-white transition-colors"
-                                        >
-                                            {showPassword ? <Icons.EyeOff className="w-5 h-5" /> : <Icons.Eye className="w-5 h-5" />}
-                                        </button>
+                            {!loginSuccess ? (
+                                <form onSubmit={handleLogin} className="space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="relative group">
+                                            <input 
+                                                type="email" 
+                                                required 
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                className="w-full px-5 py-4 bg-[#333] text-white rounded-md placeholder-gray-500 focus:outline-none focus:bg-[#454545] border-b-2 border-transparent focus:border-blue-500 input-transition"
+                                                placeholder="Email o número de teléfono"
+                                                disabled={isRedirecting}
+                                            />
+                                        </div>
+
+                                        <div className="relative group">
+                                            <input 
+                                                type={showPassword ? "text" : "password"} 
+                                                required 
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                className="w-full px-5 py-4 bg-[#333] text-white rounded-md placeholder-gray-500 focus:outline-none focus:bg-[#454545] border-b-2 border-transparent focus:border-blue-500 input-transition pr-12"
+                                                placeholder="Contraseña"
+                                                disabled={isRedirecting}
+                                            />
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-4 top-4 text-gray-400 hover:text-gray-200 transition-colors"
+                                            >
+                                                {showPassword ? <Icons.EyeOff className="w-5 h-5" /> : <Icons.Eye className="w-5 h-5" />}
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-end pt-1">
+
+                                    {error && (
+                                        <div className="text-orange-400 text-sm flex items-center gap-2 animate-pulse font-medium">
+                                            <Icons.Lock className="w-4 h-4 shrink-0" />
+                                            <span>{error}</span>
+                                        </div>
+                                    )}
+
+                                    <button 
+                                        type="submit" 
+                                        disabled={isRedirecting}
+                                        className={`w-full py-3.5 rounded-md font-bold text-white text-lg transition-all duration-300 transform shadow-lg ${
+                                            isRedirecting 
+                                            ? 'bg-blue-800 cursor-wait opacity-80' 
+                                            : 'bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-600 hover:to-blue-500 shadow-neon-blue hover:scale-[1.02]'
+                                        }`}
+                                    >
+                                        {isRedirecting ? 'Iniciando...' : 'Iniciar sesión'}
+                                    </button>
+                                    
+                                    <div className="flex justify-between items-center text-sm text-gray-400 pt-2">
+                                        <div className="flex items-center gap-1">
+                                            <input type="checkbox" id="remember" className="rounded bg-gray-700 border-none text-blue-600 focus:ring-0" />
+                                            <label htmlFor="remember" className="hover:text-gray-300 cursor-pointer">Recuérdame</label>
+                                        </div>
                                         <button
                                             type="button"
                                             onClick={(e) => handlePlaceholderClick(e, 'Recuperar Contraseña')}
-                                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                            className="hover:underline hover:text-white"
                                         >
-                                            He olvidado mi contraseña
+                                            ¿Necesitas ayuda?
                                         </button>
                                     </div>
-                                </div>
 
-                                {error && (
-                                    <div className="p-3 bg-red-900/30 border border-red-800/50 rounded-lg flex items-center gap-3 text-red-300 text-sm animate-pulse">
-                                        <Icons.Lock className="w-4 h-4 shrink-0" />
-                                        <span>{error}</span>
+                                    <div className="mt-8 text-gray-500 text-sm">
+                                        ¿Primera vez en Entalpía? <button onClick={(e) => handlePlaceholderClick(e, 'Crear Cuenta')} className="text-white hover:underline font-medium ml-1">Suscríbete ahora.</button>
                                     </div>
-                                )}
-
-                                <button 
-                                    type="submit" 
-                                    disabled={isRedirecting}
-                                    className={`w-full py-3.5 rounded-lg font-bold text-white shadow-lg transition-all transform hover:-translate-y-0.5 ${
-                                        isRedirecting 
-                                        ? 'bg-blue-700 cursor-wait opacity-80' 
-                                        : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 shadow-blue-900/30'
-                                    }`}
-                                >
-                                    {isRedirecting ? 'Autenticando...' : 'Iniciar Sesión'}
-                                </button>
-                                
-                                <div className="text-center pt-2">
-                                    <button
-                                        type="button"
-                                        onClick={(e) => handlePlaceholderClick(e, 'Crear Cuenta')}
-                                        className="text-sm text-slate-400 hover:text-white transition-colors"
+                                </form>
+                            ) : (
+                                <div className="text-center animate-pulse space-y-6 py-4">
+                                    <div className="w-16 h-16 mx-auto rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/50">
+                                        <Icons.Shield className="w-8 h-8 text-green-400" />
+                                    </div>
+                                    <h2 className="text-2xl font-bold text-white">Bienvenido de nuevo</h2>
+                                    
+                                    <a 
+                                        href="AppHerramientasDeIngenieria.html"
+                                        className="inline-flex items-center gap-3 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold transition-all hover:scale-105 shadow-neon-blue"
                                     >
-                                        ¿No tienes cuenta? <span className="text-blue-400 font-semibold">Crear cuenta</span>
-                                    </button>
+                                        Entrar al Panel <Icons.ArrowRight className="w-5 h-5" />
+                                    </a>
                                 </div>
-                            </form>
-                        ) : (
-                            <div className="text-center animate-pulse space-y-4">
-                                <div className="text-green-400 font-bold text-lg">¡Acceso Correcto!</div>
-                                <p className="text-slate-300 text-sm">Redirigiendo al panel...</p>
-                                
-                                <a 
-                                    href="AppHerramientasDeIngenieria.html"
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold transition-colors mt-4"
-                                >
-                                    Continuar al Panel <Icons.ArrowRight className="w-4 h-4" />
-                                </a>
-                            </div>
-                        )}
+                            )}
 
-                        {sessionMessage && !loginSuccess && (
-                            <div className="mt-6 text-center">
-                                <span className="inline-block px-3 py-1 bg-red-950 border border-red-900 rounded text-[10px] font-bold text-red-400 uppercase tracking-wide">
-                                    ⚠️ {sessionMessage}
-                                </span>
-                            </div>
-                        )}
+                            {sessionMessage && !loginSuccess && (
+                                <div className="mt-6 text-center">
+                                    <span className="inline-block px-4 py-2 bg-black/60 border border-red-700 rounded text-xs font-bold text-red-400 uppercase tracking-wide">
+                                        ⚠️ {sessionMessage}
+                                    </span>
+                                </div>
+                            )}
 
-                        {!loginSuccess && (
-                            <div className="mt-8 pt-6 border-t border-slate-700/50 grid grid-cols-2 gap-3">
-                                <button 
-                                    onClick={() => setShowVideoModal(true)}
-                                    className="col-span-1 group flex flex-col items-center justify-center gap-2 py-3 rounded-lg bg-slate-800/50 hover:bg-blue-900/20 border border-slate-700 hover:border-blue-500/50 transition-all duration-300"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-blue-600 group-hover:bg-blue-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                                        <Icons.Play className="w-4 h-4 text-white fill-current ml-0.5" />
-                                    </div>
-                                    <span className="text-xs font-bold text-slate-300 group-hover:text-white uppercase tracking-wider">Conoce más</span>
-                                </button>
+                            {!loginSuccess && (
+                                <div className="mt-8 pt-6 border-t border-gray-700/50 grid grid-cols-2 gap-4">
+                                    <button 
+                                        onClick={() => setShowVideoModal(true)}
+                                        className="col-span-1 group flex flex-col items-center justify-center gap-2 py-3 rounded bg-transparent hover:bg-white/10 transition-all duration-300"
+                                    >
+                                        <Icons.Play className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors" />
+                                        <span className="text-xs font-semibold text-gray-400 group-hover:text-white uppercase tracking-wider">Ver Demo</span>
+                                    </button>
 
-                                <a 
-                                    href="Planes.html"
-                                    className="col-span-1 group flex flex-col items-center justify-center gap-2 py-3 rounded-lg bg-slate-800/50 hover:bg-purple-900/20 border border-slate-700 hover:border-purple-500/50 transition-all duration-300 text-center"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-purple-600 group-hover:bg-purple-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                                        <Icons.CreditCard className="w-4 h-4 text-white" />
-                                    </div>
-                                    <span className="text-xs font-bold text-slate-300 group-hover:text-white uppercase tracking-wider">Ver Planes</span>
-                                </a>
-                            </div>
-                        )}
+                                    <a 
+                                        href="Planes.html"
+                                        className="col-span-1 group flex flex-col items-center justify-center gap-2 py-3 rounded bg-transparent hover:bg-white/10 transition-all duration-300"
+                                    >
+                                        <Icons.CreditCard className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors" />
+                                        <span className="text-xs font-semibold text-gray-400 group-hover:text-white uppercase tracking-wider">Ver Planes</span>
+                                    </a>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* MODAL DE VIDEO */}
                     {showVideoModal && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm fade-in">
-                            <div className="relative w-full max-w-4xl bg-black rounded-2xl shadow-2xl border border-slate-800 overflow-hidden modal-enter">
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md fade-in">
+                            <div className="relative w-full max-w-5xl bg-black rounded-lg shadow-2xl overflow-hidden modal-enter border border-gray-800">
                                 <button 
                                     onClick={() => setShowVideoModal(false)}
-                                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
+                                    className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
                                 >
-                                    <Icons.X className="w-6 h-6" />
+                                    <Icons.X className="w-8 h-8" />
                                 </button>
                                 
-                                <div className="aspect-video w-full bg-slate-900 flex items-center justify-center">
+                                <div className="aspect-video w-full bg-black flex items-center justify-center">
                                     <video 
                                         controls 
                                         autoPlay 
@@ -301,10 +315,6 @@
                                     >
                                         Tu navegador no soporta el elemento de video.
                                     </video>
-                                </div>
-                                <div className="p-4 bg-slate-900 border-t border-slate-800">
-                                    <h3 className="text-white font-bold text-lg">Presentación de Entalpía</h3>
-                                    <p className="text-slate-400 text-sm">Descubre todas las funcionalidades de nuestras herramientas de ingeniería.</p>
                                 </div>
                             </div>
                         </div>
