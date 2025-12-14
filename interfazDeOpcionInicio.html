@@ -76,6 +76,14 @@
             display: flex;
             gap: 15px;
             align-items: center;
+            flex-wrap: wrap; /* Permite que los elementos bajen si no caben en móviles */
+            justify-content: flex-end;
+        }
+        
+        @media (max-width: 768px) {
+            .nav-items {
+                justify-content: center;
+            }
         }
 
         .btn-login {
@@ -277,6 +285,10 @@
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             overflow: hidden;
             border: 1px solid #333;
+            /* Propiedades añadidas para soportar etiqueta <a> */
+            display: block; 
+            text-decoration: none;
+            color: inherit;
         }
 
         .card img {
@@ -376,8 +388,6 @@
             margin-top: 20px;
         }
 
-        /* Se eliminaron las reglas de grid específicas que forzaban la alineación a la izquierda */
-
         .footer-links a {
             color: var(--text-gray);
             text-decoration: none;
@@ -398,31 +408,31 @@
             }
             
             .logo {
-            color: var(--brand-blue);
-            font-size: 1.8rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 10px rgba(0, 113, 235, 0.5);
-            white-space: nowrap; /* Evita que el logo se parta */
-        }
-
-        .nav-items {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap; /* Permite que los elementos bajen si no caben en móviles */
-            justify-content: flex-end;
-        }
-        
-        @media (max-width: 768px) {
-            .nav-items {
-                justify-content: center;
+                font-size: 1.4rem;
+                letter-spacing: 1px;
             }
-        }
 
-        .btn-login {
-            background-color: var(--brand-blue);
+            .hero {
+                height: 60vh; /* Altura más manejable en tablets */
+            }
+            
+            .hero h1 { font-size: 2.5rem; }
+            .hero p { font-size: 1.2rem; }
+            
+            .feature-split { 
+                flex-direction: column; 
+                text-align: center; 
+                padding: 40px 5%;
+            }
+            
+            .feature-text { 
+                padding: 0; 
+                margin-bottom: 30px; 
+            }
+            
+            /* En móvil, revertimos el orden visual para que el texto siempre quede arriba de la imagen */
+            .feature-split[style*="row-reverse"] {
+                flex-direction: column !important;
             }
         }
 
@@ -570,12 +580,22 @@
                     <div class="card-title">Contenido para docentes</div>
                 </div>
             </div>
-            <div class="card">
+            
+            <!-- TARJETA ACTUALIZADA A ENLACE -->
+            <a href="ModalDeCursosPerfilAcademico_V1.html" class="card">
                 <img id="card-img-5" src="ImgEstudiantes.png" alt="Semilleros" onerror="this.onerror=null;this.src='https://placehold.co/300x200/141414/white?text=Planes';">
                 <div class="card-overlay">
                     <div class="card-title">Planes de formación o reentrenamiento</div>
                 </div>
-            </div>
+            </a>
+
+            <!-- NUEVA TARJETA AGREGADA ERP & CRM -->
+            <a href="ModalERP_CRM_V1.html" class="card">
+                <img src="ImgModalDeCursosPerfilAcademico_V1.png" alt="ERP & CRM" onerror="this.onerror=null;this.src='https://placehold.co/300x200/141414/white?text=ERP+CRM';">
+                <div class="card-overlay">
+                    <div class="card-title">ERP & CRM</div>
+                </div>
+            </a>
         </div>
     </div>
 
