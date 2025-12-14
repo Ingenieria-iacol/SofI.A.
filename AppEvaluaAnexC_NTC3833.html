@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,397 +7,522 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#111827',
+                            card: '#1f2937',
+                            input: '#374151',
+                            text: '#f3f4f6',
+                            textMuted: '#9ca3af',
+                            border: '#4b5563'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
-        body { font-family: 'Roboto', sans-serif; background-color: #f3f4f6; }
+        body { font-family: 'Roboto', sans-serif; }
+        
         .input-field {
             transition: all 0.3s;
+            color-scheme: dark;
         }
         .input-field:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
         }
-        /* Estilos específicos para impresión/PDF */
+        
+        /* Animación para el diagrama SVG */
+        .pipe-path {
+            transition: d 0.5s ease-out, stroke 0.3s;
+        }
+        
+        /* Estilos para PDF (Siempre claro) */
         #report-content {
             background: white;
-            display: none; /* Oculto en vista normal */
+            color: black;
+            display: none;
         }
-        .show-on-print { display: block !important; }
     </style>
 </head>
-<body class="text-gray-800">
+<body class="bg-dark-bg text-dark-text min-h-screen">
 
     <!-- Navbar -->
-    <nav class="bg-blue-800 text-white shadow-lg">
+    <nav class="bg-gray-900 border-b border-gray-800 shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
-                <div class="flex items-center">
+                <div class="flex items-center text-blue-400">
                     <i class="fa-solid fa-calculator mr-3 text-xl"></i>
-                    <span class="font-bold text-lg tracking-wider">CalcNTC 3833</span>
+                    <span class="font-bold text-lg tracking-wider text-white">CalcNTC 3833 <span class="text-xs bg-blue-900 text-blue-200 px-2 py-0.5 rounded ml-2">Dark Mode</span></span>
                 </div>
-                <div class="text-sm opacity-80 hidden sm:block">Método Anexo C - Evacuación Fachada</div>
+                <div class="text-sm text-gray-400 hidden sm:block">Método Anexo C - Evacuación Fachada</div>
             </div>
         </div>
     </nav>
 
-    <div class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div class="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
         
         <!-- Header Info -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6 border-l-4 border-blue-600">
-            <h1 class="text-2xl font-bold text-gray-800 mb-2">Evaluador de Condiciones de Instalación</h1>
-            <p class="text-gray-600">Herramienta basada en el método alternativo (Anexo C) para valoración de particularidades del conector de evacuación directa a través de fachada.</p>
+        <div class="bg-dark-card border border-dark-border rounded-lg shadow-lg p-6 mb-6 border-l-4 border-blue-500">
+            <h1 class="text-2xl font-bold text-white mb-2">Evaluador de Condiciones de Instalación</h1>
+            <p class="text-gray-400">Herramienta para determinar el cumplimiento de evacuación de gases por fachada simulando la geometría de instalación.</p>
         </div>
 
         <form id="evalForm" onsubmit="event.preventDefault();">
             
-            <!-- Grid Container -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                <!-- Columna Izquierda: Datos y Geometría -->
-                <div class="space-y-6">
+                <!-- Columna Izquierda: Datos y Inputs (Ancho 5/12) -->
+                <div class="lg:col-span-5 space-y-6">
                     
-                    <!-- 1. Datos de Trazabilidad -->
-                    <div class="bg-white rounded-lg shadow-md p-5">
-                        <div class="flex items-center mb-4 text-blue-800">
+                    <!-- 1. Datos del Proyecto -->
+                    <div class="bg-dark-card border border-dark-border rounded-lg shadow-md p-5">
+                        <div class="flex items-center mb-4 text-blue-400">
                             <i class="fa-solid fa-clipboard-user mr-2"></i>
                             <h2 class="text-lg font-bold">1. Datos del Proyecto</h2>
                         </div>
-                        <div class="grid grid-cols-1 gap-4">
+                        <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Cliente / Proyecto</label>
-                                <input type="text" id="cliente" class="w-full border-gray-300 border rounded-md p-2 input-field" placeholder="Ej. Familia Pérez" required>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
-                                <input type="text" id="direccion" class="w-full border-gray-300 border rounded-md p-2 input-field" placeholder="Ej. Calle 123 # 45-67">
+                                <label class="block text-sm font-medium text-gray-300 mb-1">Cliente / Proyecto</label>
+                                <input type="text" id="cliente" class="w-full bg-dark-input border-dark-border text-white rounded-md p-2 input-field focus:outline-none border" placeholder="Ej. Familia Pérez" required>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Técnico</label>
-                                    <input type="text" id="tecnico" class="w-full border-gray-300 border rounded-md p-2 input-field" placeholder="Nombre">
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">Técnico</label>
+                                    <input type="text" id="tecnico" class="w-full bg-dark-input border-dark-border text-white rounded-md p-2 input-field focus:outline-none border" placeholder="Nombre">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
-                                    <input type="date" id="fecha" class="w-full border-gray-300 border rounded-md p-2 input-field">
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">Fecha</label>
+                                    <input type="date" id="fecha" class="w-full bg-dark-input border-dark-border text-white rounded-md p-2 input-field focus:outline-none border">
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 2. Condiciones Ambientales -->
-                    <div class="bg-white rounded-lg shadow-md p-5">
-                        <div class="flex items-center mb-4 text-blue-800">
-                            <i class="fa-solid fa-cloud mr-2"></i>
-                            <h2 class="text-lg font-bold">2. Factor de Corrección</h2>
+                    <!-- 2. Geometría y Presión -->
+                    <div class="bg-dark-card border border-dark-border rounded-lg shadow-md p-5 relative overflow-hidden">
+                        <div class="flex items-center mb-4 text-green-400">
+                            <i class="fa-solid fa-ruler-combined mr-2"></i>
+                            <h2 class="text-lg font-bold">2. Geometría de Instalación</h2>
                         </div>
-                        <div class="bg-blue-50 p-3 rounded-md mb-3 text-sm text-blue-800">
-                            <i class="fa-solid fa-circle-info mr-1"></i> Se calcula automáticamente según la presión local. El estándar base es 0.85 a nivel del mar.
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Presión Local (mbar)</label>
-                                <input type="number" id="presion" value="752" class="w-full border-gray-300 border rounded-md p-2 input-field" oninput="calcular()">
+
+                        <div class="space-y-5">
+                            <!-- Presión -->
+                            <div class="bg-gray-800/50 p-3 rounded border border-gray-700">
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Presión Atmosférica (mbar)</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" id="presion" value="752" class="w-24 bg-dark-input border-dark-border text-white rounded p-1 text-center input-field border" oninput="calcular()">
+                                    <div class="text-xs text-gray-500 flex-1 text-right">Factor: <span id="factor" class="text-blue-400 font-bold">0.631</span></div>
+                                </div>
                             </div>
+
+                            <!-- Altura H -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Factor Calculado</label>
-                                <input type="text" id="factor" class="w-full bg-gray-100 border-gray-300 border rounded-md p-2 font-bold text-gray-600" readonly>
+                                <label class="flex justify-between text-sm font-medium text-green-400 mb-1">
+                                    <span>Altura Vertical Total (H)</span>
+                                    <span class="text-xs bg-green-900/50 px-2 rounded text-green-200">Gana Puntos</span>
+                                </label>
+                                <div class="flex items-center">
+                                    <input type="number" id="altura" value="33" min="0" step="1" class="flex-1 bg-dark-input border-green-800 text-white rounded-l-md p-2 input-field border focus:ring-green-500" oninput="calcular()">
+                                    <span class="bg-green-900 border-y border-r border-green-800 text-green-200 p-2 rounded-r-md font-bold w-12 text-center">cm</span>
+                                </div>
+                                <div class="mt-1 text-right text-sm font-bold text-green-500" id="puntosGanados">+0.00 pts</div>
+                            </div>
+
+                            <!-- Longitud L -->
+                            <div>
+                                <label class="flex justify-between text-sm font-medium text-red-400 mb-1">
+                                    <span>Longitud Total Tramos (L)</span>
+                                    <span class="text-xs bg-red-900/50 px-2 rounded text-red-200">Pierde Puntos</span>
+                                </label>
+                                <div class="flex items-center">
+                                    <input type="number" id="longitud" value="267" min="0" class="flex-1 bg-dark-input border-red-900 text-white rounded-l-md p-2 input-field border focus:ring-red-500" oninput="calcular()">
+                                    <span class="bg-red-900 border-y border-r border-red-900 text-red-200 p-2 rounded-r-md font-bold w-12 text-center">cm</span>
+                                </div>
+                                <div class="mt-1 text-right text-sm font-bold text-red-500" id="puntosPerdidosDetalle">-0.00 pts</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 3. Geometría (Ganancia) -->
-                    <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-green-500">
-                        <div class="flex items-center justify-between mb-4 text-green-700">
-                            <div class="flex items-center">
-                                <i class="fa-solid fa-arrow-up-from-bracket mr-2"></i>
-                                <h2 class="text-lg font-bold">3. Ganancia de Cota (H)</h2>
-                            </div>
-                            <span class="text-xs font-semibold bg-green-100 px-2 py-1 rounded">Puntos Positivos</span>
+                    <!-- 3. Accesorios -->
+                    <div class="bg-dark-card border border-dark-border rounded-lg shadow-md p-5">
+                        <div class="flex items-center mb-4 text-orange-400">
+                            <i class="fa-solid fa-puzzle-piece mr-2"></i>
+                            <h2 class="text-lg font-bold">3. Accesorios</h2>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Altura Vertical Total "H" (cm)</label>
-                            <div class="flex items-center">
-                                <input type="number" id="altura" value="33" min="0" step="1" class="w-full border-gray-300 border rounded-md p-2 input-field text-lg" oninput="calcular()">
-                                <span class="ml-2 text-gray-500 font-bold">cm</span>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="col-span-2 flex items-center justify-between bg-gray-800 p-2 rounded border border-gray-700">
+                                <label class="flex items-center text-gray-300 cursor-pointer">
+                                    <input type="checkbox" id="checkDeflector" checked class="mr-2 h-4 w-4 accent-blue-600 rounded" onchange="calcular()">
+                                    Deflector Terminal
+                                </label>
+                                <span class="text-red-400 font-mono text-xs">-0.3</span>
                             </div>
-                            <p class="text-xs text-gray-500 mt-1">Medida desde el collarín hasta el deflector.</p>
-                        </div>
-                        <div class="mt-4 flex justify-between items-center bg-green-50 p-2 rounded">
-                            <span class="text-sm font-medium">Puntos Ganados:</span>
-                            <span id="puntosGanados" class="text-lg font-bold text-green-700">+0.00</span>
+                            
+                            <div class="bg-gray-800 p-2 rounded border border-gray-700">
+                                <label class="block text-gray-400 text-xs mb-1">Codos 90°</label>
+                                <div class="flex justify-between items-center">
+                                    <input type="number" id="codos90" value="1" min="0" class="w-12 bg-gray-700 border border-gray-600 text-white rounded text-center p-1" oninput="calcular()">
+                                    <span class="text-red-400 font-mono text-xs" id="totalCodos90">-2.0</span>
+                                </div>
+                            </div>
+
+                            <div class="bg-gray-800 p-2 rounded border border-gray-700">
+                                <label class="block text-gray-400 text-xs mb-1">Codos 45°</label>
+                                <div class="flex justify-between items-center">
+                                    <input type="number" id="codos45" value="0" min="0" class="w-12 bg-gray-700 border border-gray-600 text-white rounded text-center p-1" oninput="calcular()">
+                                    <span class="text-red-400 font-mono text-xs" id="totalCodos45">-0.0</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                 </div>
 
-                <!-- Columna Derecha: Resistencias y Resultados -->
-                <div class="space-y-6">
+                <!-- Columna Derecha: Simulación y Resultados (Ancho 7/12) -->
+                <div class="lg:col-span-7 space-y-6">
 
-                    <!-- 4. Componentes (Pérdidas) -->
-                    <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-red-500">
-                        <div class="flex items-center justify-between mb-4 text-red-700">
-                            <div class="flex items-center">
-                                <i class="fa-solid fa-road-barrier mr-2"></i>
-                                <h2 class="text-lg font-bold">4. Resistencias (Pérdidas)</h2>
-                            </div>
-                            <span class="text-xs font-semibold bg-red-100 px-2 py-1 rounded">Puntos Negativos</span>
-                        </div>
-                        
-                        <!-- Longitud -->
-                        <div class="mb-4 pb-4 border-b border-gray-200">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Longitud Total Tramos Rectos (cm)</label>
-                            <div class="flex items-center">
-                                <input type="number" id="longitud" value="267" min="0" class="w-full border-gray-300 border rounded-md p-2 input-field" oninput="calcular()">
-                                <span class="ml-2 text-gray-500">cm</span>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-1">Suma de TRV + TRH (Ej. 22 + 245 = 267)</p>
+                    <!-- Simulador Gráfico -->
+                    <div class="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl p-1 relative overflow-hidden group">
+                        <!-- Título Flotante -->
+                        <div class="absolute top-4 left-4 z-10 bg-gray-800/80 backdrop-blur px-3 py-1 rounded text-xs font-mono text-blue-300 border border-gray-700">
+                            <i class="fa-solid fa-eye mr-1"></i> SIMULACIÓN DE PENDIENTE
                         </div>
 
-                        <!-- Accesorios -->
-                        <div class="space-y-3">
-                            <div class="flex items-center justify-between">
-                                <label class="flex items-center text-sm font-medium text-gray-700">
-                                    <input type="checkbox" id="checkDeflector" checked class="mr-2 h-4 w-4 text-blue-600 rounded" onchange="calcular()">
-                                    Deflector (Estándar -0.3)
-                                </label>
-                                <span class="text-sm text-red-600 font-mono">-0.3</span>
-                            </div>
+                        <!-- SVG Container -->
+                        <svg id="simulationSvg" viewBox="0 0 500 350" class="w-full h-auto bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg">
+                            <!-- Definiciones de Gradientes y Marcadores -->
+                            <defs>
+                                <linearGradient id="pipeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#9ca3af;stop-opacity:1" />
+                                    <stop offset="50%" style="stop-color:#e5e7eb;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#6b7280;stop-opacity:1" />
+                                </linearGradient>
+                                <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                                    <path d="M0,0 L0,6 L9,3 z" fill="#60a5fa" />
+                                </marker>
+                            </defs>
                             
-                            <div class="grid grid-cols-3 gap-2 items-end">
-                                <div class="col-span-1">
-                                    <label class="text-xs text-gray-500 block">Cant. Codos 90°</label>
-                                    <input type="number" id="codos90" value="1" min="0" class="w-full border p-1 rounded text-center" oninput="calcular()">
-                                </div>
-                                <div class="col-span-1">
-                                    <label class="text-xs text-gray-500 block">Valor Unit.</label>
-                                    <input type="number" id="valCodo90" value="2.0" step="0.1" class="w-full border p-1 rounded text-center bg-gray-50" readonly>
-                                </div>
-                                <div class="col-span-1 text-right text-red-600 font-mono text-sm py-2" id="totalCodos90">-2.00</div>
-                            </div>
+                            <!-- Grid de Fondo -->
+                            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#374151" stroke-width="0.5"/>
+                            </pattern>
+                            <rect width="100%" height="100%" fill="url(#grid)" />
 
-                            <div class="grid grid-cols-3 gap-2 items-end">
-                                <div class="col-span-1">
-                                    <label class="text-xs text-gray-500 block">Cant. Codos 45°</label>
-                                    <input type="number" id="codos45" value="0" min="0" class="w-full border p-1 rounded text-center" oninput="calcular()">
-                                </div>
-                                <div class="col-span-1">
-                                    <label class="text-xs text-gray-500 block">Valor Unit.</label>
-                                    <input type="number" id="valCodo45" value="1.0" step="0.1" class="w-full border p-1 rounded text-center bg-gray-50" readonly>
-                                </div>
-                                <div class="col-span-1 text-right text-red-600 font-mono text-sm py-2" id="totalCodos45">-0.00</div>
-                            </div>
-                        </div>
+                            <!-- Calentador -->
+                            <g transform="translate(50, 250)">
+                                <rect x="-25" y="0" width="50" height="70" fill="#1f2937" stroke="#4b5563" stroke-width="2" rx="2"/>
+                                <rect x="-20" y="10" width="40" height="50" fill="#374151" rx="1"/>
+                                <circle cx="0" cy="50" r="5" fill="#ef4444" opacity="0.5">
+                                    <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/>
+                                </circle>
+                                <text x="0" y="85" text-anchor="middle" class="text-xs" fill="#9ca3af" font-size="10">Calentador</text>
+                            </g>
 
-                        <div class="mt-4 flex justify-between items-center bg-red-50 p-2 rounded">
-                            <span class="text-sm font-medium">Puntos Perdidos:</span>
-                            <span id="puntosPerdidos" class="text-lg font-bold text-red-700">-0.00</span>
+                            <!-- Sistema de Ductos (Dinámico) -->
+                            <!-- El path se calculará vía JS -->
+                            <path id="ductoPath" d="M 50 250 L 50 200 Q 50 180 70 175 L 300 100" 
+                                  fill="none" stroke="url(#pipeGradient)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"
+                                  class="pipe-path" />
+                            
+                            <!-- Líneas de Cota (Dinámico) -->
+                            <g id="cotasGroup">
+                                <!-- Línea H -->
+                                <line id="cotaH_line" x1="350" y1="250" x2="350" y2="100" stroke="#60a5fa" stroke-width="1" stroke-dasharray="4"/>
+                                <text id="cotaH_text" x="360" y="175" fill="#60a5fa" font-size="12" font-weight="bold">H = 33cm</text>
+                                
+                                <!-- Línea Base Nivel -->
+                                <line x1="50" y1="250" x2="400" y2="250" stroke="#4b5563" stroke-width="1" stroke-dasharray="2"/>
+                            </g>
+
+                            <!-- Deflector (Dinámico) -->
+                            <g id="deflectorGroup" transform="translate(300, 100)">
+                                <rect x="-5" y="-15" width="10" height="30" fill="#9ca3af" stroke="#4b5563" transform="rotate(0)"/>
+                                <rect x="5" y="-20" width="5" height="40" fill="#6b7280" transform="rotate(0)"/>
+                            </g>
+                        </svg>
+                        
+                        <!-- Overlay de Estado en el Simulador -->
+                        <div id="simStatus" class="absolute bottom-4 right-4 px-4 py-2 rounded-lg font-bold text-white shadow-lg bg-red-600/90 backdrop-blur transition-all">
+                            Pendiente Insuficiente
                         </div>
                     </div>
 
-                    <!-- 5. Resultado Final -->
-                    <div class="bg-gray-800 text-white rounded-lg shadow-xl p-6 relative overflow-hidden">
-                        <div class="relative z-10">
-                            <h2 class="text-xl font-bold mb-4 border-b border-gray-600 pb-2">Resultado de Valoración</h2>
-                            
-                            <div class="grid grid-cols-2 gap-4 mb-4">
+                    <!-- Panel de Resultados -->
+                    <div class="bg-dark-card border border-dark-border rounded-lg shadow-xl p-6 relative">
+                        <h2 class="text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-white">Resultado del Cálculo</h2>
+                        
+                        <div class="flex items-end justify-between mb-2">
+                            <div>
+                                <div class="text-xs text-gray-400 uppercase tracking-wide">Puntuación Total</div>
+                                <div id="puntosGlobal" class="text-5xl font-extrabold text-white tracking-tight">0.00</div>
+                            </div>
+                            <div class="text-right">
+                                <div id="estadoTexto" class="text-lg font-bold px-4 py-1 rounded bg-gray-700 text-gray-300 inline-block border border-gray-600">
+                                    --
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="w-full bg-gray-700 h-2 rounded-full mt-2 mb-4 overflow-hidden">
+                            <div id="progressBar" class="h-full bg-gray-500 w-0 transition-all duration-700"></div>
+                        </div>
+
+                        <!-- Sugerencias -->
+                        <div id="sugerenciasPanel" class="hidden bg-yellow-900/30 border border-yellow-700/50 rounded p-4 text-sm mt-4">
+                            <div class="flex items-start">
+                                <i class="fa-solid fa-triangle-exclamation text-yellow-500 mt-1 mr-3"></i>
                                 <div>
-                                    <div class="text-xs text-gray-400 uppercase">Puntos Globales</div>
-                                    <div id="puntosGlobal" class="text-4xl font-bold">0.00</div>
+                                    <p class="text-yellow-200 font-bold mb-1">Requiere Corrección</p>
+                                    <p class="text-gray-300">Para alcanzar el mínimo de <span class="text-white font-bold">+1.00</span> punto, necesitas aumentar la altura vertical.</p>
+                                    <div class="mt-2 bg-black/20 p-2 rounded text-yellow-100 font-mono">
+                                        Subir H: <span id="hSugerida" class="font-bold text-white">0</span> cm adicionales<br>
+                                        Nueva H Total: <span id="hTotalSugerida" class="text-white">0</span> cm
+                                    </div>
                                 </div>
-                                <div class="text-right">
-                                    <div class="text-xs text-gray-400 uppercase">Estado</div>
-                                    <div id="estadoTexto" class="text-2xl font-bold px-3 py-1 rounded inline-block mt-1">--</div>
-                                </div>
-                            </div>
-
-                            <div class="text-sm mb-4">
-                                <i class="fa-solid fa-scale-balanced mr-1"></i> Criterio: Se requiere un valor mínimo de <strong class="text-yellow-400">+1.00</strong> para aprobar.
-                            </div>
-
-                            <!-- Sugerencias -->
-                            <div id="sugerenciasPanel" class="hidden bg-gray-700 rounded p-3 text-sm border border-gray-600">
-                                <p class="text-yellow-300 font-bold mb-1"><i class="fa-solid fa-lightbulb mr-1"></i> Sugerencia de Corrección:</p>
-                                <p>Para cumplir, debe aumentar la altura vertical (H) en aproximadamente <span id="hSugerida" class="font-bold text-white">0</span> cm adicionales.</p>
-                                <p class="text-xs text-gray-400 mt-1">Nueva altura total recomendada: <span id="hTotalSugerida">0</span> cm.</p>
                             </div>
                         </div>
-                        
-                        <!-- Decorative background icon -->
-                        <i class="fa-solid fa-check-double absolute -bottom-4 -right-4 text-9xl text-gray-700 opacity-20"></i>
+
+                        <div id="exitoPanel" class="hidden bg-green-900/30 border border-green-700/50 rounded p-4 text-sm mt-4">
+                            <div class="flex items-center text-green-300">
+                                <i class="fa-solid fa-circle-check text-2xl mr-3"></i>
+                                <div>
+                                    <p class="font-bold">¡Instalación Conforme!</p>
+                                    <p class="text-gray-400 text-xs">Cumple con los requisitos del Anexo C.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button onclick="generarPDF()" class="mt-6 w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200 flex justify-center items-center border border-blue-500/50">
+                            <i class="fa-solid fa-file-pdf mr-2"></i> Generar Reporte PDF
+                        </button>
                     </div>
-                    
-                    <button onclick="generarPDF()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow transition duration-200 flex justify-center items-center">
-                        <i class="fa-solid fa-file-pdf mr-2"></i> Descargar Reporte PDF
-                    </button>
 
                 </div>
             </div>
         </form>
         
-        <!-- Footer -->
-        <div class="text-center mt-10 text-gray-500 text-xs">
-            <p>Esta herramienta es un auxiliar de cálculo basado en el ejemplo del Anexo C de la NTC 3833.</p>
-            <p>El instalador certificado es responsable de validar los datos en campo.</p>
+        <div class="text-center mt-8 text-gray-600 text-xs pb-4">
+            <p>Calculadora NTC 3833 - Versión Dark Mode 2.0</p>
         </div>
-
     </div>
 
-    <!-- Template invisible para PDF -->
-    <div id="report-content" class="p-8 max-w-2xl mx-auto">
-        <div class="border-b-2 border-blue-800 pb-4 mb-6 flex justify-between items-end">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">Reporte de Evaluación</h1>
-                <p class="text-sm text-gray-600">Instalación Calentador de Paso - Evacuación Fachada</p>
-                <p class="text-xs text-gray-500">Ref: NTC 3833 Anexo C</p>
+    <!-- Template invisible para PDF (Mantiene estilos claros para impresión) -->
+    <div id="report-content">
+        <div style="padding: 40px; font-family: sans-serif; max-width: 800px; margin: 0 auto;">
+            <div style="border-bottom: 2px solid #1e40af; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <h1 style="font-size: 24px; font-weight: bold; color: #1f2937; margin: 0;">Reporte de Evaluación</h1>
+                    <p style="color: #4b5563; margin: 5px 0;">Evacuación por Fachada - NTC 3833 Anexo C</p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 12px; color: #6b7280;">Fecha de Generación</div>
+                    <div id="pdf-fecha-print" style="font-weight: bold;"></div>
+                </div>
             </div>
-            <div class="text-right">
-                <div class="text-3xl font-bold text-gray-300">LOGO</div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; font-size: 14px;">
+                <div style="background: #f3f4f6; padding: 15px; border-radius: 5px;">
+                    <strong>Cliente:</strong> <span id="pdf-cliente"></span><br>
+                    <strong>Dirección:</strong> <span id="pdf-direccion"></span>
+                </div>
+                <div style="background: #f3f4f6; padding: 15px; border-radius: 5px;">
+                    <strong>Técnico:</strong> <span id="pdf-tecnico"></span><br>
+                    <strong>Presión:</strong> <span id="pdf-presion"></span> mbar
+                </div>
             </div>
-        </div>
 
-        <div class="grid grid-cols-2 gap-4 mb-6 text-sm">
-            <div><strong>Cliente:</strong> <span id="pdf-cliente"></span></div>
-            <div><strong>Fecha:</strong> <span id="pdf-fecha"></span></div>
-            <div><strong>Dirección:</strong> <span id="pdf-direccion"></span></div>
-            <div><strong>Técnico:</strong> <span id="pdf-tecnico"></span></div>
-        </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 30px;">
+                <thead style="background: #e5e7eb;">
+                    <tr>
+                        <th style="padding: 10px; text-align: left; border: 1px solid #d1d5db;">Concepto</th>
+                        <th style="padding: 10px; text-align: right; border: 1px solid #d1d5db;">Datos Entrada</th>
+                        <th style="padding: 10px; text-align: right; border: 1px solid #d1d5db;">Puntos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; color: #15803d; font-weight: bold;">Ganancia por Altura (H)</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; text-align: right;"><span id="pdf-altura"></span> cm</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; text-align: right; font-weight: bold; color: #15803d;" id="pdf-pts-ganados"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; color: #b91c1c;">Pérdida por Longitud</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; text-align: right;"><span id="pdf-longitud"></span> cm</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; text-align: right; color: #b91c1c;" id="pdf-pts-longitud"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; color: #b91c1c;">Accesorios (Codos + Deflector)</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; text-align: right;" id="pdf-accesorios-desc"></td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; text-align: right; color: #b91c1c;" id="pdf-pts-accesorios"></td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr style="background: #1f2937; color: white;">
+                        <td style="padding: 12px; font-weight: bold;" colspan="2">VALORACIÓN TOTAL</td>
+                        <td style="padding: 12px; text-align: right; font-weight: bold; font-size: 18px;" id="pdf-total"></td>
+                    </tr>
+                </tfoot>
+            </table>
 
-        <table class="w-full text-sm border-collapse border border-gray-300 mb-6">
-            <thead class="bg-gray-100">
-                <tr>
-                    <th class="border p-2 text-left">Parámetro</th>
-                    <th class="border p-2 text-right">Valor</th>
-                    <th class="border p-2 text-right">Puntos</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="border p-2 font-bold" colspan="3">Condiciones</td>
-                </tr>
-                <tr>
-                    <td class="border p-2">Presión Atmosférica</td>
-                    <td class="border p-2 text-right"><span id="pdf-presion"></span> mbar</td>
-                    <td class="border p-2 text-right text-gray-500">Factor: <span id="pdf-factor"></span></td>
-                </tr>
-                <tr>
-                    <td class="border p-2 font-bold text-green-700" colspan="3">Ganancias (+)</td>
-                </tr>
-                <tr>
-                    <td class="border p-2">Altura Vertical (H)</td>
-                    <td class="border p-2 text-right"><span id="pdf-altura"></span> cm</td>
-                    <td class="border p-2 text-right font-bold text-green-700" id="pdf-pts-ganados"></td>
-                </tr>
-                <tr>
-                    <td class="border p-2 font-bold text-red-700" colspan="3">Pérdidas (-)</td>
-                </tr>
-                <tr>
-                    <td class="border p-2">Longitud Tramos Rectos</td>
-                    <td class="border p-2 text-right"><span id="pdf-longitud"></span> cm</td>
-                    <td class="border p-2 text-right text-red-700" id="pdf-pts-longitud"></td>
-                </tr>
-                <tr>
-                    <td class="border p-2">Deflector</td>
-                    <td class="border p-2 text-right" id="pdf-deflector-status"></td>
-                    <td class="border p-2 text-right text-red-700" id="pdf-pts-deflector"></td>
-                </tr>
-                <tr>
-                    <td class="border p-2">Codos</td>
-                    <td class="border p-2 text-right" id="pdf-codos-desc"></td>
-                    <td class="border p-2 text-right text-red-700" id="pdf-pts-codos"></td>
-                </tr>
-            </tbody>
-            <tfoot class="bg-gray-50 font-bold">
-                <tr>
-                    <td class="border p-3 text-right" colspan="2">TOTAL PUNTOS</td>
-                    <td class="border p-3 text-right text-lg" id="pdf-total"></td>
-                </tr>
-                <tr>
-                    <td class="border p-3 text-right" colspan="2">RESULTADO</td>
-                    <td class="border p-3 text-right text-white" id="pdf-resultado"></td>
-                </tr>
-            </tfoot>
-        </table>
+            <div id="pdf-resultado-box" style="padding: 15px; text-align: center; font-weight: bold; border-radius: 5px; margin-bottom: 40px;"></div>
 
-        <div class="mt-8 pt-4 border-t border-gray-300">
-            <p class="text-xs text-center text-gray-500">Firma del Técnico</p>
-            <div class="h-16 border-b border-gray-400 w-1/2 mx-auto mb-2"></div>
+            <div style="border-top: 1px solid #9ca3af; padding-top: 10px; text-align: center; font-size: 12px; color: #6b7280;">
+                Documento generado automáticamente. Válido solo como referencia técnica preliminar.
+            </div>
         </div>
     </div>
 
     <script>
-        // Inicialización de fecha
+        // --- Lógica del Simulador Gráfico ---
+        function actualizarDiagrama(h, l, cumple) {
+            const svgWidth = 500;
+            const svgHeight = 350;
+            const startX = 50;
+            const startY = 250; // Base del calentador (y=0 svg es arriba)
+            
+            // Configuración Escala Visual (No escala real 1:1, sino representativa)
+            // Altura H del usuario (cm) se mapea a píxeles. 
+            // Queremos que H=30cm sea bajo y H=100cm sea alto visualmente.
+            const escalaY = 2; // pixel por cm
+            const alturaVisual = Math.min(Math.max(h * escalaY, 50), 200); // Clampear visualmente
+            
+            const endY = startY - alturaVisual;
+            
+            // Posición X final depende de la longitud (L) menos la parte vertical (h_tramo1).
+            // Asumimos h_tramo1 fijo de ~20cm visualmente para el primer tramo recto.
+            // Para el diagrama, simplemente hacemos que X se aleje más si L es grande.
+            const longitudVisual = Math.min(Math.max(l * 0.8, 100), 400); 
+            const endX = startX + longitudVisual;
+
+            // Puntos del Path
+            // 1. Inicio en calentador (50, 250)
+            // 2. Tramo vertical corto (50, 250 - 40) -> codo
+            // 3. Línea diagonal hasta (endX, endY)
+            
+            const tramoVerticalY = startY - 40;
+            
+            // Construir el path 'd'
+            // M startX startY -> L startX tramoVerticalY -> (Curva/Codo) -> L endX endY
+            // Curva simple cuadrática para el codo
+            const codoSize = 20;
+            
+            // Calcular ángulo para rotar el deflector
+            const deltaY = (tramoVerticalY - codoSize) - endY;
+            const deltaX = endX - (startX + codoSize);
+            const anguloRad = Math.atan2(deltaY, deltaX);
+            const anguloGrados = -(anguloRad * 180 / Math.PI); // Negativo porque Y crece hacia abajo
+
+            let pathD = `M ${startX} ${startY}`; // Base
+            pathD += ` L ${startX} ${tramoVerticalY}`; // Vertical
+            pathD += ` Q ${startX} ${tramoVerticalY - codoSize} ${startX + codoSize} ${tramoVerticalY - (codoSize * Math.sin(anguloRad) + 5)}`; // Codo aprox
+            pathD += ` L ${endX} ${endY}`; // Diagonal final
+
+            // Actualizar DOM
+            const ducto = document.getElementById('ductoPath');
+            ducto.setAttribute('d', pathD);
+            
+            // Color del ducto según cumplimiento
+            if (cumple) {
+                ducto.setAttribute('stroke', '#4ade80'); // Green
+                document.getElementById('simStatus').className = "absolute bottom-4 right-4 px-4 py-2 rounded-lg font-bold text-white shadow-lg bg-green-600/90 backdrop-blur transition-all";
+                document.getElementById('simStatus').innerText = "Pendiente Óptima";
+                document.getElementById('simStatus').innerHTML = '<i class="fa-solid fa-check mr-2"></i> Pendiente Óptima';
+            } else {
+                ducto.setAttribute('stroke', '#ef4444'); // Red
+                document.getElementById('simStatus').className = "absolute bottom-4 right-4 px-4 py-2 rounded-lg font-bold text-white shadow-lg bg-red-600/90 backdrop-blur transition-all";
+                document.getElementById('simStatus').innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> Pendiente Baja';
+            }
+
+            // Actualizar Cota H visual
+            const lineaH = document.getElementById('cotaH_line');
+            lineaH.setAttribute('x1', endX + 20);
+            lineaH.setAttribute('x2', endX + 20);
+            lineaH.setAttribute('y1', startY); // Base
+            lineaH.setAttribute('y2', endY); // Tope
+
+            const textoH = document.getElementById('cotaH_text');
+            textoH.setAttribute('x', endX + 25);
+            textoH.setAttribute('y', endY + (alturaVisual/2));
+            textoH.textContent = `H = ${h} cm`;
+
+            // Mover deflector
+            const deflectorGroup = document.getElementById('deflectorGroup');
+            deflectorGroup.setAttribute('transform', `translate(${endX}, ${endY}) rotate(${anguloGrados})`);
+        }
+
+        // --- Lógica de Cálculo (Heredada y Mejorada) ---
         document.getElementById('fecha').valueAsDate = new Date();
 
         function calcular() {
-            // 1. Obtener Valores
+            // Inputs
             const presion = parseFloat(document.getElementById('presion').value) || 0;
             const altura = parseFloat(document.getElementById('altura').value) || 0;
             const longitud = parseFloat(document.getElementById('longitud').value) || 0;
             
             const tieneDeflector = document.getElementById('checkDeflector').checked;
             const cantCodos90 = parseFloat(document.getElementById('codos90').value) || 0;
-            const valCodo90 = parseFloat(document.getElementById('valCodo90').value) || 2.0;
             const cantCodos45 = parseFloat(document.getElementById('codos45').value) || 0;
-            const valCodo45 = parseFloat(document.getElementById('valCodo45').value) || 1.0;
 
-            // 2. Cálculo del Factor
-            // Fórmula basada en el ejemplo: 0.85 * (PresionLocal / 1013.25)
-            // Ejemplo PDF: 0.85 * (752 / 1013.25) = 0.63 -> Redondeado a 0.6 en el ejemplo del usuario.
-            // Usaremos 2 decimales para mayor precisión similar al ejemplo o el cálculo exacto.
+            // Constantes
+            const valCodo90 = 2.0;
+            const valCodo45 = 1.0;
+
+            // Factor Presión
             let factorCalculado = 0.85 * (presion / 1013.25);
-            // Ajuste fino para coincidir con el ejemplo si es 752 (para propósitos pedagógicos del usuario)
-            // Pero para una herramienta real, la precisión es mejor.
-            // Mostramos 3 decimales
-            document.getElementById('factor').value = factorCalculado.toFixed(3);
+            document.getElementById('factor').innerText = factorCalculado.toFixed(3);
 
-            // 3. Puntos Positivos (Ganancia de Cota)
-            // El ejemplo dice: Puntos = (H_cm / 10) * Factor
+            // Cálculos Puntos
             const ptsGanados = (altura / 10) * factorCalculado;
-            document.getElementById('puntosGanados').innerText = `+${ptsGanados.toFixed(2)}`;
+            document.getElementById('puntosGanados').innerText = `+${ptsGanados.toFixed(2)} pts`;
 
-            // 4. Puntos Negativos (Pérdidas)
-            
-            // Deflector
             const ptsDeflector = tieneDeflector ? 0.3 : 0;
-            
-            // Tramos rectos: Ejemplo dice (-0.5 puntos / cada 100 cm)
-            // Fórmula: (Longitud / 100) * 0.5
             const ptsLongitud = (longitud / 100) * 0.5;
-
-            // Codos
             const ptsCodos90 = cantCodos90 * valCodo90;
             const ptsCodos45 = cantCodos45 * valCodo45;
-            
-            document.getElementById('totalCodos90').innerText = `-${ptsCodos90.toFixed(2)}`;
-            document.getElementById('totalCodos45').innerText = `-${ptsCodos45.toFixed(2)}`;
+
+            document.getElementById('totalCodos90').innerText = `-${ptsCodos90.toFixed(1)}`;
+            document.getElementById('totalCodos45').innerText = `-${ptsCodos45.toFixed(1)}`;
 
             const totalPerdidos = ptsDeflector + ptsLongitud + ptsCodos90 + ptsCodos45;
-            document.getElementById('puntosPerdidos').innerText = `-${totalPerdidos.toFixed(2)}`;
+            document.getElementById('puntosPerdidosDetalle').innerText = `-${totalPerdidos.toFixed(2)} pts`;
 
-            // 5. Total Global
+            // Total
             const totalGlobal = ptsGanados - totalPerdidos;
+            const esValido = totalGlobal >= 1.0;
+
+            // UI Updates
             const divGlobal = document.getElementById('puntosGlobal');
             divGlobal.innerText = totalGlobal.toFixed(2);
-            divGlobal.className = totalGlobal >= 1.0 ? 'text-4xl font-bold text-green-400' : 'text-4xl font-bold text-red-400';
+            divGlobal.className = esValido 
+                ? 'text-5xl font-extrabold text-green-400 tracking-tight transition-colors' 
+                : 'text-5xl font-extrabold text-red-500 tracking-tight transition-colors';
 
-            // 6. Estado y Sugerencias
             const estadoDiv = document.getElementById('estadoTexto');
             const sugerenciasPanel = document.getElementById('sugerenciasPanel');
+            const exitoPanel = document.getElementById('exitoPanel');
+            const bar = document.getElementById('progressBar');
 
-            if (totalGlobal >= 1.0) {
+            if (esValido) {
                 estadoDiv.innerText = "CUMPLE";
-                estadoDiv.className = "text-2xl font-bold px-3 py-1 rounded inline-block mt-1 bg-green-600 text-white";
+                estadoDiv.className = "text-lg font-bold px-4 py-1 rounded bg-green-600 text-white inline-block border border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)]";
                 sugerenciasPanel.classList.add('hidden');
+                exitoPanel.classList.remove('hidden');
+                bar.className = "h-full bg-green-500 w-full transition-all duration-700 shadow-[0_0_10px_#22c55e]";
             } else {
                 estadoDiv.innerText = "NO CUMPLE";
-                estadoDiv.className = "text-2xl font-bold px-3 py-1 rounded inline-block mt-1 bg-red-600 text-white";
+                estadoDiv.className = "text-lg font-bold px-4 py-1 rounded bg-red-600 text-white inline-block border border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]";
+                exitoPanel.classList.add('hidden');
                 
-                // Cálculo de Sugerencia (Alternativa 1 del PDF)
-                // Objetivo: Llegar a 1.0
-                // (NuevaAltura / 10 * Factor) - Perdidas = 1.0
-                // NuevaAltura = (1.0 + Perdidas) / Factor * 10
-                const perdidasActuales = totalPerdidos;
-                const alturaNecesaria = ((1.0 + perdidasActuales) / factorCalculado) * 10;
+                // Sugerencias
+                const alturaNecesaria = ((1.0 + totalPerdidos) / factorCalculado) * 10;
                 const alturaAdicional = alturaNecesaria - altura;
 
                 if (alturaAdicional > 0 && factorCalculado > 0) {
@@ -405,30 +530,33 @@
                     document.getElementById('hSugerida').innerText = Math.ceil(alturaAdicional);
                     document.getElementById('hTotalSugerida').innerText = Math.ceil(alturaNecesaria);
                 }
+                
+                // Progress Bar Math (Clamp 0 to 100%)
+                const progress = Math.max(0, Math.min((totalGlobal / 1.0) * 100, 90)); // Max 90% if fail
+                bar.style.width = `${progress}%`;
+                bar.className = "h-full bg-red-500 transition-all duration-700";
             }
 
+            // Actualizar Diagrama Visual
+            actualizarDiagrama(altura, longitud, esValido);
+
             return {
-                presion, factorCalculado, altura, ptsGanados, longitud, ptsLongitud, 
-                tieneDeflector, ptsDeflector, cantCodos90, ptsCodos90, cantCodos45, ptsCodos45, 
-                totalPerdidos, totalGlobal
+                presion, factorCalculado, altura, ptsGanados, longitud, ptsLongitud,
+                tieneDeflector, ptsDeflector, cantCodos90, ptsCodos90, cantCodos45, ptsCodos45,
+                totalGlobal, esValido
             };
         }
 
         function generarPDF() {
             const data = calcular();
             const cliente = document.getElementById('cliente').value || "Cliente General";
-            const fecha = document.getElementById('fecha').value;
-            const direccion = document.getElementById('direccion').value;
-            const tecnico = document.getElementById('tecnico').value;
-
-            // Llenar datos en el template oculto
+            
+            // Llenar datos ocultos
             document.getElementById('pdf-cliente').innerText = cliente;
-            document.getElementById('pdf-fecha').innerText = fecha;
-            document.getElementById('pdf-direccion').innerText = direccion;
-            document.getElementById('pdf-tecnico').innerText = tecnico;
-
+            document.getElementById('pdf-direccion').innerText = "N/A"; // Placeholder o input
+            document.getElementById('pdf-tecnico').innerText = document.getElementById('tecnico').value || "N/A";
+            document.getElementById('pdf-fecha-print').innerText = new Date().toLocaleDateString();
             document.getElementById('pdf-presion').innerText = data.presion;
-            document.getElementById('pdf-factor').innerText = data.factorCalculado.toFixed(3);
             
             document.getElementById('pdf-altura').innerText = data.altura;
             document.getElementById('pdf-pts-ganados').innerText = `+${data.ptsGanados.toFixed(2)}`;
@@ -436,41 +564,41 @@
             document.getElementById('pdf-longitud').innerText = data.longitud;
             document.getElementById('pdf-pts-longitud').innerText = `-${data.ptsLongitud.toFixed(2)}`;
             
-            document.getElementById('pdf-deflector-status').innerText = data.tieneDeflector ? "Si" : "No";
-            document.getElementById('pdf-pts-deflector').innerText = `-${data.ptsDeflector.toFixed(2)}`;
-            
-            document.getElementById('pdf-codos-desc').innerText = `90° (${data.cantCodos90}) | 45° (${data.cantCodos45})`;
-            document.getElementById('pdf-pts-codos').innerText = `-${(data.ptsCodos90 + data.ptsCodos45).toFixed(2)}`;
+            const totalAccesoriosPts = data.ptsDeflector + data.ptsCodos90 + data.ptsCodos45;
+            document.getElementById('pdf-accesorios-desc').innerText = `Deflector: ${data.tieneDeflector?'Si':'No'} | Codos 90°: ${data.cantCodos90}`;
+            document.getElementById('pdf-pts-accesorios').innerText = `-${totalAccesoriosPts.toFixed(2)}`;
             
             document.getElementById('pdf-total').innerText = data.totalGlobal.toFixed(2);
             
-            const resultadoEl = document.getElementById('pdf-resultado');
-            if (data.totalGlobal >= 1.0) {
-                resultadoEl.innerText = "CUMPLE (APROBADO)";
-                resultadoEl.className = "border p-3 text-right bg-green-600 text-white";
+            const box = document.getElementById('pdf-resultado-box');
+            if(data.esValido){
+                box.innerText = "APROBADO (CUMPLE)";
+                box.style.background = "#dcfce7";
+                box.style.color = "#15803d";
+                box.style.border = "1px solid #15803d";
             } else {
-                resultadoEl.innerText = "NO CUMPLE (RECHAZADO)";
-                resultadoEl.className = "border p-3 text-right bg-red-600 text-white";
+                box.innerText = "RECHAZADO (NO CUMPLE)";
+                box.style.background = "#fee2e2";
+                box.style.color = "#b91c1c";
+                box.style.border = "1px solid #b91c1c";
             }
 
-            // Configurar opciones de PDF
             const element = document.getElementById('report-content');
-            element.style.display = 'block'; // Mostrar temporalmente para renderizar
+            element.style.display = 'block';
 
             const opt = {
-                margin:       10,
-                filename:     `Evaluacion_NTC3833_${cliente.replace(/\s+/g, '_')}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                margin: 10,
+                filename: `Reporte_NTC3833_${cliente.replace(/\s+/g,'_')}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
             html2pdf().set(opt).from(element).save().then(() => {
-                element.style.display = 'none'; // Ocultar de nuevo
+                element.style.display = 'none';
             });
         }
 
-        // Calcular al cargar para mostrar valores iniciales
         window.onload = calcular;
     </script>
 </body>
