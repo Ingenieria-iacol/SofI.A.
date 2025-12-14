@@ -64,7 +64,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, createElement, useRef } = React;
+        const { useState, useEffect, createElement, useRef, useMemo } = React;
 
         // --- ICON COMPONENT ---
         const Icon = ({ name, size = 24, className = "" }) => {
@@ -111,7 +111,7 @@
                 id: 105, 
                 title: "Métodos de ventilación", 
                 category: "NTC 3631", 
-                status: "active", // ACTIVADO
+                status: "active", 
                 description: "Domina los métodos de ventilación para recintos interiores según la NTC 3631. Cálculo de aberturas, rejillas y volúmenes de aire requeridos para la combustión segura.",
                 matchScore: 95,
                 year: "2025",
@@ -125,7 +125,7 @@
                 imageColor: "bg-purple-900",
                 gradientColor: "from-purple-900 to-black",
                 imageUrl: "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=1000&auto=format&fit=crop",
-                url: "./CursoNral4_NTC3631_V1Libre.html", // VINCULADO
+                url: "./CursoNral4_NTC3631_V1Libre.html", 
                 chapters: [
                     { title: "Principios de Ventilación", duration: "20m" },
                     { title: "Método 1: Comunicación Directa", duration: "35m" },
@@ -329,14 +329,27 @@
             );
         };
 
+        // --- FUNCION HELPER PARA MEZCLAR (SHUFFLE) ---
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
         // --- APP PRINCIPAL ---
         function App() {
             const [plans, setPlans] = useState(initialTrainingPlans);
             const [selectedPlan, setSelectedPlan] = useState(null);
 
-            // FILTROS POR CATEGORÍA Y ESTADO
-            // MODIFICACIÓN: Ahora filtramos por estado 'active' para mostrar AMBOS cursos en la parte superior
-            const activePlans = plans.filter(p => p.status === 'active');
+            // FILTROS Y MEZCLA DE CURSOS ACTIVOS (Solo una vez al montar)
+            const activePlans = useMemo(() => {
+                const active = plans.filter(p => p.status === 'active');
+                return shuffleArray(active); // Se mezcla solo al cargar o si 'plans' cambia
+            }, [plans]);
+
             const upcomingPlans = plans.filter(p => p.status === 'coming_soon');
             
             // Duplicamos los próximos para efecto de carrusel infinito
@@ -395,7 +408,7 @@
                     <main className="flex-1 overflow-y-auto custom-scrollbar p-8">
                         <div className="max-w-7xl mx-auto space-y-12">
                             
-                            {/* SECCIÓN 1: CURSOS ACTIVOS (HERO) */}
+                            {/* SECCIÓN 1: CURSOS DISPONIBLES (ACTIVOS Y MEZCLADOS) */}
                             <section>
                                 <div className="mb-6 flex items-center gap-3">
                                     <Icon name="BookOpenCheck" className="text-orange-500" />
