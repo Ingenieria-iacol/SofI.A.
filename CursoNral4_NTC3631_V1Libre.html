@@ -621,7 +621,7 @@
                 doc.setFillColor(15, 23, 42); // Fondo oscuro elegante
                 doc.rect(0, 0, 297, 210, 'F');
 
-                // Marca de agua
+                // Marca de agua MEJORADA
                 try {
                     const img = document.getElementById('logo-entalpia');
                     if (img) {
@@ -629,8 +629,22 @@
                         canvas.width = img.naturalWidth;
                         canvas.height = img.naturalHeight;
                         const ctx = canvas.getContext("2d");
+                        
+                        // Configuración de transparencia para la marca de agua
+                        ctx.globalAlpha = 0.1; // Muy atenuado
                         ctx.drawImage(img, 0, 0);
-                        doc.addImage(canvas.toDataURL("image/png"), 'PNG', 100, 50, 100, 0, undefined, 'FAST');
+                        
+                        // Tamaño grande (75% del ancho de página)
+                        const pageWidth = 297;
+                        const pageHeight = 210;
+                        const imgWidth = pageWidth * 0.75;
+                        const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
+                        
+                        // Centrado perfecto
+                        const x = (pageWidth - imgWidth) / 2;
+                        const y = (pageHeight - imgHeight) / 2;
+
+                        doc.addImage(canvas.toDataURL("image/png"), 'PNG', x, y, imgWidth, imgHeight, undefined, 'FAST');
                     }
                 } catch(e) {}
 
