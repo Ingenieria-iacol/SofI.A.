@@ -150,10 +150,42 @@
         }
         
         .tile:hover { transform: scale(1.05); z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); }
-        .tile-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; background: #202020; transition: opacity 0.3s; }
+        
+        /* Mensaje de Carga en la tarjeta */
+        .tile-loading-msg {
+            position: absolute;
+            inset: 0; /* Ocupa todo el tile */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #666;
+            z-index: 0; /* Detrás de la imagen */
+            font-style: italic;
+            text-align: center;
+            padding: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        .tile-img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            opacity: 0.9; 
+            background: transparent; /* Transparente para ver el texto de carga */
+            transition: opacity 0.3s; 
+            position: relative;
+            z-index: 1; /* Delante del texto de carga */
+        }
         .tile:hover .tile-img { opacity: 0.5; }
         
-        .tile-content { position: absolute; inset: 0; opacity: 0; background: linear-gradient(to top, #141414 10%, rgba(20,20,20,0.4)); display: flex; justify-content: center; align-items: center; transition: opacity 0.3s; }
+        .tile-content { position: absolute; inset: 0; opacity: 0; background: linear-gradient(to top, #141414 10%, rgba(20,20,20,0.4)); display: flex; justify-content: center; align-items: center; transition: opacity 0.3s; z-index: 2; }
         .tile:hover .tile-content { opacity: 1; }
         
         .tile-actions { display: flex; gap: 15px; }
@@ -634,6 +666,7 @@
             else if (tool.valia === "Premium") valiaBadge = `<div class="valia-badge"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>`;
 
             tile.innerHTML = `
+                <div class="tile-loading-msg"><i class="fas fa-circle-notch fa-spin"></i><br>Cargando Librerías...</div>
                 <img src="${img}" class="tile-img" onerror="this.src='${fallbackImg}'">
                 ${valiaBadge}
                 <div class="tile-content">
@@ -696,15 +729,10 @@
                 }
             }
             
-            // Obtener categorías únicas
-            let cats = [...new Set(HERRAMIENTAS.map(h => h.categoria))];
-            
-            // ROTAR/MEZCLAR CATEGORÍAS PARA VISIBILIDAD (Nueva funcionalidad)
-            cats = cats.sort(() => Math.random() - 0.5);
-
+            const cats = [...new Set(HERRAMIENTAS.map(h => h.categoria))];
             cats.forEach(cat => {
                 let its = HERRAMIENTAS.filter(h => h.categoria === cat);
-                // MEZCLAR ALEATORIAMENTE TARJETAS (Funcionalidad existente)
+                // MEZCLAR ALEATORIAMENTE PARA VISIBILIDAD
                 its = its.sort(() => Math.random() - 0.5);
                 crearFila(c, cat, its);
             });
