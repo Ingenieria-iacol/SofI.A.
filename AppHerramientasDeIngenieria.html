@@ -19,6 +19,7 @@
             --secondary-green: #46d369;
             --corp-blue: #3b82f6; 
             --edu-yellow: #f59e0b; 
+            --star-gold: #ffd700;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -81,7 +82,7 @@
         /* --- HERO --- */
         .hero {
             height: 80vh; width: 100%; position: relative;
-            background-color: #0d0d0d; /* Fallback color */
+            background-color: #0d0d0d;
             background-position: center top; background-size: cover;
             display: flex; align-items: center; padding-left: 4%;
             transition: background-image 0.8s ease-in-out;
@@ -111,23 +112,68 @@
         
         .search-results-grid { display: flex; flex-wrap: wrap; gap: 20px; padding-left: 4%; padding-right: 4%; }
         
-        .tile {
-            min-width: 280px; height: 160px; background-color: #252525; border-radius: 6px;
-            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), z-index 0s, box-shadow 0.3s;
-            cursor: pointer; position: relative; overflow: hidden; flex-shrink: 0;
+        /* Contenedor Wrapper para Tarjeta + Nombre externo */
+        .tool-card {
+            min-width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-shrink: 0;
+            margin-bottom: 10px;
         }
-        .tile:hover { transform: scale(1.3); z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.8); transition-delay: 0.1s; border: 1px solid rgba(255,255,255,0.1); }
-        .tile-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; background: #202020; }
-        .tile:hover .tile-img { opacity: 0.4; }
-        .tile-content { position: absolute; inset: 0; opacity: 0; background: linear-gradient(to top, #141414 10%, rgba(20,20,20,0.6)); display: flex; flex-direction: column; justify-content: flex-end; padding: 15px; transition: opacity 0.3s; }
+        
+        .tile {
+            width: 100%; 
+            height: 160px;
+            background-color: #252525; 
+            border-radius: 6px;
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s;
+            cursor: pointer; 
+            position: relative; 
+            overflow: hidden;
+        }
+        
+        .tile:hover { transform: scale(1.05); z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); }
+        .tile-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; background: #202020; transition: opacity 0.3s; }
+        .tile:hover .tile-img { opacity: 0.5; }
+        
+        .tile-content { position: absolute; inset: 0; opacity: 0; background: linear-gradient(to top, #141414 10%, rgba(20,20,20,0.4)); display: flex; justify-content: center; align-items: center; transition: opacity 0.3s; }
         .tile:hover .tile-content { opacity: 1; }
-        .tile-actions { display: flex; gap: 12px; margin-bottom: 5px; }
-        .tile-icon { width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; background: rgba(30,30,30,0.6); color: white; transition: 0.2s; }
+        
+        .tile-actions { display: flex; gap: 15px; }
+        .tile-icon { width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); display: flex; align-items: center; justify-content: center; font-size: 1rem; background: rgba(30,30,30,0.6); color: white; transition: 0.2s; }
         .tile-icon:hover { background: white; color: black; border-color: white; transform: scale(1.1); }
         .icon-play { background: white; color: black; border-color: white; }
-        .tile-title { font-size: 0.95rem; font-weight: 700; color: white; margin-bottom: 3px; text-shadow: 1px 1px 2px black; }
-        .tile-subtitle { font-size: 0.65rem; color: #ccc; margin-bottom: 5px; line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .tile-meta { font-size: 0.7rem; color: var(--secondary-green); font-weight: 700; }
+
+        /* Estilo del nombre externo */
+        .tool-name-external {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #d1d1d1;
+            white-space: normal;
+            line-height: 1.2;
+            padding: 0 2px;
+            text-shadow: 0 1px 2px black;
+        }
+        .tool-card:hover .tool-name-external { color: white; }
+
+        /* Estilo de la Valia (Estrellas) */
+        .valia-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: var(--star-gold);
+            display: flex;
+            gap: 2px;
+            z-index: 5;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
 
         /* --- PERFILES --- */
         #profile-gate { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #141414; z-index: 4000; flex-direction: column; align-items: center; justify-content: center; animation: fadeIn 0.4s ease; }
@@ -211,10 +257,8 @@
 
             /* Carrusel Móvil */
             .row-title { font-size: 1.2rem; margin-left: 0; }
-            .tile { min-width: 160px; height: 240px; } 
-            .tile-content { padding: 10px; }
-            .tile-title { font-size: 0.9rem; white-space: normal; }
-            .tile:hover { transform: scale(1.05); z-index: 50; } 
+            .tool-card { min-width: 160px; } /* Ajuste de ancho de tarjeta móvil */
+            .tile { height: 220px; } /* Imagen más alta en móvil tipo póster */
             
             /* Modales en Móvil */
             .edit-profile-box, .membership-box { padding: 25px 20px; width: 95%; max-height: 85vh; overflow-y: auto; }
@@ -249,7 +293,7 @@
             <div class="nav-links">
                 <a href="interfazDeOpcionInicio.html" class="nav-item"><i class="fas fa-home hidden-desktop" style="display:none;"></i> Inicio</a>
                 <a href="#" class="nav-item active" onclick="location.reload()"><i class="fas fa-th-large hidden-desktop" style="display:none;"></i> Herramientas</a>
-                <span class="nav-item"><i class="fas fa-list hidden-desktop" style="display:none;"></i> Mi Lista</span>
+                <span class="nav-item" onclick="mostrarFavoritosScroll()"><i class="fas fa-list hidden-desktop" style="display:none;"></i> Mi Lista</span>
                 <a href="ModalPrecios.html" class="nav-item nav-btn-planes"><i class="fas fa-crown hidden-desktop" style="display:none;"></i> Planes</a>
             </div>
             
@@ -266,8 +310,8 @@
                 <div id="nav-avatar-icon" class="nav-avatar av-gen" onclick="abrirEditorPerfil()">
                     <i class="fas fa-user"></i>
                 </div>
-                <!-- Botón Cerrar Sesión (Enlace directo para mayor compatibilidad) -->
-                <a href="index.html" onclick="limpiarSesion()" title="Cerrar Sesión" style="color:#ccc; text-decoration:none;">
+                <!-- Botón Cerrar Sesión -->
+                <a href="Index.html" onclick="limpiarSesion()" title="Cerrar Sesión" style="color:#ccc; text-decoration:none;">
                     <i class="fas fa-sign-out-alt"></i>
                 </a>
             </div>
@@ -390,7 +434,7 @@
             { u: "guest", p: "", n: "Invitado", apellido: "Entalpia", f: "29/11/2025", img: "", profesion: "", area: "", telefono: "", ubicacion: "" }
         ];
         
-        // SAFE LOCALSTORAGE: Wrapper para evitar errores en modos restrictivos (Incógnito/Strict)
+        // SAFE LOCALSTORAGE
         function safeGetItem(key) {
             try { return localStorage.getItem(key); } catch (e) { console.warn('LS no disponible'); return null; }
         }
@@ -402,27 +446,27 @@
         try { dbUsuarios = JSON.parse(safeGetItem('sofia_users')); } catch (e) { dbUsuarios = null; }
         if (!dbUsuarios || !Array.isArray(dbUsuarios) || dbUsuarios.length === 0) dbUsuarios = DATOS_INICIALES;
 
-        // --- BASE DE DATOS HERRAMIENTAS ---
+        // --- BASE DE DATOS HERRAMIENTAS (ACTUALIZADA CON 'VALIA') ---
         const HERRAMIENTAS = [
-            { id: 1, nombre: "Calculadora de ventilación", url: "Calculadora de ventilacion 3631 V_Libre.html", imagen: "Imagen001.png", descripcion: "Determina la capacidad de ventilación de un recinto ingresando solo las dimensiones espaciales y la potencia instalada.", categoria: "Cálculos", subtitulo: "Ventilacion NTC 3631 2da. Act" },
-            { id: 2, nombre: "Convertidor Universal GLP", url: "Aplicacion Convertidor Universal GLP", imagen: "Imagen004convertidorGLP.png", descripcion: "Herramienta esencial para conversiones másicas precisas: de Kg a m3, de Galones a Kg, y otras unidades fundamentales.", categoria: "Utilidades y Conversión", subtitulo: "Conversión másica precisa" },
-            { id: 3, nombre: "EnginnerIA", url: "Chat Bot", imagen: "LogoIngenieroIA.png", descripcion: "Chatea con la I.A. experta sobre temas relacionados con las redes de gas y sistemas de combustión.", categoria: "Consultoria", subtitulo: "Asistente Virtual Experto" },
-            { id: 4, nombre: "Diseño Media Presión", url: "Modelador Mueller V_Pro (1211)", imagen: "Imagen003DiseñoMueller.png", descripcion: "Algoritmo Mueller: Estima las pérdidas de presión y calcula la velocidad en sistemas > 0,33 psi.", categoria: "Diseño y Modelado", subtitulo: "Modelo Mueller (> 0.33 psi)" },
-            { id: 5, nombre: "Diseño Baja Presión", url: "Modelador Renoaurd-V_Pro", imagen: "Imagen002DiseñoRenouard.png", descripcion: "Algoritmo Renouard: Estima las pérdidas de presión en sistemas que operan a presiones <= 0,33 psi.", categoria: "Diseño y Modelado", subtitulo: "Modelo Renouard (<= 0.33 psi)" },
-            { id: 6, nombre: "Inspector De Ventilacion", url: "Calculadora de ventilacion 3631 V_Pro.html", imagen: "ImagenAppInspectorVentil.png", descripcion: "Evalua la capacidad de ventilacion de un recinto en relacion a la NTC 3631 2da. Act.", categoria: "Cálculos", subtitulo: "Ventilacion NTC 3631 2da. Act" },
-            { id: 7, nombre: "Inspector De Vacios Internos", url: "AppInspectorVaciosInternos_V1libre.html", imagen: "ImgAppInspVaciosInternos_V1Libre.png", descripcion: "Evalua y califica un vacio interno de acuerdo con la NTC 3631 2da. Act.", categoria: "Cálculos", subtitulo: "Ventilacion NTC 3631 2da. Act" },
-            { id: 8, nombre: "Seleccion adecuada de reguladores", url: "./inventario.html", imagen: "ImagenReguladores.png", descripcion: "Ingresa la presion de entrada (de trabajo), elije la presion de salida y precisa el consumo para obtener la sugerencia del sistema", categoria: "Próximamente", subtitulo: "Selección automática de equipos" },
-            { id: 9, nombre: "Gestor Normativo", url: "AplicativoGestorNormativo_V1_Libre.html", imagen: "ImagenGestorNormativo.png", descripcion: "Un repositorio de documentos de ingenieria, normas y marco regulatorio", categoria: "Consultoria", subtitulo: "Biblioteca Legal Técnica" },
-            { id: 10, nombre: "Instalacion de tanques GLP", url: "./inventario.html", imagen: "Imagendistanciamientodetanque.png", descripcion: "De acuerdo la normas tecnicas, centramos atencion especial a las distancias de los tanques de GLP", categoria: "Próximamente", subtitulo: "Normas de seguridad GLP" },
-            { id: 11, nombre: "Convertidor Universal De Unidades", url: "Convertidor de unidades Todas las unidades.html", imagen: "ImagenConvertidorUniversalDeUnidades.png", descripcion: "Realiza conversiones de todo magnitud y variable ya sea fisica o digital", categoria: "Utilidades y Conversión", subtitulo: "Herramienta Multi-propósito" },
-            { id: 12, nombre: "Cuadro de errores y fallas CPD y CA", url: "Error de códigos de aplicación, calentadores.txt", imagen: "ImgErroresCPD_CA.png", descripcion: "Realiza un diagnostico segun el error declarado por el equipo e identifica la solucion", categoria: "Próximamente", subtitulo: "Herramienta Multi-propósito" },
-            { id: 13, nombre: "Isoplanos basicos", url: "Aplicacion_CAD_Mueller_Renouard_VLibre.html", imagen: "ImgAplicacionCAD_Vlibre.png", descripcion: "Dibuja un isoplano, agrega componentes y descarga un archivo plano para modeladores y memorias de calculo", categoria: "Diseño y Modelado", subtitulo: "Planimetrias" },
-            { id: 14, nombre: "Modelador de CPD", url: "AppCalibradorCombustion.html", imagen: "ImgModeladorCPD_Vlibre.png", descripcion: "Analiza el comportamiento de un calentador de agua de paso", categoria: "Diseño y Modelado", subtitulo: "Calentadores" },
-            { id: 15, nombre: "Modelador Mueller Version Pro", url: "AppCADMuellerRenouard_V1_Pro.html", imagen: "ImgModeladores.png", descripcion: "Solo tienes que construir el isometrico y el sistema te arrojara el calculo de presion ", categoria: "Herramientas Pro", subtitulo: "Isoplanos" },
-            { id: 16, nombre: "Evalua Anexo D NTC 3631", url: "AppEvaluaAnexoDNTC3631_V1Libre.html", imagen: "ImgAnexoD_ntc3631.png", descripcion: "Metodo de ventilacion para recintos ubicados a menos de 260 msnm ", categoria: "Cálculos", subtitulo: "Ventilacion NTC 3631 2da. Act" },
-            { id: 17, nombre: "Evalua Monoespacio NTC 3631", url: "AppAnexoB_NTC3631.html", imagen: "ImgMonoespacioV1_Libre.png", descripcion: "Metodo de evaluacion de recintos monoespaciales", categoria: "Cálculos", subtitulo: "Ventilacion NTC 3631 2da. Act" },
-            { id: 18, nombre: "Glosario", url: "", imagen: "ImgGlosario.png", descripcion: "Un fondo de terminos, compendio de todas las definiciones normativas", categoria: "Próximamente", subtitulo: "Biblioteca Técnica" },
-            { id: 19, nombre: "Requisitos para la ubicacion de artefactos Tipo A", url: "AppNral3_NTC3833_ReqUbicaArtefTipoA.html", imagen: "ImgNTC3833_ReqUbicaArtefTipoA.png", descripcion: "Determina la necesidad de conectar los artefactos tipo A a sistemas de evacuacion", categoria: "Cálculos", subtitulo: "Ductos NTC 3833 1ra. Act" }
+            { id: 1, nombre: "Calculadora de ventilación", url: "Calculadora de ventilacion 3631 V_Libre.html", imagen: "Imagen001.png", descripcion: "Determina la capacidad de ventilación de un recinto ingresando solo las dimensiones espaciales y la potencia instalada.", categoria: "Cálculos", subtitulo: "Ventilacion NTC 3631 2da. Act", valia: "Libre" },
+            { id: 2, nombre: "Convertidor Universal GLP", url: "Aplicacion Convertidor Universal GLP", imagen: "Imagen004convertidorGLP.png", descripcion: "Herramienta esencial para conversiones másicas precisas: de Kg a m3, de Galones a Kg, y otras unidades fundamentales.", categoria: "Utilidades y Conversión", subtitulo: "Conversión másica precisa", valia: "Libre" },
+            { id: 3, nombre: "EnginnerIA", url: "Chat Bot", imagen: "LogoIngenieroIA.png", descripcion: "Chatea con la I.A. experta sobre temas relacionados con las redes de gas y sistemas de combustión.", categoria: "Consultoria", subtitulo: "Asistente Virtual Experto", valia: "Plus" },
+            { id: 4, nombre: "Diseño Media Presión", url: "Modelador Mueller V_Pro (1211)", imagen: "Imagen003DiseñoMueller.png", descripcion: "Algoritmo Mueller: Estima las pérdidas de presión y calcula la velocidad en sistemas > 0,33 psi.", categoria: "Diseño y Modelado", subtitulo: "Modelo Mueller (> 0.33 psi)", valia: "Premium" },
+            { id: 5, nombre: "Diseño Baja Presión", url: "Modelador Renoaurd-V_Pro", imagen: "Imagen002DiseñoRenouard.png", descripcion: "Algoritmo Renouard: Estima las pérdidas de presión en sistemas que operan a presiones <= 0,33 psi.", categoria: "Diseño y Modelado", subtitulo: "Modelo Renouard (<= 0.33 psi)", valia: "Premium" },
+            { id: 6, nombre: "Inspector De Ventilacion", url: "Calculadora de ventilacion 3631 V_Pro.html", imagen: "ImagenAppInspectorVentil.png", descripcion: "Evalua la capacidad de ventilacion de un recinto en relacion a la NTC 3631 2da. Act.", categoria: "Cálculos", subtitulo: "Ventilacion NTC 3631 2da. Act", valia: "Plus" },
+            { id: 7, nombre: "Inspector De Vacios Internos", url: "AppInspectorVaciosInternos_V1libre.html", imagen: "ImgAppInspVaciosInternos_V1Libre.png", descripcion: "Evalua y califica un vacio interno de acuerdo con la NTC 3631 2da. Act.", categoria: "Cálculos", subtitulo: "Ventilacion NTC 3631 2da. Act", valia: "Libre" },
+            { id: 8, nombre: "Seleccion adecuada de reguladores", url: "./inventario.html", imagen: "ImagenReguladores.png", descripcion: "Ingresa la presion de entrada (de trabajo), elije la presion de salida y precisa el consumo para obtener la sugerencia del sistema", categoria: "Próximamente", subtitulo: "Selección automática de equipos", valia: "Libre" },
+            { id: 9, nombre: "Gestor Normativo", url: "AplicativoGestorNormativo_V1_Libre.html", imagen: "ImagenGestorNormativo.png", descripcion: "Un repositorio de documentos de ingenieria, normas y marco regulatorio", categoria: "Consultoria", subtitulo: "Biblioteca Legal Técnica", valia: "Plus" },
+            { id: 10, nombre: "Instalacion de tanques GLP", url: "./inventario.html", imagen: "Imagendistanciamientodetanque.png", descripcion: "De acuerdo la normas tecnicas, centramos atencion especial a las distancias de los tanques de GLP", categoria: "Próximamente", subtitulo: "Normas de seguridad GLP", valia: "Libre" },
+            { id: 11, nombre: "Convertidor Universal De Unidades", url: "Convertidor de unidades Todas las unidades.html", imagen: "ImagenConvertidorUniversalDeUnidades.png", descripcion: "Realiza conversiones de todo magnitud y variable ya sea fisica o digital", categoria: "Utilidades y Conversión", subtitulo: "Herramienta Multi-propósito", valia: "Libre" },
+            { id: 12, nombre: "Cuadro de errores y fallas CPD y CA", url: "Error de códigos de aplicación, calentadores.txt", imagen: "ImgErroresCPD_CA.png", descripcion: "Realiza un diagnostico segun el error declarado por el equipo e identifica la solucion", categoria: "Próximamente", subtitulo: "Herramienta Multi-propósito", valia: "Libre" },
+            { id: 13, nombre: "Isoplanos basicos", url: "Aplicacion_CAD_Mueller_Renouard_VLibre.html", imagen: "ImgAplicacionCAD_Vlibre.png", descripcion: "Dibuja un isoplano, agrega componentes y descarga un archivo plano para modeladores y memorias de calculo", categoria: "Diseño y Modelado", subtitulo: "Planimetrias", valia: "Libre" },
+            { id: 14, nombre: "Modelador de CPD", url: "AppCalibradorCombustion.html", imagen: "ImgModeladorCPD_Vlibre.png", descripcion: "Analiza el comportamiento de un calentador de agua de paso", categoria: "Diseño y Modelado", subtitulo: "Calentadores", valia: "Libre" },
+            { id: 15, nombre: "Modelador Mueller Version Pro", url: "AppCADMuellerRenouard_V1_Pro.html", imagen: "ImgModeladores.png", descripcion: "Solo tienes que construir el isometrico y el sistema te arrojara el calculo de presion ", categoria: "Herramientas Pro", subtitulo: "Isoplanos", valia: "Premium" },
+            { id: 16, nombre: "Evalua Anexo D NTC 3631", url: "AppEvaluaAnexoDNTC3631_V1Libre.html", imagen: "ImgAnexoD_ntc3631.png", descripcion: "Metodo de ventilacion para recintos ubicados a menos de 260 msnm ", categoria: "Cálculos", subtitulo: "Ventilacion NTC 3631 2da. Act", valia: "Libre" },
+            { id: 17, nombre: "Evalua Monoespacio NTC 3631", url: "AppAnexoB_NTC3631.html", imagen: "ImgMonoespacioV1_Libre.png", descripcion: "Metodo de evaluacion de recintos monoespaciales", categoria: "Cálculos", subtitulo: "Ventilacion NTC 3631 2da. Act", valia: "Libre" },
+            { id: 18, nombre: "Glosario", url: "", imagen: "ImgGlosario.png", descripcion: "Un fondo de terminos, compendio de todas las definiciones normativas", categoria: "Próximamente", subtitulo: "Biblioteca Técnica", valia: "Libre" },
+            { id: 19, nombre: "Requisitos para la ubicacion de artefactos Tipo A", url: "AppNral3_NTC3833_ReqUbicaArtefTipoA.html", imagen: "ImgNTC3833_ReqUbicaArtefTipoA.png", descripcion: "Determina la necesidad de conectar los artefactos tipo A a sistemas de evacuacion", categoria: "Cálculos", subtitulo: "Ductos NTC 3833 1ra. Act", valia: "Libre" }
         ];
 
         let perfilActual = "General";
@@ -453,8 +497,6 @@
                 if(savedTime) audioPlayer.currentTime = parseFloat(savedTime);
             } else { cambiarPistaAleatoria(); }
             
-            // Intento de reproducción. Si el navegador bloquea (Autoplay Policy), capturamos el error
-            // y mostramos el icono de muteado.
             const playPromise = audioPlayer.play();
             if (playPromise !== undefined) {
                 playPromise.catch(error => { 
@@ -471,7 +513,7 @@
             const randomTrack = NATURE_TRACKS[Math.floor(Math.random() * NATURE_TRACKS.length)];
             audioPlayer.src = randomTrack;
             safeSetItem('audio_track', randomTrack);
-            audioPlayer.play().catch(e => {}); // Silenciar error en rotación automática
+            audioPlayer.play().catch(e => {}); 
         }
 
         function toggleAudio() {
@@ -548,13 +590,17 @@
             // No es necesario forzar la navegación aquí, el <a> lo hace.
         }
 
+        function mostrarFavoritosScroll() {
+             const row = document.getElementById('row-mi-lista');
+             if(row) row.scrollIntoView({behavior: "smooth"});
+        }
+
         // --- INICIALIZACIÓN ---
         window.addEventListener('load', () => {
             gestionarMusica();
             let sessionUser = null;
             try { sessionUser = JSON.parse(safeGetItem('sofia_session')); } catch(e) {}
             
-            // Iconos visibles en móvil
             if (window.innerWidth <= 768) {
                 document.querySelectorAll('.hidden-desktop').forEach(el => el.style.display = 'inline-block');
             }
@@ -592,14 +638,49 @@
             if (resultados.length > 0) {
                 const title = document.createElement('h3'); title.className = 'row-title'; title.textContent = `Resultados`;
                 const grid = document.createElement('div'); grid.className = 'search-results-grid';
+                // Para resultados de búsqueda, usamos la misma lógica visual simplificada
                 resultados.forEach(tool => {
                     const img = tool.imagen.includes('.') ? tool.imagen : tool.imagen + '.jpg';
                     const isFav = favoritos.includes(tool.nombre);
-                    const tile = document.createElement('div'); tile.className = 'tile';
+                    
+                    const card = document.createElement('div');
+                    card.className = 'tool-card';
+                    
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
                     tile.onclick = () => verDetalles(tool.id);
-                    // Uso de onerror inline para manejar imágenes rotas en la búsqueda
-                    tile.innerHTML = `<img src="${img}" class="tile-img" onerror="this.src='${fallbackImg}'"><div class="tile-content"><div class="tile-actions"><div class="tile-icon icon-play" onclick="abrirApp('${tool.nombre}','${tool.url}');event.stopPropagation()"><i class="fas fa-play"></i></div><div class="tile-icon" onclick="toggleFav('${tool.nombre}');event.stopPropagation()"><i class="fas ${isFav?'fa-check':'fa-plus'}"></i></div><div class="tile-icon" onclick="verDetalles(${tool.id});event.stopPropagation()"><i class="fas fa-chevron-down"></i></div></div><div class="tile-title">${tool.nombre}</div><div class="tile-subtitle">${tool.subtitulo || tool.descripcion}</div><div class="tile-meta">98% para ti</div></div>`;
-                    grid.appendChild(tile);
+
+                    // Badge de Valia
+                    let valiaBadge = "";
+                    if (tool.valia === "Libre") valiaBadge = `<div class="valia-badge"><i class="fas fa-star"></i></div>`;
+                    else if (tool.valia === "Plus") valiaBadge = `<div class="valia-badge"><i class="fas fa-star"></i><i class="fas fa-star"></i></div>`;
+                    else if (tool.valia === "Premium") valiaBadge = `<div class="valia-badge"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>`;
+
+                    tile.innerHTML = `
+                        <img src="${img}" class="tile-img" onerror="this.src='${fallbackImg}'">
+                        ${valiaBadge}
+                        <div class="tile-content">
+                            <div class="tile-actions">
+                                <div class="tile-icon icon-play" onclick="abrirApp('${tool.nombre}','${tool.url}');event.stopPropagation()">
+                                    <i class="fas fa-play"></i>
+                                </div>
+                                <div class="tile-icon" onclick="toggleFav('${tool.nombre}');event.stopPropagation()">
+                                    <i class="fas ${isFav?'fa-check':'fa-plus'}"></i>
+                                </div>
+                                <div class="tile-icon" onclick="verDetalles(${tool.id});event.stopPropagation()">
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    const nameEl = document.createElement('div');
+                    nameEl.className = 'tool-name-external';
+                    nameEl.textContent = tool.nombre;
+                    
+                    card.appendChild(tile);
+                    card.appendChild(nameEl);
+                    grid.appendChild(card);
                 });
                 container.appendChild(title); container.appendChild(grid);
             } else { container.innerHTML = `<div style="padding:40px; color:#666; text-align:center;">Sin resultados</div>`; }
@@ -697,30 +778,90 @@
             const c = document.getElementById('content-rows');
             if(!c) return;
             c.innerHTML = "";
+            
+            // REINTEGRADO: Lógica de Fila de Favoritos (Mi Lista)
             if (favoritos.length > 0) {
                 const fs = HERRAMIENTAS.filter(h => favoritos.includes(h.nombre));
-                if(fs.length) crearFila(c, "Mi Lista", fs);
+                if(fs.length) {
+                    const row = document.createElement('div'); row.className = 'row'; row.id = "row-mi-lista";
+                    const tEl = document.createElement('h3'); tEl.className = 'row-title'; tEl.textContent = "Mi Lista";
+                    const scr = document.createElement('div'); scr.className = 'row-scroller';
+                    
+                    fs.forEach(tool => {
+                         // Reutilizar lógica de creación de tarjeta
+                        const card = crearTarjetaDOM(tool);
+                        scr.appendChild(card);
+                    });
+                    
+                    row.appendChild(tEl); row.appendChild(scr); c.appendChild(row);
+                }
             }
+            
             const cats = [...new Set(HERRAMIENTAS.map(h => h.categoria))];
             cats.forEach(cat => {
                 const its = HERRAMIENTAS.filter(h => h.categoria === cat);
                 crearFila(c, cat, its);
             });
         }
+        
+        // Helper para crear el elemento DOM de la tarjeta
+        function crearTarjetaDOM(tool) {
+            const img = tool.imagen.includes('.') ? tool.imagen : tool.imagen + '.jpg';
+            const isFav = favoritos.includes(tool.nombre);
+            
+            const card = document.createElement('div');
+            card.className = 'tool-card';
+            
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            tile.onclick = () => verDetalles(tool.id);
+
+            // Badge de Valia
+            let valiaBadge = "";
+            if (tool.valia === "Libre") valiaBadge = `<div class="valia-badge"><i class="fas fa-star"></i></div>`;
+            else if (tool.valia === "Plus") valiaBadge = `<div class="valia-badge"><i class="fas fa-star"></i><i class="fas fa-star"></i></div>`;
+            else if (tool.valia === "Premium") valiaBadge = `<div class="valia-badge"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>`;
+
+            tile.innerHTML = `
+                <img src="${img}" class="tile-img" onerror="this.src='${fallbackImg}'">
+                ${valiaBadge}
+                <div class="tile-content">
+                    <div class="tile-actions">
+                        <div class="tile-icon icon-play" onclick="abrirApp('${tool.nombre}','${tool.url}');event.stopPropagation()">
+                            <i class="fas fa-play"></i>
+                        </div>
+                        <div class="tile-icon" onclick="toggleFav('${tool.nombre}');event.stopPropagation()">
+                            <i class="fas ${isFav?'fa-check':'fa-plus'}"></i>
+                        </div>
+                        <div class="tile-icon" onclick="verDetalles(${tool.id});event.stopPropagation()">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'tool-name-external';
+            nameEl.textContent = tool.nombre;
+            
+            card.appendChild(tile);
+            card.appendChild(nameEl);
+            
+            return card;
+        }
+
         function crearFila(cont, tit, items) {
             const row = document.createElement('div'); row.className = 'row';
             const tEl = document.createElement('h3'); tEl.className = 'row-title'; tEl.textContent = tit;
             const scr = document.createElement('div'); scr.className = 'row-scroller';
+            
             items.forEach(tool => {
-                const img = tool.imagen.includes('.') ? tool.imagen : tool.imagen + '.jpg';
-                const isFav = favoritos.includes(tool.nombre);
-                const tile = document.createElement('div'); tile.className = 'tile';
-                tile.onclick = () => verDetalles(tool.id);
-                tile.innerHTML = `<img src="${img}" class="tile-img" onerror="this.src='${fallbackImg}'"><div class="tile-content"><div class="tile-actions"><div class="tile-icon icon-play" onclick="abrirApp('${tool.nombre}','${tool.url}');event.stopPropagation()"><i class="fas fa-play"></i></div><div class="tile-icon" onclick="toggleFav('${tool.nombre}');event.stopPropagation()"><i class="fas ${isFav?'fa-check':'fa-plus'}"></i></div><div class="tile-icon" onclick="verDetalles(${tool.id});event.stopPropagation()"><i class="fas fa-chevron-down"></i></div></div><div class="tile-title">${tool.nombre}</div><div class="tile-subtitle">${tool.subtitulo || tool.descripcion}</div><div class="tile-meta">98% para ti</div></div>`;
-                scr.appendChild(tile);
+                const card = crearTarjetaDOM(tool);
+                scr.appendChild(card);
             });
             row.appendChild(tEl); row.appendChild(scr); cont.appendChild(row);
         }
+
         function toggleFav(n) {
             const i = favoritos.indexOf(n);
             if(i > -1) favoritos.splice(i,1); else favoritos.push(n);
@@ -732,7 +873,6 @@
         let hIdx = 0; let hInt;
         function iniciarCarrusel() { if(hInt) return; actHero(); hInt = setInterval(() => { hIdx=(hIdx+1)%HERRAMIENTAS.length; actHero(); }, 8000); }
         
-        // Función mejorada para cargar la imagen del Hero con fallback
         function actHero() {
             const t = HERRAMIENTAS[hIdx];
             const c = document.getElementById('hero-content');
@@ -749,16 +889,10 @@
                 bp.onclick = () => abrirApp(t.nombre, t.url);
                 bi.onclick = () => verDetalles(t.id);
                 
-                // Intento de carga de imagen para el Hero
                 const localImg = t.imagen.includes('.') ? t.imagen : t.imagen + '.jpg';
                 const imgLoader = new Image();
-                imgLoader.onload = function() {
-                   s.style.backgroundImage = `url('${localImg}')`;
-                };
-                imgLoader.onerror = function() {
-                   // Si falla la local, usa el fallback global
-                   s.style.backgroundImage = `url('${fallbackImg}')`;
-                };
+                imgLoader.onload = function() { s.style.backgroundImage = `url('${localImg}')`; };
+                imgLoader.onerror = function() { s.style.backgroundImage = `url('${fallbackImg}')`; };
                 imgLoader.src = localImg;
 
                 c.classList.remove('fade-out');
@@ -774,9 +908,7 @@
             document.getElementById('modal-desc').textContent = t.descripcion;
             document.getElementById('modal-btn-open').onclick = () => abrirApp(t.nombre, t.url);
             
-            // Lógica de imagen para el modal de detalles
             const localImg = t.imagen.includes('.') ? t.imagen : t.imagen + '.jpg';
-            // Seteamos una imagen segura primero (fallback) y luego intentamos la local
             const banner = document.getElementById('modal-banner');
             banner.style.backgroundImage = `url('${fallbackImg}')`; 
             
@@ -792,7 +924,6 @@
             document.getElementById('viewer').style.display='flex';
             document.getElementById('viewer-title').textContent = t;
             
-            // Pequeña mejora: si es un link relativo vacío, avisar en consola
             if(!u || u === "#" || u.trim() === "") {
                 console.warn("URL de App vacía");
             }
@@ -805,4 +936,3 @@
     </script>
 </body>
 </html>
-
