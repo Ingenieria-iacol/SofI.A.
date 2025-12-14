@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curso Especializado NTC 3631 | GasEngineering Hub</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body { 
+            background-color: #0a0a0a; 
+            color: #e5e5e5;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        .app-background {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background-image: url('LogoEntalpia.png');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 50%;
+            opacity: 0.04;
+            pointer-events: none;
+        }
+
+        .login-watermark {
+            background-image: url('LogoEntalpia.png');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            opacity: 0.08;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #111; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #444; }
+        
+        .slide-enter { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .avatar-glow {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            border-color: #60a5fa;
+        }
+
+        /* Estilos para tablas técnicas */
+        .tech-table th { background-color: #1e293b; color: #94a3b8; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
+        .tech-table td { border-bottom: 1px solid #1e293b; color: #e2e8f0; }
+        .tech-table tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <img id="logo-entalpia" src="LogoEntalpia.png" style="display: none;" alt="Logo Entalpia" crossorigin="anonymous" />
+    <div class="app-background"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { jsPDF } = window.jspdf;
+
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const iconData = lucide.icons[name];
+            if (!iconData) return null;
+            return (
+                <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width={size} height={size} viewBox="0 0 24 24" 
+                    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
+                    className={className}
+                    dangerouslySetInnerHTML={{ __html: iconData.map(i => `<${i[0]} ${Object.entries(i[1]).map(([k,v]) => `${k}="${v}"`).join(' ')} />`).join('') }}
+                />
+            );
+        };
+
+        // --- COMPONENTES GRÁFICOS SVG (Esquemas NTC 3631) ---
+
+        const SchemeInternalAir = () => (
+            <div className="bg-white p-4 rounded-lg w-full max-w-sm mx-auto shadow-lg opacity-90">
+                <p className="text-black text-xs font-bold text-center mb-2">Fig 2. Aire del Interior (Mismo Piso)</p>
+                <svg viewBox="0 0 200 250" className="w-full h-auto border border-gray-200">
+                    <rect x="10" y="10" width="180" height="230" fill="none" stroke="#333" strokeWidth="2" />
+                    <line x1="10" y1="125" x2="190" y2="125" stroke="#333" strokeWidth="4" />
+                    <rect x="100" y="125" width="10" height="115" fill="#ccc" />
+                    <rect x="100" y="140" width="10" height="15" fill="#3b82f6" />
+                    <rect x="100" y="215" width="10" height="15" fill="#3b82f6" />
+                    <line x1="120" y1="240" x2="120" y2="140" stroke="#ef4444" strokeDasharray="2,2"/>
+                    <text x="125" y="190" fontSize="10" fill="#ef4444">> 180cm</text>
+                    <line x1="120" y1="240" x2="120" y2="215" stroke="#ef4444" strokeDasharray="2,2"/>
+                    <text x="125" y="230" fontSize="10" fill="#ef4444">&lt; 30cm</text>
+                    <rect x="30" y="180" width="40" height="60" fill="#eab308" stroke="#333" />
+                    <text x="50" y="210" fontSize="8" textAnchor="middle">Gas</text>
+                </svg>
+            </div>
+        );
+
+        const SchemeOutdoorVertical = () => (
+            <div className="bg-white p-4 rounded-lg w-full max-w-sm mx-auto shadow-lg opacity-90">
+                <p className="text-black text-xs font-bold text-center mb-2">Fig 3/4. Aire Exterior (Conductos Verticales)</p>
+                <svg viewBox="0 0 200 250" className="w-full h-auto border border-gray-200">
+                    <rect x="20" y="100" width="160" height="140" fill="none" stroke="#333" strokeWidth="2" />
+                    <polyline points="20,100 100,50 180,100" fill="none" stroke="#333" strokeWidth="2" />
+                    <rect x="140" y="30" width="15" height="120" fill="#bae6fd" stroke="#0284c7" />
+                    <rect x="160" y="30" width="15" height="200" fill="#bae6fd" stroke="#0284c7" />
+                    <path d="M 147 60 L 147 140" stroke="#0284c7" strokeWidth="2" markerEnd="url(#arrow)" />
+                    <path d="M 167 60 L 167 220" stroke="#0284c7" strokeWidth="2" markerEnd="url(#arrow)" />
+                    <rect x="50" y="160" width="50" height="80" fill="#eab308" stroke="#333" />
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#0284c7" />
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        );
+
+        const SchemeOutdoorHorizontal = () => (
+            <div className="bg-white p-4 rounded-lg w-full max-w-sm mx-auto shadow-lg opacity-90">
+                <p className="text-black text-xs font-bold text-center mb-2">Fig 5. Aire Exterior (Conductos Horizontales)</p>
+                <svg viewBox="0 0 200 200" className="w-full h-auto border border-gray-200">
+                    <rect x="20" y="20" width="160" height="160" fill="none" stroke="#333" strokeWidth="2" />
+                    <rect x="140" y="40" width="50" height="20" fill="#bae6fd" stroke="#0284c7" />
+                    <rect x="140" y="150" width="50" height="20" fill="#bae6fd" stroke="#0284c7" />
+                    <rect x="40" y="100" width="40" height="80" fill="#eab308" stroke="#333" />
+                    <text x="120" y="55" fontSize="10" textAnchor="end" fill="#0284c7">Salida</text>
+                    <text x="120" y="165" fontSize="10" textAnchor="end" fill="#0284c7">Entrada</text>
+                </svg>
+            </div>
+        );
+
+        // --- CONTENIDO DEL CURSO (12 MÓDULOS) ---
+        const courseModules = [
+            {
+                id: 1,
+                title: "Introducción a la NTC 3631",
+                speech: "Bienvenidos al curso avanzado sobre la norma técnica NTC 3631, segunda actualización. Esta norma regula los métodos de ventilación para recintos interiores donde se instalan artefactos a gas. La seguridad es nuestra prioridad: debemos garantizar suficiente aire para la combustión, renovación y dilución de gases.",
+                content: (
+                    <div className="space-y-6">
+                        <div className="border-l-4 border-blue-500 pl-4">
+                            <h2 className="text-2xl font-bold text-white mb-2">Objetivo de la Norma</h2>
+                            <p className="text-gray-300">Establecer los requisitos para el suministro de aire necesario para la correcta combustión de los artefactos a gas y la ventilación de los recintos.</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-[#1f2937] p-4 rounded-lg">
+                                <Icon name="Wind" className="text-blue-400 mb-2" />
+                                <h3 className="font-bold">Combustión</h3>
+                                <p className="text-xs text-gray-400 mt-1">Suministro de O2 para quemar el gas.</p>
+                            </div>
+                            <div className="bg-[#1f2937] p-4 rounded-lg">
+                                <Icon name="RefreshCw" className="text-green-400 mb-2" />
+                                <h3 className="font-bold">Renovación</h3>
+                                <p className="text-xs text-gray-400 mt-1">Reemplazo de aire viciado.</p>
+                            </div>
+                            <div className="bg-[#1f2937] p-4 rounded-lg">
+                                <Icon name="CloudFog" className="text-gray-400 mb-2" />
+                                <h3 className="font-bold">Dilución</h3>
+                                <p className="text-xs text-gray-400 mt-1">Disminuir concentración de gases.</p>
+                            </div>
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Cuáles son las tres funciones principales del aire suministrado según la NTC 3631?",
+                    options: ["Calefacción, Refrigeración y Filtrado", "Combustión, Ventilación y Dilución", "Presurización, Extracción y Mezcla"],
+                    correct: 1
+                }
+            },
+            {
+                id: 2,
+                title: "4.1 Método: Aire del Interior",
+                speech: "Comencemos con el método 4.1. Este se usa cuando el volumen del recinto es lo suficientemente grande para suministrar todo el aire necesario. La regla de oro aquí es el Método Estándar: necesitamos 3.4 metros cúbicos de volumen por cada kilovatio de potencia instalada.",
+                content: (
+                    <div className="space-y-6">
+                        <h3 className="text-xl font-bold text-green-400">4.1.1 Método Estándar</h3>
+                        <p>Se considera que el recinto provee suficiente aire si cumple con la relación volumétrica mínima.</p>
+                        
+                        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 text-center">
+                            <p className="text-sm text-gray-400 uppercase tracking-wider mb-2">Relación de Volumen Mínimo</p>
+                            <div className="text-4xl font-mono font-bold text-white mb-2">
+                                3.4 m³ <span className="text-blue-500 text-2xl">/ kW</span>
+                            </div>
+                            <p className="text-xs text-gray-500">Por cada Kilovatio de potencia nominal conjunta</p>
+                        </div>
+                        
+                        <div className="bg-blue-900/20 p-4 rounded border-l-4 border-blue-600 text-sm">
+                            <strong>Nota:</strong> Este cálculo suma la potencia de todos los artefactos, excepto los de cámara estanca (circuito sellado).
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "Según el método estándar, ¿cuántos metros cúbicos de volumen se requieren por cada kW de potencia?",
+                    options: ["1.5 m³", "3.4 m³", "11 m³"],
+                    correct: 1
+                }
+            },
+            {
+                id: 3,
+                title: "4.1.2 Aberturas Interiores (Mismo Piso)",
+                speech: "Si un solo cuarto no tiene el volumen suficiente, podemos conectarlo con cuartos adyacentes en el mismo piso. Para esto, necesitamos dos aberturas permanentes: una superior y una inferior. ¿El tamaño? 22 centímetros cuadrados por kilovatio.",
+                content: (
+                    <div className="flex flex-col md:flex-row gap-6 items-center">
+                        <div className="flex-1 space-y-4">
+                            <h3 className="font-bold text-lg text-blue-300">Combinación de Espacios</h3>
+                            <ul className="list-disc pl-5 text-sm space-y-2 text-gray-300">
+                                <li>Se requieren <strong>2 aberturas</strong> (Alta y Baja).</li>
+                                <li>Área libre mínima: <strong>22 cm² por kW</strong>.</li>
+                                <li>Área mínima absoluta: <strong>645 cm²</strong> (incluso si el cálculo da menos).</li>
+                                <li>Dimensión menor no inferior a 8 cm.</li>
+                            </ul>
+                        </div>
+                        <div className="flex-1">
+                            <SchemeInternalAir />
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Cuál es el área mínima absoluta para las aberturas de comunicación interior?",
+                    options: ["100 cm²", "645 cm²", "22 cm²"],
+                    correct: 1
+                }
+            },
+            {
+                id: 4,
+                title: "4.1.2 Aberturas Interiores (Diferentes Pisos)",
+                speech: "También podemos tomar aire de otros pisos. Si conectamos espacios en niveles diferentes, las aberturas en puertas o pisos deben ser mayores. La norma exige 44 centímetros cuadrados por kilovatio.",
+                content: (
+                    <div className="space-y-6">
+                        <h3 className="text-lg font-bold text-purple-400">Comunicación Vertical</h3>
+                        <p className="text-sm">Cuando los espacios comunicados están en pisos distintos.</p>
+                        
+                        <div className="overflow-hidden rounded-lg border border-gray-700">
+                            <table className="w-full text-sm tech-table">
+                                <thead>
+                                    <tr>
+                                        <th className="p-3 text-left">Tipo de Comunicación</th>
+                                        <th className="p-3 text-right">Área Requerida</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className="p-3">Mismo Piso</td>
+                                        <td className="p-3 text-right font-mono text-blue-400">22 cm² / kW</td>
+                                    </tr>
+                                    <tr className="bg-gray-800/50">
+                                        <td className="p-3 font-bold text-white">Diferentes Pisos</td>
+                                        <td className="p-3 text-right font-mono text-purple-400 font-bold">44 cm² / kW</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-2">* El aire fluye a través de aberturas en puertas o pisos.</p>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Cuánto aumenta el requerimiento de área al comunicar pisos diferentes comparado con el mismo piso?",
+                    options: ["Se reduce a la mitad", "Es igual", "Se duplica (44 vs 22 cm²/kW)"],
+                    correct: 2
+                }
+            },
+            {
+                id: 5,
+                title: "4.2 Aire del Exterior (Método 1)",
+                speech: "Cuando el aire interior no basta, debemos traerlo de afuera. El Método 1 exige dos aberturas permanentes directas al exterior. Una alta y una baja, para generar circulación por convección natural.",
+                content: (
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-3 bg-orange-600 rounded-lg"><Icon name="Sun" className="text-white"/></div>
+                            <h2 className="text-xl font-bold">Método 1: Dos Aberturas</h2>
+                        </div>
+                        <p className="text-gray-300">Este método garantiza un flujo constante por diferencia de temperatura.</p>
+                        
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                            <div className="bg-[#1a1a1a] p-4 rounded border border-gray-700 text-center">
+                                <h4 className="font-bold text-orange-400">Abertura Superior</h4>
+                                <p className="text-xs mt-1">Salida de aire caliente/viciado.</p>
+                                <p className="text-xs text-gray-500 mt-1">A min 180cm del piso</p>
+                            </div>
+                            <div className="bg-[#1a1a1a] p-4 rounded border border-gray-700 text-center">
+                                <h4 className="font-bold text-blue-400">Abertura Inferior</h4>
+                                <p className="text-xs mt-1">Entrada de aire fresco.</p>
+                                <p className="text-xs text-gray-500 mt-1">A max 30cm del piso</p>
+                            </div>
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿A qué altura debe comenzar la abertura superior según el Método 1?",
+                    options: ["A máximo 30 cm del techo", "A no menos de 180 cm del piso", "En el centro de la pared"],
+                    correct: 1
+                }
+            },
+            {
+                id: 6,
+                title: "Conductos Verticales (Exterior)",
+                speech: "Si usamos conductos verticales para conectar con el exterior, el aire fluye fácilmente. Por eso, el área requerida es pequeña: solo 6 centímetros cuadrados por kilovatio.",
+                content: (
+                    <div className="flex flex-col md:flex-row gap-6 items-center">
+                        <div className="flex-1 space-y-4">
+                            <h3 className="font-bold text-lg text-blue-300">Conexión Vertical</h3>
+                            <p className="text-sm text-gray-300">Aplica para comunicación directa a fachada o través de conductos verticales al techo.</p>
+                            <div className="bg-blue-900/30 p-4 rounded-lg border border-blue-500">
+                                <span className="block text-xs text-blue-300 uppercase">Factor de Área</span>
+                                <span className="text-3xl font-bold text-white">6 cm² / kW</span>
+                            </div>
+                            <p className="text-xs text-gray-400">Es el método más eficiente en términos de área requerida.</p>
+                        </div>
+                        <div className="flex-1">
+                            <SchemeOutdoorVertical />
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Qué factor de área se usa para conductos verticales al exterior?",
+                    options: ["6 cm²/kW", "11 cm²/kW", "22 cm²/kW"],
+                    correct: 0
+                }
+            },
+            {
+                id: 7,
+                title: "Conductos Horizontales (Exterior)",
+                speech: "Los conductos horizontales tienen más resistencia al flujo del aire. Por lo tanto, necesitamos aberturas más grandes: 11 centímetros cuadrados por kilovatio, casi el doble que los verticales.",
+                content: (
+                    <div className="flex flex-col md:flex-row gap-6 items-center">
+                        <div className="flex-1 space-y-4">
+                            <h3 className="font-bold text-lg text-orange-300">Conexión Horizontal</h3>
+                            <p className="text-sm text-gray-300">Cuando el aire debe viajar horizontalmente para llegar al exterior.</p>
+                            <div className="bg-orange-900/30 p-4 rounded-lg border border-orange-500">
+                                <span className="block text-xs text-orange-300 uppercase">Factor de Área</span>
+                                <span className="text-3xl font-bold text-white">11 cm² / kW</span>
+                            </div>
+                            <div className="bg-red-900/20 p-2 rounded text-xs text-red-200">
+                                ⚠ Precaución: El conducto superior no debe inclinarse hacia abajo hacia los equipos.
+                            </div>
+                        </div>
+                        <div className="flex-1">
+                            <SchemeOutdoorHorizontal />
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Por qué el factor para conductos horizontales (11) es mayor que para verticales (6)?",
+                    options: ["Porque es más bonito", "Por la mayor resistencia al flujo de aire", "Porque la norma tiene un error"],
+                    correct: 1
+                }
+            },
+            {
+                id: 8,
+                title: "4.2.2 Aire del Exterior (Método 2)",
+                speech: "Existe un Método 2 que permite usar UNA sola abertura permanente. Pero cuidado, esto solo se permite si los artefactos tienen espacios libres específicos a sus lados. El área debe ser igual a la suma de las áreas de los conectores o 11 cm2 por kilovatio, lo que sea mayor.",
+                content: (
+                    <div className="space-y-5">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xl font-bold text-white">Método 2: Una Abertura</h3>
+                            <span className="bg-purple-600 text-xs px-2 py-1 rounded">Condicional</span>
+                        </div>
+                        
+                        <div className="bg-gray-800 p-4 rounded text-sm space-y-2">
+                            <strong className="block text-purple-400">Requisitos de Espacio Libre (Holgura):</strong>
+                            <ul className="list-disc pl-5 text-gray-300">
+                                <li>Lados y parte posterior: <strong>2.5 cm</strong></li>
+                                <li>Frente del artefacto: <strong>16 cm</strong></li>
+                            </ul>
+                        </div>
+
+                        <div className="border border-gray-600 rounded p-4">
+                            <p className="text-sm mb-2">El área libre debe ser el <strong>MAYOR</strong> entre:</p>
+                            <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                                <div className="bg-[#111] p-2 rounded">
+                                    11 cm² / kW
+                                </div>
+                                <div className="bg-[#111] p-2 rounded">
+                                    Suma áreas de conectores
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Qué holgura frontal mínima debe tener el artefacto para aplicar el método de una sola abertura?",
+                    options: ["5 cm", "10 cm", "16 cm"],
+                    correct: 2
+                }
+            },
+            {
+                id: 9,
+                title: "4.3 Combinación y 4.4 Mecánica",
+                speech: "La norma permite combinar aire interior y exterior. Calculamos una relación de cuánto falta y compensamos. También podemos usar ventiladores mecánicos, que deben suministrar 0.034 metros cúbicos por minuto por kilovatio.",
+                content: (
+                    <div className="space-y-6">
+                        <div className="bg-gray-800 p-4 rounded-lg">
+                            <h3 className="font-bold text-blue-300 mb-2">4.3 Combinación</h3>
+                            <p className="text-sm text-gray-400">Se calcula la "Relación de Espacio Interior" (Volumen Disponible / Volumen Requerido). El faltante se suple con aire exterior.</p>
+                            <code className="block mt-2 bg-black p-2 rounded text-xs text-green-400">Factor Ext = 1 - (Vol. Disp / Vol. Req)</code>
+                        </div>
+
+                        <div className="bg-gray-800 p-4 rounded-lg">
+                            <h3 className="font-bold text-red-300 mb-2">4.4 Ventilación Mecánica</h3>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm">Tasa de Suministro:</span>
+                                <span className="font-mono font-bold text-white">0.034 m³/min por kW</span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">Requiere interlock: Si falla el ventilador, se apaga el quemador.</p>
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Cuál es la tasa de suministro para ventilación mecánica?",
+                    options: ["3.4 m³/kW", "0.034 m³/min por kW", "11 cm³/min"],
+                    correct: 1
+                }
+            },
+            {
+                id: 10,
+                title: "Caso Práctico: Ejemplo Anexo A",
+                speech: "Veamos el ejemplo del Anexo A. Tenemos un horno de 29.3 kW y un calentador de 11.7 kW. Total 41 kW. El volumen requerido es 140 metros cúbicos, pero solo tenemos 102. Nos falta aire.",
+                content: (
+                    <div className="space-y-4 text-sm">
+                        <h3 className="font-bold text-lg text-yellow-500">Ejercicio Real</h3>
+                        <div className="grid grid-cols-2 gap-2 bg-black/30 p-2 rounded">
+                            <div>Potencia Total:</div> <div className="text-right font-mono">41 kW</div>
+                            <div>Volumen Requerido (x3.4):</div> <div className="text-right font-mono text-red-400">140 m³</div>
+                            <div>Volumen Disponible:</div> <div className="text-right font-mono text-yellow-400">102 m³</div>
+                        </div>
+                        
+                        <div className="bg-blue-900/20 p-3 rounded">
+                            <p className="font-bold mb-1">Cálculo de Déficit:</p>
+                            <p>Relación = 102 / 140 = <strong>0.73</strong> (Tenemos el 73%)</p>
+                            <p>Faltante = 1.00 - 0.73 = <strong>0.27</strong> (Falta el 27%)</p>
+                        </div>
+
+                        <div className="bg-green-900/20 p-3 rounded">
+                            <p className="font-bold mb-1">Cálculo Abertura (Método 1):</p>
+                            <p>Rejilla Exterior Total = 41 kW * 11 cm²/kW = 451 cm²</p>
+                            <p>Rejilla Ajustada = 451 * 0.27 = <strong>122 cm²</strong></p>
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "En el ejemplo, ¿por qué se multiplica por 0.27?",
+                    options: ["Es un factor de seguridad", "Es el porcentaje de aire que falta (déficit)", "Es la altura del recinto"],
+                    correct: 1
+                }
+            },
+            {
+                id: 11,
+                title: "Especificaciones de Rejillas",
+                speech: "Finalmente, las rejillas no son transparentes. Sus aletas bloquean el paso del aire. Al calcular el área libre, debemos restar el área que ocupan las aletas. Si usamos malla, el hueco no puede ser menor a 6.3 mm.",
+                content: (
+                    <div className="space-y-4">
+                        <h3 className="font-bold text-white">Capítulo 5: Rejillas y Celosías</h3>
+                        <ul className="list-disc pl-5 text-gray-300 space-y-2 text-sm">
+                            <li>El área calculada es <strong>ÁREA LIBRE</strong> (hueco neto).</li>
+                            <li>Se debe considerar el factor de obstrucción de la rejilla comercial.</li>
+                            <li>Si se usa malla, la cuadrícula mínima es de <strong>6.3 mm</strong>.</li>
+                            <li>Las rejillas automáticas deben tener un sistema de seguridad (interlock).</li>
+                        </ul>
+                        <div className="bg-yellow-900/20 p-3 rounded border border-yellow-600 text-xs mt-4">
+                            <strong>Importante:</strong> Nunca asuma que el tamaño físico de la rejilla es igual a su área libre. Consulte al fabricante.
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Qué dimensión mínima deben tener los espacios de una malla protectora?",
+                    options: ["1 mm", "3 mm", "6.3 mm"],
+                    correct: 2
+                }
+            },
+            {
+                id: 12,
+                title: "Certificación Final",
+                speech: "¡Excelente trabajo! Has recorrido todos los métodos de ventilación de la norma NTC 3631. Ahora estás capacitado para diseñar sistemas seguros. Descarga tu certificado profesional a continuación.",
+                content: (
+                    <div className="text-center py-10">
+                        <div className="w-24 h-24 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-500/20">
+                            <Icon name="Award" size={48} className="text-white" />
+                        </div>
+                        <h2 className="text-3xl font-bold text-white mb-4">¡Curso Aprobado!</h2>
+                        <p className="text-gray-400 mb-8 max-w-md mx-auto">Has completado el ciclo de formación especializada en Ventilación de Recintos NTC 3631.</p>
+                    </div>
+                ),
+                quiz: null
+            }
+        ];
+
+        function App() {
+            const [currentStep, setCurrentStep] = useState(0); 
+            const [completedSteps, setCompletedSteps] = useState([0]); 
+            const [userName, setUserName] = useState("");
+            const [userCedula, setUserCedula] = useState("");
+            const [courseStarted, setCourseStarted] = useState(false);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [showQuiz, setShowQuiz] = useState(false);
+            
+            const videoRef = useRef(null);
+            const videoBannerRef = useRef(null); // Nuevo Ref para el Banner
+
+            useEffect(() => {
+                // Header video logic
+                if (videoRef.current) {
+                    isPlaying ? videoRef.current.play().catch(()=>{}) : videoRef.current.pause();
+                }
+                // Banner video logic
+                if (videoBannerRef.current) {
+                    isPlaying ? videoBannerRef.current.play().catch(()=>{}) : videoBannerRef.current.pause();
+                }
+            }, [isPlaying]);
+
+            const speak = (text) => {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'es-ES';
+                    const voices = window.speechSynthesis.getVoices();
+                    const voice = voices.find(v => v.lang.includes('es') && (v.name.includes('Google') || v.name.includes('Paulina') || v.name.includes('Monica')));
+                    if (voice) utterance.voice = voice;
+
+                    utterance.onstart = () => setIsPlaying(true);
+                    utterance.onend = () => setIsPlaying(false);
+                    utterance.onerror = () => setIsPlaying(false);
+                    window.speechSynthesis.speak(utterance);
+                }
+            };
+
+            const stopSpeech = () => {
+                window.speechSynthesis.cancel();
+                setIsPlaying(false);
+            };
+
+            useEffect(() => {
+                if (courseStarted && courseModules[currentStep]) {
+                    setShowQuiz(false); 
+                    setTimeout(() => speak(courseModules[currentStep].speech), 500);
+                }
+                return () => stopSpeech();
+            }, [currentStep, courseStarted]);
+
+            const handleQuizSubmit = (isCorrect) => {
+                if (isCorrect) {
+                    const nextStep = currentStep + 1;
+                    if (!completedSteps.includes(nextStep)) setCompletedSteps([...completedSteps, nextStep]);
+                    if (nextStep < courseModules.length) setCurrentStep(nextStep);
+                } else {
+                    alert("Respuesta incorrecta. Repasemos el concepto.");
+                    speak("La respuesta no fue correcta. Escucha nuevamente la explicación.");
+                    setShowQuiz(false); 
+                }
+            };
+
+            const generatePDF = () => {
+                const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+                
+                doc.setFillColor(15, 23, 42); // Fondo oscuro elegante
+                doc.rect(0, 0, 297, 210, 'F');
+
+                // Marca de agua
+                try {
+                    const img = document.getElementById('logo-entalpia');
+                    if (img) {
+                        const canvas = document.createElement("canvas");
+                        canvas.width = img.naturalWidth;
+                        canvas.height = img.naturalHeight;
+                        const ctx = canvas.getContext("2d");
+                        ctx.drawImage(img, 0, 0);
+                        doc.addImage(canvas.toDataURL("image/png"), 'PNG', 100, 50, 100, 0, undefined, 'FAST');
+                    }
+                } catch(e) {}
+
+                // Marco dorado
+                doc.setLineWidth(1.5);
+                doc.setDrawColor(234, 179, 8); // Gold
+                doc.rect(15, 15, 267, 180);
+                
+                doc.setTextColor(255, 255, 255);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(36);
+                doc.text("CERTIFICADO DE EXCELENCIA", 148.5, 55, { align: "center" });
+                
+                doc.setFontSize(14);
+                doc.setTextColor(148, 163, 184); // Slate 400
+                doc.text("GasEngineering Hub otorga el presente reconocimiento a:", 148.5, 75, { align: "center" });
+                
+                doc.setFontSize(30);
+                doc.setTextColor(96, 165, 250); // Blue 400
+                doc.text(userName.toUpperCase(), 148.5, 95, { align: "center" });
+                
+                doc.setFontSize(16);
+                doc.setTextColor(255, 255, 255);
+                doc.text(`ID PROFESIONAL: ${userCedula}`, 148.5, 108, { align: "center" });
+                
+                doc.setFontSize(18);
+                doc.setTextColor(200, 200, 200);
+                doc.text("Por aprobar el programa avanzado de ingeniería:", 148.5, 130, { align: "center" });
+                
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(22);
+                doc.text("Diseño de Ventilación según NTC 3631", 148.5, 145, { align: "center" });
+                
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(148, 163, 184);
+                doc.text(`Fecha de Certificación: ${new Date().toLocaleDateString()}`, 148.5, 165, { align: "center" });
+                doc.text("Con el respaldo técnico de ENTALPIA", 148.5, 180, { align: "center" });
+
+                doc.save(`Certificado_NTC3631_${userName}.pdf`);
+            };
+
+            if (!courseStarted) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+                         <div className="absolute inset-0 login-watermark z-0"></div>
+                         <div className="bg-[#111]/90 backdrop-blur-xl p-8 rounded-2xl shadow-2xl max-w-md w-full border border-gray-800 relative z-10">
+                            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl rotate-3 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-900/40">
+                                <Icon name="Wind" size={40} className="text-white -rotate-3" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-center mb-2 text-white">NTC 3631</h1>
+                            <p className="text-center text-blue-400 text-sm font-semibold tracking-wider mb-8 uppercase">Ventilación de Recintos</p>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs text-gray-500 font-bold ml-1 uppercase">Profesional</label>
+                                    <input type="text" placeholder="Nombre Completo" className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors" 
+                                        value={userName} onChange={e => setUserName(e.target.value)} />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 font-bold ml-1 uppercase">Identificación</label>
+                                    <input type="number" placeholder="Cédula / ID" className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors" 
+                                        value={userCedula} onChange={e => setUserCedula(e.target.value)} />
+                                </div>
+                                <button 
+                                    onClick={() => (userName.length > 3 && userCedula.length > 4) ? setCourseStarted(true) : alert("Credenciales incompletas")}
+                                    className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-lg font-bold text-white transition-all shadow-lg shadow-blue-900/20 mt-4 flex items-center justify-center gap-2 group"
+                                >
+                                    Ingresar al Simulador <Icon name="ArrowRight" size={18} className="group-hover:translate-x-1 transition-transform"/>
+                                </button>
+                            </div>
+                         </div>
+                    </div>
+                );
+            }
+
+            const activeModule = courseModules[currentStep];
+
+            return (
+                <div className="flex h-screen overflow-hidden">
+                    {/* SIDEBAR */}
+                    <aside className="w-80 bg-[#080808] border-r border-gray-900 hidden md:flex flex-col z-20">
+                        <div className="p-6 border-b border-gray-900 flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-bold shadow-lg shadow-blue-900/20">GE</div>
+                            <div>
+                                <h1 className="font-bold text-white leading-tight">GasEngineering</h1>
+                                <p className="text-xs text-blue-500 font-medium">Training Hub</p>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
+                            {courseModules.map((mod, idx) => {
+                                const isUnlocked = completedSteps.includes(idx);
+                                const isCurrent = idx === currentStep;
+                                const isCompleted = completedSteps.includes(idx + 1);
+
+                                return (
+                                    <button 
+                                        key={mod.id} 
+                                        onClick={() => isUnlocked && setCurrentStep(idx)}
+                                        className={`w-full p-3 rounded-lg text-sm flex items-center gap-3 transition-all text-left ${isCurrent ? 'bg-blue-900/20 border border-blue-800 text-blue-200' : 'hover:bg-[#111] text-gray-400'} ${!isUnlocked ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                    >
+                                        <div className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${isCompleted ? 'bg-green-500/20 text-green-400' : isCurrent ? 'bg-blue-500 text-white' : 'bg-gray-800'}`}>
+                                            {isCompleted ? <Icon name="Check" size={12} /> : idx + 1}
+                                        </div>
+                                        <div className="flex-1 truncate font-medium">{mod.title}</div>
+                                        {!isUnlocked && <Icon name="Lock" size={12} />}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                        <div className="p-4 bg-[#050505] border-t border-gray-900">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 flex items-center justify-center text-xs font-bold text-white">
+                                    {userName.substring(0,2).toUpperCase()}
+                                </div>
+                                <div className="overflow-hidden">
+                                    <p className="text-sm font-bold text-gray-200 truncate">{userName}</p>
+                                    <p className="text-[10px] text-gray-500 truncate">ID: {userCedula}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+
+                    {/* MAIN CONTENT */}
+                    <main className="flex-1 flex flex-col relative z-10 bg-[#0a0a0a]">
+                        {/* Header */}
+                        <header className="px-6 py-4 border-b border-gray-900 flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-md sticky top-0 z-30">
+                            <div>
+                                <p className="text-xs text-blue-500 font-bold uppercase tracking-wider mb-1">Módulo Actual</p>
+                                <h2 className="font-bold text-xl text-white truncate max-w-md">{activeModule.title}</h2>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className={`relative w-14 h-14 rounded-full overflow-hidden border-2 bg-black transition-all duration-300 ${isPlaying ? 'border-blue-500 avatar-glow scale-105' : 'border-gray-800 grayscale'}`}>
+                                    <video 
+                                        ref={videoRef}
+                                        src="VideoSaberMas.mp4" 
+                                        className="w-full h-full object-cover" 
+                                        muted 
+                                        playsInline 
+                                        loop
+                                    />
+                                </div>
+                                <div className="hidden sm:block text-right">
+                                    <div className="font-bold text-sm text-gray-200">Ing. Ana</div>
+                                    <button onClick={() => isPlaying ? stopSpeech() : speak(activeModule.speech)} className="text-xs text-blue-400 hover:text-blue-300 flex items-center justify-end gap-1 mt-1">
+                                        {isPlaying ? <><Icon name="Pause" size={10}/> Pausar</> : <><Icon name="Play" size={10}/> Reproducir</>}
+                                    </button>
+                                </div>
+                            </div>
+                        </header>
+
+                        {/* Content Scroll */}
+                        <div className="flex-1 overflow-y-auto p-6 md:p-12 custom-scrollbar flex flex-col items-center">
+                            <div className="max-w-4xl w-full slide-enter key={currentStep}">
+                                
+                                {/* NUEVO BANNER SUPERIOR GRANDE (VIDEO) */}
+                                <div className="w-full h-48 md:h-64 relative mb-6 rounded-xl overflow-hidden shadow-2xl border border-gray-800 group">
+                                    <video
+                                        ref={videoBannerRef}
+                                        src="V4_Video_de_Herramientas_Educativas.mp4"
+                                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                                        muted
+                                        playsInline
+                                        loop
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent"></div>
+                                    <div className="absolute bottom-4 left-6">
+                                        <span className="text-blue-400 text-xs font-bold uppercase tracking-wider bg-blue-900/40 px-2 py-1 rounded backdrop-blur-md border border-blue-500/30">
+                                            Instructor Virtual
+                                        </span>
+                                        <h2 className="text-2xl font-bold text-white mt-1 drop-shadow-md">
+                                            Ingeniera Ana
+                                        </h2>
+                                    </div>
+                                </div>
+
+                                <div className={`transition-all duration-500 ${showQuiz ? 'opacity-30 pointer-events-none blur-sm' : 'opacity-100'}`}>
+                                    {activeModule.content}
+                                    
+                                    <div className="mt-12 flex justify-end border-t border-gray-800 pt-8">
+                                        {activeModule.quiz ? (
+                                            <button 
+                                                onClick={() => { stopSpeech(); setShowQuiz(true); }}
+                                                className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-3 shadow-xl hover:shadow-blue-900/30 transition-all transform hover:-translate-y-1"
+                                            >
+                                                Validar Conocimiento <Icon name="ArrowRight" size={20} />
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={generatePDF}
+                                                className="bg-green-600 hover:bg-green-500 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-3 shadow-xl hover:shadow-green-900/30 transition-all transform hover:-translate-y-1 animate-pulse"
+                                            >
+                                                Descargar Certificado Oficial <Icon name="Download" size={20} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        {/* Quiz Modal Overlay */}
+                        {showQuiz && activeModule.quiz && (
+                            <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm slide-enter">
+                                <div className="bg-[#111] p-8 rounded-2xl border border-gray-800 shadow-2xl max-w-2xl w-full relative">
+                                    <button onClick={() => setShowQuiz(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white"><Icon name="X" /></button>
+                                    
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="p-3 bg-blue-900/30 rounded-lg text-blue-400"><Icon name="HelpCircle" size={24} /></div>
+                                        <div>
+                                            <p className="text-xs text-blue-400 font-bold uppercase tracking-wider">Evaluación de Progreso</p>
+                                            <h3 className="text-xl font-bold text-white">Pregunta de Control</h3>
+                                        </div>
+                                    </div>
+
+                                    <h4 className="text-lg text-gray-200 mb-8 font-medium leading-relaxed">{activeModule.quiz.q}</h4>
+
+                                    <div className="space-y-3">
+                                        {activeModule.quiz.options.map((opt, idx) => (
+                                            <button 
+                                                key={idx}
+                                                onClick={() => handleQuizSubmit(idx === activeModule.quiz.correct)}
+                                                className="w-full text-left p-5 rounded-xl bg-[#1a1a1a] border border-gray-800 hover:border-blue-500 hover:bg-blue-900/10 transition-all flex justify-between items-center group"
+                                            >
+                                                <span className="text-gray-300 group-hover:text-white">{opt}</span>
+                                                <div className="w-6 h-6 rounded-full border border-gray-600 group-hover:border-blue-500 flex items-center justify-center">
+                                                    <div className="w-3 h-3 rounded-full bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
