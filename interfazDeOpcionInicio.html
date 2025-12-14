@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Herramientas de Ingeniería | El Futuro del Diseño y el aprendizaje</title>
     <style>
         :root {
@@ -18,6 +18,8 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            /* Mejora para sensación de App nativa: evita resaltado azul al tocar */
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -25,6 +27,15 @@
             background-color: var(--netflix-black);
             color: var(--text-white);
             overflow-x: hidden;
+            /* Evita selección de texto accidental al hacer scroll táctil */
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* Permitir selección en inputs */
+        input, textarea {
+            -webkit-user-select: text;
+            user-select: text;
         }
 
         /* --- Header / Nav --- */
@@ -37,8 +48,14 @@
             top: 0;
             width: 100%;
             z-index: 1000;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.7) 10%, rgba(0,0,0,0));
-            transition: background 0.5s;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9) 10%, rgba(0,0,0,0));
+            transition: background 0.5s, padding 0.3s;
+        }
+
+        /* Fondo sólido al hacer scroll */
+        header.scrolled {
+            background-color: var(--netflix-black);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
 
         .logo {
@@ -48,6 +65,7 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             text-shadow: 0 0 10px rgba(0, 113, 235, 0.5);
+            white-space: nowrap; /* Evita que el logo se parta */
         }
 
         .nav-items {
@@ -60,18 +78,20 @@
             background-color: var(--brand-blue);
             color: white;
             border: none;
-            padding: 7px 17px;
-            border-radius: 3px;
+            padding: 8px 16px;
+            border-radius: 4px;
             font-weight: bold;
             cursor: pointer;
             transition: 0.3s;
             text-decoration: none;
             display: inline-block;
-            font-size: 1rem;
+            font-size: 0.9rem;
+            white-space: nowrap;
         }
 
-        .btn-login:hover {
+        .btn-login:hover, .btn-login:active {
             background-color: var(--brand-blue-hover);
+            transform: scale(0.98); /* Efecto de presión */
         }
 
         .btn-ghost {
@@ -85,10 +105,10 @@
             border-color: white;
         }
 
-        /* --- Hero Section Modified for Video --- */
+        /* --- Hero Section --- */
         .hero {
-            height: 85vh;
-            /* La imagen de fondo se mantiene como fallback por si el video falla o tarda en cargar */
+            height: 85vh; /* Mantiene altura en desktop */
+            min-height: 500px; /* Altura mínima para móviles */
             background-color: #000; 
             position: relative;
             display: flex;
@@ -96,10 +116,9 @@
             align-items: center;
             text-align: center;
             overflow: hidden;
-            cursor: pointer; /* Indica que es interactivo */
+            cursor: pointer;
         }
 
-        /* Estilos para el video de fondo */
         #bg-video {
             position: absolute;
             top: 50%;
@@ -120,14 +139,14 @@
             left: 0;
             width: 100%;
             height: 100%;
-            /* Capa oscura para asegurar que el texto sea legible sobre el video */
             background: rgba(0,0,0,0.5); 
-            box-shadow: inset 0 -100px 100px #141414;
+            box-shadow: inset 0 -50px 50px #141414; /* Sombra suavizada para móviles */
             z-index: 1;
         }
 
         .hero-content {
             z-index: 2;
+            width: 90%;
             max-width: 800px;
             padding: 20px;
             position: relative;
@@ -136,12 +155,13 @@
         .hero h1 {
             font-size: 3.5rem;
             font-weight: 900;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            line-height: 1.1;
         }
 
         .hero p {
             font-size: 1.5rem;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             font-weight: 400;
         }
 
@@ -150,16 +170,24 @@
             justify-content: center;
             gap: 10px;
             flex-wrap: wrap;
+            width: 100%;
         }
 
         .email-input {
             padding: 15px;
             width: 400px;
+            max-width: 100%;
             border: 1px solid #333;
-            border-radius: 2px;
+            border-radius: 4px;
             background: rgba(0,0,0,0.6);
             color: white;
             font-size: 1rem;
+            outline: none;
+        }
+
+        .email-input:focus {
+            border-color: var(--brand-blue);
+            background: rgba(0,0,0,0.8);
         }
 
         .btn-cta {
@@ -167,43 +195,56 @@
             color: white;
             border: none;
             padding: 12px 30px;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             font-weight: bold;
-            border-radius: 2px;
+            border-radius: 4px;
             cursor: pointer;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
+            transition: transform 0.2s;
         }
 
-        .btn-cta:hover {
-            background-color: var(--brand-blue-hover);
+        .btn-cta:active {
+            transform: scale(0.95);
         }
 
-        /* --- Content Rows (Cards) --- */
+        /* --- Content Sections --- */
         .section-container {
-            padding: 40px 4%;
+            padding: 40px 5%;
             background-color: var(--netflix-black);
         }
 
         .section-title {
-            font-size: 1.4rem;
-            margin-bottom: 20px;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
             font-weight: 500;
             color: #e5e5e5;
+            padding-left: 5px;
+            border-left: 4px solid var(--brand-blue);
+            line-height: 1.2;
         }
 
         .card-grid {
             display: grid;
+            /* Responsivo automático: si cabe 250px pone columna, si no, apila */
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 10px;
-            margin-bottom: 50px;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        /* Ajuste específico para móviles muy pequeños */
+        @media (max-width: 550px) {
+            .card-grid {
+                grid-template-columns: 1fr; /* Una sola columna estilo feed de Instagram/Facebook */
+            }
         }
 
         .card {
             background-color: var(--netflix-dark-gray);
-            height: 150px;
-            border-radius: 4px;
+            height: 180px; /* Un poco más alto para mejor toque */
+            border-radius: 8px;
             position: relative;
             cursor: pointer;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -215,7 +256,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            opacity: 0.6;
+            opacity: 0.7; /* Ligeramente más visible en móvil por defecto */
             transition: opacity 0.5s ease-in-out;
         }
 
@@ -224,24 +265,27 @@
             bottom: 0;
             left: 0;
             width: 100%;
-            padding: 10px;
-            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            padding: 15px;
+            background: linear-gradient(to top, rgba(0,0,0,0.95), transparent);
         }
 
         .card-title {
-            font-size: 0.9rem;
+            font-size: 1rem;
             font-weight: bold;
+            color: #fff;
         }
 
-        .card:hover {
-            transform: scale(1.1);
-            z-index: 10;
-            box-shadow: 0 0 15px rgba(0, 113, 235, 0.6);
-            border-color: var(--brand-blue);
-        }
-
-        .card:hover img {
-            opacity: 1 !important;
+        /* Efecto hover solo en dispositivos con ratón (no táctiles) */
+        @media (hover: hover) {
+            .card:hover {
+                transform: scale(1.03);
+                z-index: 10;
+                box-shadow: 0 0 15px rgba(0, 113, 235, 0.6);
+                border-color: var(--brand-blue);
+            }
+            .card:hover img {
+                opacity: 1 !important;
+            }
         }
 
         /* --- Features Split Section --- */
@@ -249,7 +293,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 50px 10%;
+            padding: 50px 5%;
             border-bottom: 8px solid #222;
             flex-wrap: wrap;
         }
@@ -258,20 +302,23 @@
             flex: 1;
             min-width: 300px;
             padding-right: 20px;
+            margin-bottom: 20px;
         }
 
         .feature-text h2 {
-            font-size: 3rem;
-            margin-bottom: 15px;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
         }
 
         .feature-text p {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
+            line-height: 1.5;
         }
 
         .feature-visual {
             flex: 1;
             min-width: 300px;
+            width: 100%;
             position: relative;
         }
         
@@ -280,73 +327,160 @@
             border: 2px solid #333;
             border-radius: 10px;
             padding: 20px;
-            position: relative;
             box-shadow: 0 0 20px rgba(0, 113, 235, 0.2);
         }
-        
-        .code-line {
-            height: 10px;
-            background-color: #333;
-            margin-bottom: 8px;
-            border-radius: 2px;
-            width: 80%;
-        }
-        .code-line.blue { background-color: var(--brand-blue); width: 40%; }
-        .code-line.short { width: 60%; }
+
+        .tech-box div { font-size: 0.9rem; } /* Ajuste texto código */
 
         /* --- Footer --- */
         footer {
-            padding: 50px 10%;
+            padding: 40px 5%;
             color: var(--text-gray);
             font-size: 0.9rem;
             border-top: 8px solid #222;
+            text-align: center; /* Centrado en móvil por defecto */
         }
 
         .footer-links {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(2, 1fr); /* 2 columnas en móvil */
             gap: 15px;
             margin-top: 20px;
+            text-align: left;
+        }
+
+        @media (min-width: 768px) {
+            .footer-links {
+                grid-template-columns: repeat(4, 1fr); /* 4 columnas en desktop */
+            }
+            footer { text-align: left; }
         }
 
         .footer-links a {
             color: var(--text-gray);
             text-decoration: none;
+            padding: 5px 0; /* Área de toque más grande */
+            display: block;
         }
 
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-
+        /* --- MEDIA QUERIES (TABLETS & MOVILES) --- */
+        
+        /* Tablets (hasta 768px) */
         @media (max-width: 768px) {
-            .hero h1 { font-size: 2rem; }
-            .feature-split { flex-direction: column; text-align: center; }
-            .feature-text { padding: 0; margin-bottom: 20px; }
-            .footer-links { grid-template-columns: repeat(2, 1fr); }
-            .email-input { width: 100%; margin-bottom: 10px; }
-            .btn-cta { width: 100%; justify-content: center; }
+            header {
+                padding: 15px 3%;
+            }
+            
+            .logo {
+                font-size: 1.4rem;
+                letter-spacing: 1px;
+            }
+
+            .hero {
+                height: 60vh; /* Altura más manejable en tablets */
+            }
+            
+            .hero h1 { font-size: 2.5rem; }
+            .hero p { font-size: 1.2rem; }
+            
+            .feature-split { 
+                flex-direction: column; 
+                text-align: center; 
+                padding: 40px 5%;
+            }
+            
+            .feature-text { 
+                padding: 0; 
+                margin-bottom: 30px; 
+            }
+            
+            /* En móvil, revertimos el orden visual para que el texto siempre quede arriba de la imagen */
+            .feature-split[style*="row-reverse"] {
+                flex-direction: column !important;
+            }
+        }
+
+        /* Móviles (hasta 480px) */
+        @media (max-width: 480px) {
+            header {
+                flex-direction: column;
+                padding: 10px;
+                background: var(--netflix-black); /* Fondo sólido para legibilidad */
+                gap: 10px;
+            }
+
+            .nav-items {
+                width: 100%;
+                justify-content: center;
+                gap: 10px;
+            }
+
+            .btn-login {
+                font-size: 0.8rem;
+                flex: 1; /* Botones ocupan espacio equitativo */
+                text-align: center;
+            }
+
+            .hero h1 { 
+                font-size: 2rem; 
+                margin-bottom: 10px;
+            }
+            
+            .hero p { 
+                font-size: 1rem; 
+                margin-bottom: 20px;
+            }
+
+            .email-form {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .email-input {
+                width: 100%;
+                margin-bottom: 10px;
+                height: 50px; /* Más alto para dedos */
+            }
+
+            .btn-cta {
+                width: 100%;
+                font-size: 1.1rem;
+                height: 50px;
+            }
+
+            .card {
+                height: 200px; /* Cards grandes estilo feed */
+            }
+
+            .feature-text h2 {
+                font-size: 1.8rem;
+            }
+
+            .footer-links {
+                grid-template-columns: 1fr; /* 1 sola columna en footer */
+                text-align: center;
+            }
+            
+            .footer-links a {
+                padding: 10px 0;
+                border-bottom: 1px solid #333;
+            }
         }
     </style>
 </head>
 <body>
 
-    <header>
+    <header id="main-header">
         <div class="logo">Herramientas<span style="color: white; font-size: 0.8em;">De</span>Ingenieria</div>
         
         <div class="nav-items">
             <a href="ModalPrecios.html" class="btn-login btn-ghost">Planes</a>
-            <a href="index.html" class="btn-login">Ir a Herramientas</a>
+            <a href="index.html" class="btn-login">Herramientas</a>
         </div>
-        
     </header>
 
     <div class="hero">
-        <!-- 
-            Video de Fondo:
-            - Se eliminó 'loop' para que pare al finalizar.
-            - Se mantiene autoplay y sonido.
-        -->
-        <video autoplay id="bg-video">
+        <video autoplay playsinline id="bg-video">
             <source src="VideoSaberMas.mp4" type="video/mp4">
             Tu navegador no soporta el video HTML5.
         </video>
@@ -426,6 +560,7 @@
         </div>
     </div>
 
+    <!-- Se mantuvo style="flex-direction: row-reverse;" pero el CSS ahora lo sobrescribe en móvil para mantener coherencia -->
     <div class="feature-split" style="flex-direction: row-reverse;">
         <div class="feature-text">
             <h2>FORMANDO.</h2>
@@ -454,12 +589,22 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             
+            // --- Cambio de color del header al hacer scroll (Efecto App) ---
+            const header = document.getElementById('main-header');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) {
+                    header.classList.add('scrolled');
+                } else {
+                    header.classList.remove('scrolled');
+                }
+            });
+
             // --- Lógica del Video Banner ---
             const heroSection = document.querySelector('.hero');
             const video = document.getElementById('bg-video');
 
             if (heroSection && video) {
-                // Al hacer clic en el banner (hero), reiniciar el video
+                // Al tocar el banner, reiniciar el video
                 heroSection.addEventListener('click', (e) => {
                     // Evitar que el video se reinicie si se está llenando el formulario
                     if (e.target.closest('.email-form')) {
@@ -474,7 +619,7 @@
                 });
             }
 
-            // --- Lógica de Alternancia de Imágenes de Tarjetas (Se mantiene) ---
+            // --- Lógica de Alternancia de Imágenes ---
             const imagePairs = [
                 ['ImCalculadoraEspecializada.png', 'ImgModeladores.png'],
                 ['ImgModeladores.png', 'ImCalculadoraEspecializada.png'],
@@ -492,6 +637,11 @@
 
                 images.forEach((img, index) => {
                     if (imagePairs[index]) {
+                        // Verificamos si la imagen está visible en el viewport para ahorrar recursos en móvil
+                        const rect = img.getBoundingClientRect();
+                        const isVisible = (rect.top >= 0 && rect.bottom <= (window.innerHeight || document.documentElement.clientHeight));
+                        
+                        // Opcional: Solo animar si es visible o siempre animar (dejamos siempre para mantener lógica original)
                         img.style.opacity = '0.2';
                         setTimeout(() => {
                             const newSrc = isAlternate ? imagePairs[index][1] : imagePairs[index][0];
