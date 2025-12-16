@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Corporativos Entalpia</title>
     <style>
-        /* --- ESTILOS GENERALES --- */
+        /* --- ESTILOS GENERALES (Reset & Base) --- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
@@ -17,54 +17,79 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            
-            /* CONFIGURACIÓN DE FONDO TIPO MARCA DE AGUA */
-            /* Capa oscura (0.9) más intensa para que el logo sea TENUE */
-            background-image: linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)), url('LogoEntalpia.png');
-            background-repeat: no-repeat;
-            background-position: center;
-            /* El logo ocupa el 75% de la pantalla (o del ancho, manteniendo proporción) */
-            background-size: 75%; 
-            
+            position: relative;
             overflow: hidden;
+        }
+
+        /* --- FONDO MARCA DE AGUA --- */
+        /* Usamos un pseudo-elemento para manejar la opacidad y el layering del fondo independientemente */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0; 
+            left: 0;
+            width: 100%; 
+            height: 100%;
+            /* Imagen de fondo centrada y sin repetir */
+            background: url('LogoEntalpia.png') no-repeat center center;
+            background-size: 75%; /* Tamaño solicitado */
+            z-index: -2;
+        }
+
+        /* Capa de oscurecimiento (Overlay) para que el texto resalte */
+        body::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); /* Oscuro y elegante */
+            z-index: -1;
         }
 
         /* --- CABECERA --- */
         .logo {
             position: absolute;
-            top: 20px;
-            left: 40px;
-            font-size: 2rem;
-            font-weight: bold;
-            /* Gradiente Azul Metálico */
+            top: 25px;
+            left: 50px;
+            font-size: 2.2rem;
+            font-weight: 800; /* Extra bold */
+            /* Efecto Metálico Azul en el texto */
             background: linear-gradient(to bottom, #a1c4fd 0%, #1c5294 50%, #082d55 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-transform: uppercase;
             letter-spacing: 2px;
             z-index: 10;
+            filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.5));
         }
 
-        /* --- CONTENEDOR DEL LOGIN --- */
+        /* --- CAJA DE LOGIN --- */
         .login-box {
-            /* Fondo más transparente (0.5) para apreciar la marca de agua */
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.6); /* Translucidez solicitada */
             width: 100%;
             max-width: 450px;
+            min-height: 550px; /* Altura mínima consistente */
             padding: 60px 68px 40px;
             border-radius: 4px;
-            border: 1px solid rgba(28, 82, 148, 0.3);
-            box-shadow: 0 0 20px rgba(28, 82, 148, 0.2);
+            /* Borde sutil y sombra para profundidad */
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+            
             position: relative;
             z-index: 5;
-            /* Mayor desenfoque para efecto "Frosted Glass" (vidrio esmerilado) */
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            
+            /* Efecto vidrio esmerilado (Glassmorphism sutil) */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
 
-        h1 { margin-bottom: 28px; color: white; font-size: 32px; font-weight: 500; }
+        h1 {
+            color: #fff;
+            font-size: 32px;
+            font-weight: 500;
+            margin-bottom: 28px;
+        }
 
-        /* CAMPOS DE TEXTO */
+        /* --- CAMPOS DE TEXTO (Estilo Streaming App) --- */
         .input-wrapper {
             position: relative;
             margin-bottom: 16px;
@@ -73,123 +98,213 @@
         .input-field {
             width: 100%;
             background: #333;
-            border: none;
+            border: 0;
             border-radius: 4px;
             color: #fff;
             height: 50px;
-            /* Padding ajustado para texto centrado sin label flotante */
-            padding: 0 20px; 
+            line-height: 50px;
+            padding: 16px 20px 0; /* Espacio para el label flotante */
             font-size: 16px;
             outline: none;
-        }
-
-        .input-field::placeholder {
-            color: #8c8c8c;
+            transition: background 0.2s, border-bottom 0.2s;
         }
 
         .input-field:focus {
             background: #454545;
-            border-bottom: 2px solid #2980b9; /* Azul metálico al enfocar */
+            border-bottom: 2px solid #0071eb; /* Azul corporativo brillante */
+        }
+        
+        /* Label Flotante */
+        .input-label {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #8c8c8c;
+            font-size: 16px;
+            transition: all 0.1s ease;
+            pointer-events: none; /* Permite clicar a través del label */
         }
 
-        /* BOTÓN DE ACCESO */
+        /* Lógica del label: Si hay foco o texto, sube y se hace pequeño */
+        .input-field:focus ~ .input-label,
+        .input-field:not(:placeholder-shown) ~ .input-label {
+            top: 7px;
+            transform: translateY(0);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        /* --- BOTÓN --- */
         .btn-login {
             width: 100%;
             padding: 16px;
             margin-top: 24px;
             font-size: 16px;
-            font-weight: bold;
+            font-weight: 700;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            background: linear-gradient(180deg, #3498db 0%, #1c5294 100%);
-            transition: background 0.2s;
+            
+            /* Gradiente Azul Intenso "Netflix Style" pero azul */
+            background: linear-gradient(180deg, #0071eb 0%, #004182 100%);
+            box-shadow: 0 1px 0 rgba(0,0,0,0.55);
+            transition: all 0.2s ease;
         }
 
         .btn-login:hover {
-            background: linear-gradient(180deg, #5dade2 0%, #2874a6 100%);
+            background: linear-gradient(180deg, #268bf2 0%, #005bb5 100%);
+        }
+        
+        .btn-login:active {
+            transform: scale(0.98);
         }
 
-        /* MENSAJE DE ERROR */
+        /* --- EXTRAS Y TEXTO SECUNDARIO --- */
+        .form-help {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #b3b3b3;
+            margin-top: 12px;
+        }
+
+        .form-help a {
+            color: #b3b3b3;
+            text-decoration: none;
+        }
+        
+        .form-help a:hover {
+            text-decoration: underline;
+        }
+
+        .signup-text {
+            margin-top: 40px;
+            color: #737373;
+            font-size: 16px;
+            font-weight: 400;
+        }
+
+        .signup-text a {
+            color: #fff;
+            text-decoration: none;
+            margin-left: 5px;
+        }
+        
+        .signup-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* --- MENSAJE DE ERROR --- */
         .error-msg {
-            background: #e87c03;
-            padding: 10px;
+            background: #e87c03; /* Naranja de advertencia estándar */
+            padding: 10px 15px;
             border-radius: 4px;
             font-size: 14px;
-            margin-bottom: 15px;
+            color: white;
+            margin-bottom: 16px;
             display: none;
         }
 
-        /* ANIMACIÓN DE TEMBLOR */
+        .error-msg a {
+            color: white;
+            text-decoration: underline;
+            font-weight: bold;
+        }
+
+        /* --- ANIMACIÓN SHAKE (Error) --- */
         @keyframes shake {
-            0% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            50% { transform: translateX(10px); }
-            75% { transform: translateX(-10px); }
-            100% { transform: translateX(0); }
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+            20%, 40%, 60%, 80% { transform: translateX(6px); }
         }
 
         .shake-animation {
-            animation: shake 0.4s ease-in-out;
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
         }
 
-        /* Media Query para móviles */
+        /* --- RESPONSIVE MOBILE --- */
         @media (max-width: 740px) {
+            body {
+                background: #000; /* Fondo negro sólido base */
+            }
+            body::before {
+                background-size: contain; /* Ajuste logo en móvil */
+                opacity: 0.5;
+            }
             .login-box {
                 width: 100%;
-                height: 100%;
+                height: 100vh; /* Ocupa toda la pantalla */
                 max-width: none;
-                /* Mantenemos transparencia en móvil también */
-                background-color: rgba(0, 0, 0, 0.6);
+                background-color: black; /* Fondo sólido en móvil típico de estas apps */
                 border: none;
-                padding-top: 100px; /* Espacio para el header */
+                border-radius: 0;
+                padding: 0 5% 0; /* Padding lateral */
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
             }
-            body { 
-                background-color: black;
-                /* En móvil el logo puede ser un poco más grande para llenar */
-                background-size: 90%; 
+            .logo {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                font-size: 1.5rem;
+            }
+            /* En móvil mantenemos el fondo transparente de la caja para ver el logo global si se desea,
+               o lo hacemos sólido. Estilo Netflix móvil suele ser negro sólido. */
+            .login-box {
+                background-color: rgba(0,0,0,0.85); /* Casi sólido */
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- Logo / Header -->
+    <!-- Logo Corporativo -->
     <div class="logo">CORPORATIVOS ENTALPIA</div>
 
-    <!-- PANTALLA DE LOGIN -->
     <div class="login-box" id="loginBox">
         <h1>Inicia Sesión</h1>
         
+        <!-- Mensaje de Error -->
         <div id="errorMsg" class="error-msg">
-            <b>Contraseña incorrecta.</b> Por favor, inténtalo de nuevo o restablece tu contraseña.
+            <b>Contraseña incorrecta.</b> <a href="#">Restablecer contraseña</a>
         </div>
 
         <form id="loginForm">
             <div class="input-wrapper">
-                <input type="text" id="username" class="input-field" placeholder="Usuario" autocomplete="off" required>
+                <!-- Placeholder vacío + espacio para activar selector CSS :placeholder-shown -->
+                <input type="text" id="username" class="input-field" placeholder=" " autocomplete="off" required>
+                <label for="username" class="input-label">Email o usuario</label>
             </div>
             
             <div class="input-wrapper">
-                <input type="password" id="password" class="input-field" placeholder="Contraseña" required>
+                <input type="password" id="password" class="input-field" placeholder=" " required>
+                <label for="password" class="input-label">Contraseña</label>
             </div>
 
             <button type="submit" class="btn-login">Iniciar Sesión</button>
             
-            <div style="margin-top: 15px; display: flex; justify-content: space-between; font-size: 13px; color: #b3b3b3;">
-                <label><input type="checkbox" checked> Recuérdame</label>
-                <a href="#" style="color: #b3b3b3; text-decoration: none;">¿Necesitas ayuda?</a>
+            <div class="form-help">
+                <label style="cursor: pointer;">
+                    <input type="checkbox" checked style="accent-color: #b3b3b3;"> Recuérdame
+                </label>
+                <a href="#">¿Necesitas ayuda?</a>
             </div>
         </form>
 
-        <div style="margin-top: 40px; color: #737373; font-size: 16px;">
-            ¿Nuevo en la Intranet? <a href="#" style="color: white; text-decoration: none;">Regístrate ahora.</a>
+        <div class="signup-text">
+            ¿Nuevo en Entalpia? <a href="#">Regístrate ahora.</a>
+            <p style="font-size: 11px; margin-top: 15px; color: #8c8c8c; line-height: 1.4;">
+                Esta página está protegida por Google reCAPTCHA para asegurar que no eres un robot.
+            </p>
         </div>
     </div>
 
     <script>
-        // --- BASE DE DATOS DE USUARIOS ---
+        // --- BASE DE DATOS DE ACCESOS ---
         const accessControl = {
             'comserviciosayg@gmail.com': {
                 pass: '2505',
@@ -201,7 +316,6 @@
             },
             'juvamo78@gmail.com': {
                 pass: '1511',
-                // Misma URL que INSE
                 url: 'https://www.appsheet.com/start/80829734-e104-4186-aaac-9ee4dd3c72ec?platform=desktop#appName=ION-3612435&vss=H4sIAAAAAAAAA6WOOw7CMBAF7_Jqn8AtSoEQNCAaTGHijWSR2FHsQCLLd2fNR9AC5b7VjCbhYum6jbo-Qx7S-1rRDImksJt7UpAKC-_i4FsFobDR3WOspkguWO8oKGTko3gpIgXI9LVB_t0gYA25aBtLQ9EVmDVPlN8F5OEDQxboxqhPLd3LGcuZt8bXYyCz56DfQsLSVVOvnVl7w9ZGt4HyDfd8HuV0AQAA&view=Extensiones'
             }
         };
@@ -213,28 +327,28 @@
         form.addEventListener('submit', function(e) {
             e.preventDefault();
 
-            // Obtener valores y limpiar espacios/minúsculas para el usuario
+            // Normalización de entrada
             const user = document.getElementById('username').value.trim().toLowerCase();
             const pass = document.getElementById('password').value;
 
             // Validación
             if (accessControl[user] && accessControl[user].pass === pass) {
-                // Éxito: Redirigir a la URL configurada
+                // Redirección exitosa
                 window.location.href = accessControl[user].url;
             } else {
-                // Error: Mostrar mensaje y animar
+                // Manejo de error visual
                 mostrarError();
             }
         });
 
         function mostrarError() {
             errorMsg.style.display = 'block';
+            loginBox.classList.remove('shake-animation'); // Reiniciar clase para permitir repetición
+            void loginBox.offsetWidth; // Forzar reflow del DOM
             loginBox.classList.add('shake-animation');
             
-            // Quitar animación después de ejecutarse para poder repetirla
-            setTimeout(() => {
-                loginBox.classList.remove('shake-animation');
-            }, 400);
+            // Limpiar password para reintento
+            document.getElementById('password').value = '';
         }
     </script>
 </body>
