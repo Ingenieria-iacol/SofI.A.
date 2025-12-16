@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlueStream Login</title>
+    <title>Acceso a Mis Aplicaciones</title>
     <style>
         /* --- ESTILOS GENERALES --- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -17,8 +17,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            /* Imagen de fondo estilo cine/streaming */
-            background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1574169208507-84376144848b?q=80&w=2079&auto=format&fit=crop');
+            /* Imagen de fondo técnica/tecnológica */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
             overflow: hidden;
@@ -29,9 +29,9 @@
             position: absolute;
             top: 20px;
             left: 40px;
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: bold;
-            /* Gradiente Azul Metálico para el texto */
+            /* Gradiente Azul Metálico */
             background: linear-gradient(to bottom, #a1c4fd 0%, #1c5294 50%, #082d55 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -47,13 +47,13 @@
             max-width: 450px;
             padding: 60px 68px 40px;
             border-radius: 4px;
-            border: 1px solid rgba(28, 82, 148, 0.3); /* Borde sutil azul */
+            border: 1px solid rgba(28, 82, 148, 0.3);
             box-shadow: 0 0 20px rgba(28, 82, 148, 0.2);
             position: relative;
             z-index: 5;
         }
 
-        h1 { margin-bottom: 28px; color: white; }
+        h1 { margin-bottom: 28px; color: white; font-size: 32px; font-weight: 500; }
 
         /* CAMPOS DE TEXTO */
         .input-wrapper {
@@ -124,10 +124,10 @@
             border-radius: 4px;
             font-size: 14px;
             margin-bottom: 15px;
-            display: none; /* Oculto inicialmente */
+            display: none;
         }
 
-        /* ANIMACIÓN DE TEMBLOR (CSS Puro) */
+        /* ANIMACIÓN DE TEMBLOR */
         @keyframes shake {
             0% { transform: translateX(0); }
             25% { transform: translateX(-10px); }
@@ -140,30 +140,6 @@
             animation: shake 0.4s ease-in-out;
         }
 
-        /* --- PÁGINA DE DESTINO (SIMULADA) --- */
-        #simulacion-destino {
-            display: none; /* Oculto inicialmente */
-            text-align: center;
-            color: white;
-            z-index: 20;
-            background: #000;
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .url-bar {
-            background: #1f2833;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-family: monospace;
-            color: #66fcf1;
-            margin-bottom: 20px;
-            border: 1px solid #45a29e;
-        }
-        
         /* PISTAS DE USUARIO (SOLO DEMO) */
         .demo-users {
             position: fixed;
@@ -178,18 +154,30 @@
         }
         .demo-users code { display: block; color: #a1c4fd; margin-top: 5px; }
 
+        /* Media Query para móviles */
+        @media (max-width: 740px) {
+            .login-box {
+                width: 100%;
+                height: 100%;
+                max-width: none;
+                background-color: black;
+                border: none;
+                padding-top: 100px; /* Espacio para el header */
+            }
+            body { background: black; }
+        }
     </style>
 </head>
 <body>
 
-    <div class="logo">BLUESTREAM</div>
+    <!-- Logo / Header -->
+    <div class="logo">MIS APLICACIONES</div>
 
     <!-- Pistas de acceso para pruebas -->
     <div class="demo-users">
-        <strong>Usuarios de prueba:</strong>
-        <code>admin / 1234</code>
-        <code>invitado / 1234</code>
-        <code>vip / 1234</code>
+        <strong>Credenciales disponibles:</strong>
+        <code>User: comservicios@gmail.com</code>
+        <code>Pass: 1234</code>
     </div>
 
     <!-- PANTALLA DE LOGIN -->
@@ -197,13 +185,13 @@
         <h1>Inicia Sesión</h1>
         
         <div id="errorMsg" class="error-msg">
-            Contraseña incorrecta. Inténtalo de nuevo.
+            <b>Contraseña incorrecta.</b> Por favor, inténtalo de nuevo o restablece tu contraseña.
         </div>
 
         <form id="loginForm">
             <div class="input-wrapper">
                 <input type="text" id="username" class="input-field" placeholder=" " required>
-                <label for="username" class="input-label">Usuario</label>
+                <label for="username" class="input-label">Email o número de usuario</label>
             </div>
             
             <div class="input-wrapper">
@@ -214,71 +202,52 @@
             <button type="submit" class="btn-login">Iniciar Sesión</button>
             
             <div style="margin-top: 15px; display: flex; justify-content: space-between; font-size: 13px; color: #b3b3b3;">
-                <label><input type="checkbox"> Recuérdame</label>
-                <a href="#" style="color: #b3b3b3; text-decoration: none;">Ayuda</a>
+                <label><input type="checkbox" checked> Recuérdame</label>
+                <a href="#" style="color: #b3b3b3; text-decoration: none;">¿Necesitas ayuda?</a>
             </div>
         </form>
-    </div>
 
-    <!-- PANTALLA DE DESTINO (SIMULACIÓN) -->
-    <div id="simulacion-destino">
-        <div class="url-bar" id="urlDisplay">https://bluestream.com/</div>
-        <h1 id="welcomeTitle">Bienvenido</h1>
-        <p>Has ingresado al área protegida.</p>
-        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: transparent; border: 1px solid white; color: white; cursor: pointer;">Cerrar Sesión</button>
+        <div style="margin-top: 40px; color: #737373; font-size: 16px;">
+            ¿Nuevo en la Intranet? <a href="#" style="color: white; text-decoration: none;">Regístrate ahora.</a>
+        </div>
     </div>
 
     <script>
-        // CONFIGURACIÓN DE USUARIOS Y REDIRECCIONES
-        // Aquí defines a dónde va cada usuario
-        const usuarios = {
-            'admin':    { pass: '1234', url: '/panel-administrador', nombre: 'Admin' },
-            'invitado': { pass: '1234', url: '/inicio-usuario',      nombre: 'Invitado' },
-            'vip':      { pass: '1234', url: '/contenido-exclusivo', nombre: 'Miembro VIP' }
+        // --- BASE DE DATOS DE USUARIOS ---
+        const accessControl = {
+            'comservicios@gmail.com': {
+                pass: '1234',
+                url: 'InterfazComservicios.html' // Redirección solicitada
+            }
         };
 
         const form = document.getElementById('loginForm');
         const loginBox = document.getElementById('loginBox');
         const errorMsg = document.getElementById('errorMsg');
-        const destinoScreen = document.getElementById('simulacion-destino');
-        const urlDisplay = document.getElementById('urlDisplay');
-        const welcomeTitle = document.getElementById('welcomeTitle');
 
         form.addEventListener('submit', function(e) {
-            e.preventDefault(); // Evita recargar la página
+            e.preventDefault();
 
+            // Obtener valores y limpiar espacios/minúsculas para el usuario
             const user = document.getElementById('username').value.trim().toLowerCase();
             const pass = document.getElementById('password').value;
 
-            if (usuarios[user] && usuarios[user].pass === pass) {
-                // ACCESO CORRECTO
-                iniciarSesion(usuarios[user]);
+            // Validación
+            if (accessControl[user] && accessControl[user].pass === pass) {
+                // Éxito: Redirigir a la URL configurada
+                // Usamos window.location.href para navegar al archivo en el mismo repo
+                window.location.href = accessControl[user].url;
             } else {
-                // ACCESO DENEGADO
+                // Error: Mostrar mensaje y animar
                 mostrarError();
             }
         });
 
-        function iniciarSesion(datosUsuario) {
-            // Ocultar login
-            loginBox.style.display = 'none';
-            document.querySelector('.demo-users').style.display = 'none';
-            
-            // Mostrar pantalla de destino simulada
-            destinoScreen.style.display = 'flex';
-            
-            // Actualizar datos simulados
-            urlDisplay.textContent = 'https://bluestream.com' + datosUsuario.url;
-            welcomeTitle.textContent = 'Bienvenido, ' + datosUsuario.nombre;
-        }
-
         function mostrarError() {
             errorMsg.style.display = 'block';
-            
-            // Añadir clase para animar
             loginBox.classList.add('shake-animation');
             
-            // Quitar clase después de que termine la animación
+            // Quitar animación después de ejecutarse para poder repetirla
             setTimeout(() => {
                 loginBox.classList.remove('shake-animation');
             }, 400);
