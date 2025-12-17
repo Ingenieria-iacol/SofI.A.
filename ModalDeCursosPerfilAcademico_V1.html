@@ -83,6 +83,31 @@
         // --- DATOS DE CURSOS ---
         const initialTrainingPlans = [
             { 
+                id: 107, 
+                title: "Trabajo Seguro En Alturas Resol. 4272:2021", 
+                category: "Seguridad Industrial", 
+                status: "active", // NUEVO CURSO ACTIVO
+                description: "Curso completo sobre los requisitos mínimos de seguridad para el desarrollo de trabajo en alturas según la Resolución 4272 de 2021. Aprende sobre medidas de prevención, protección y rescate.",
+                matchScore: 98,
+                year: "2025",
+                instructor: "Ing. Carlos Altura",
+                tags: ["Res. 4272", "Alturas", "HSE"],
+                type: "Versión Libre", 
+                hours: 20, 
+                level: "Avanzado", 
+                enrolled: false, 
+                progress: 0, 
+                imageColor: "bg-slate-800",
+                gradientColor: "from-slate-900 to-black",
+                imageUrl: "./ImgCursoResolucion4272_2021_V1Libre.png",
+                url: "./CursoResolucion4272_2021_V1Libre.html",
+                chapters: [
+                    { title: "Marco Legal Res. 4272", duration: "45m" },
+                    { title: "Medidas de Prevención", duration: "60m" },
+                    { title: "Sistemas de Protección Contra Caídas", duration: "90m" }
+                ]
+            },
+            { 
                 id: 106, 
                 title: "Re entrenamiento en Anexo C NTC 3833", 
                 category: "NTC 3833",
@@ -136,10 +161,10 @@
                 id: 104, 
                 title: "Seguridad Operativa con GLP", 
                 category: "Seguridad", 
-                status: "active", // AHORA ACTIVO
+                status: "active", 
                 description: "Protocolos esenciales para el manejo de Gases Licuados del Petróleo. Desde el trasiego seguro hasta la respuesta ante emergencias y fugas.",
-                matchScore: 90, // Ajustado
-                year: "2025", // Actualizado
+                matchScore: 90, 
+                year: "2025", 
                 instructor: "Cap. Jhon Safety",
                 tags: ["GLP", "Emergencias", "Protocolos"],
                 type: "Versión Libre", 
@@ -150,8 +175,8 @@
                 imageColor: "bg-yellow-700",
                 gradientColor: "from-yellow-800 to-black",
                 imageUrl: "https://images.unsplash.com/photo-1599818827727-4a7b7a57acbd?q=80&w=1000&auto=format&fit=crop",
-                url: "./CursoCapacitacionSeguridadTanquesGLP_V_Libre.html", // URL CONFIGURADA
-                chapters: [ // Capítulos agregados para el modal
+                url: "./CursoCapacitacionSeguridadTanquesGLP_V_Libre.html", 
+                chapters: [ 
                     { title: "Propiedades Físicas del GLP", duration: "15m" },
                     { title: "EPP y Herramientas", duration: "12m" },
                     { title: "Simulacro de Fuga", duration: "25m" }
