@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curso Especializado NTC 3833 | GasEngineering Hub</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body { 
+            background-color: #0a0a0a; 
+            color: #e5e5e5;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        .app-background {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background-image: url('LogoEntalpia.png');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 50%;
+            opacity: 0.04;
+            pointer-events: none;
+        }
+
+        .login-watermark {
+            background-image: url('LogoEntalpia.png');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            opacity: 0.08;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #111; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #444; }
+        
+        .slide-enter { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Estilos para tablas técnicas */
+        .tech-table th { background-color: #1e293b; color: #94a3b8; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
+        .tech-table td { border-bottom: 1px solid #1e293b; color: #e2e8f0; }
+        .tech-table tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <img id="logo-entalpia" src="LogoEntalpia.png" style="display: none;" alt="Logo Entalpia" crossorigin="anonymous" />
+    <div class="app-background"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { jsPDF } = window.jspdf;
+
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const iconData = lucide.icons[name];
+            if (!iconData) return null;
+            return (
+                <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width={size} height={size} viewBox="0 0 24 24" 
+                    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
+                    className={className}
+                    dangerouslySetInnerHTML={{ __html: iconData.map(i => `<${i[0]} ${Object.entries(i[1]).map(([k,v]) => `${k}="${v}"`).join(' ')} />`).join('') }}
+                />
+            );
+        };
+
+        // --- COMPONENTE DE ONDA SONORA FUTURISTA ---
+        const VoiceWaveform = ({ isPlaying, height = 100 }) => {
+            const canvasRef = useRef(null);
+            
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let animationFrameId;
+                let phase = 0;
+                
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                ctx.scale(dpr, dpr);
+                
+                const draw = () => {
+                    const w = rect.width;
+                    const h = rect.height;
+                    const centerY = h / 2;
+                    
+                    ctx.clearRect(0, 0, w, h);
+                    
+                    const lines = 5; 
+                    const baseAmplitude = isPlaying ? h * 0.3 : h * 0.02;
+                    const speed = isPlaying ? 0.05 : 0.01; 
+                    
+                    phase += speed;
+                    
+                    const colors = ["#60a5fa", "#22d3ee", "#818cf8", "#3b82f6", "#a78bfa"];
+
+                    for (let i = 0; i < lines; i++) {
+                        ctx.beginPath();
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = colors[i % colors.length];
+                        ctx.globalAlpha = 0.7 - (i * 0.1); 
+                        
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = colors[i % colors.length];
+
+                        for (let x = 0; x < w; x++) {
+                            const frequency = 0.01 + (i * 0.002);
+                            const amplitudeVariation = Math.sin(x * 0.05 + phase) * 0.3 + 0.7; 
+
+                            const y = centerY + 
+                                Math.sin(x * frequency + phase + i) * (baseAmplitude * amplitudeVariation) +
+                                Math.cos(x * (frequency * 1.5) - phase * 0.5) * (baseAmplitude * 0.2);
+                            
+                            if (x === 0) ctx.moveTo(x, y);
+                            else ctx.lineTo(x, y);
+                        }
+                        ctx.stroke();
+                    }
+                    
+                    ctx.shadowBlur = 0;
+                    animationFrameId = requestAnimationFrame(draw);
+                };
+                
+                draw();
+                
+                return () => cancelAnimationFrame(animationFrameId);
+            }, [isPlaying]);
+            
+            return <canvas ref={canvasRef} style={{ width: '100%', height: `${height}px` }} />;
+        };
+
+        // --- CONTENIDO NTC 3833 ---
+        const courseModules = [
+            {
+                id: 1,
+                title: "Introducción Normativa",
+                speech: "Hola, soy tu instructora virtual. Bienvenidos al curso de reentrenamiento. Hoy aprenderemos a valorar las particularidades de los conectores de evacuación según el Anexo C de la NTC 3833. Nuestro objetivo es lograr una puntuación positiva para garantizar la seguridad.",
+                content: (
+                    <div className="space-y-4">
+                        <h2 className="text-2xl font-bold text-blue-400">Objetivo del Re-entrenamiento</h2>
+                        <p>Este curso capacita en la aplicación del <strong>Anexo C (Informativo) de la NTC 3833</strong>.</p>
+                        <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-yellow-500">
+                            <h3 className="font-bold text-yellow-500">Premisa de Diseño</h3>
+                            <p className="text-sm mt-2">Buscamos que la suma de puntos por ganancia de cota menos las pérdidas por accesorios sea mayor o igual a +1.0 para aprobar el diseño.</p>
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Cuál es el objetivo principal de la valoración por puntos?",
+                    options: ["Calcular el precio del gas", "Garantizar la evacuación segura de humos", "Medir la temperatura del agua"],
+                    correct: 1
+                }
+            },
+            {
+                id: 2,
+                title: "Definiciones Clave",
+                speech: "Antes de calcular, es vital entender el vocabulario. Hablaremos de Tiro Natural, que usa la física simple del aire caliente subiendo, y del Deflector, que protege esa salida.",
+                content: (
+                    <div className="grid grid-cols-1 gap-3 text-sm">
+                        <div className="bg-[#2a2a2a] p-3 rounded border border-gray-700">
+                            <strong className="text-blue-300">Tiro Natural:</strong> Movimiento de gases por diferencia de densidad (aire caliente sube).
+                        </div>
+                        <div className="bg-[#2a2a2a] p-3 rounded border border-gray-700">
+                            <strong className="text-blue-300">Conector:</strong> Tubería que une el artefacto con la chimenea o exterior.
+                        </div>
+                        <div className="bg-[#2a2a2a] p-3 rounded border border-gray-700">
+                            <strong className="text-blue-300">Deflector:</strong> Dispositivo en la terminal para minimizar efecto del viento.
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Qué dispositivo minimiza el efecto del viento en la salida?",
+                    options: ["El Codo", "El Deflector", "El Collarín"],
+                    correct: 1
+                }
+            },
+            {
+                id: 3,
+                title: "Factor de Altitud",
+                speech: "Atención aquí. La altura afecta la física. En nuestro ejemplo, la presión es de 752 milibares. Al dividir esto por la presión a nivel del mar, obtenemos 0.74. Sin embargo, por seguridad, la norma ajusta el factor final a 0.6.",
+                content: (
+                    <div className="space-y-4">
+                        <h2 className="text-xl font-bold text-green-400">Ajuste por Presión</h2>
+                        <div className="flex flex-col md:flex-row gap-4 items-center justify-center my-4">
+                            <div className="text-center p-3 bg-gray-800 rounded w-full border border-gray-600">
+                                <div className="text-xs text-gray-400">Cálculo Real</div>
+                                <div className="text-xl font-mono text-white">752 / 1013.25 = <span className="text-yellow-400">0.74</span></div>
+                            </div>
+                        </div>
+                        <div className="bg-blue-900/30 p-4 rounded-lg text-center border border-blue-500/50">
+                            <h4 className="font-bold text-blue-300">Factor de Diseño Usado</h4>
+                            <p className="text-sm mt-2">Aunque el cálculo da 0.74, el ejemplo de la norma aplica un coeficiente de seguridad (aprox 0.85) resultando en:</p>
+                            <p className="text-2xl font-bold text-green-400 mt-2">Factor = 0.6</p>
+                            <p className="text-xs text-gray-400 mt-1">Este es el valor que usaremos para multiplicar la altura.</p>
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "Si el cálculo matemático da 0.74, ¿qué factor de seguridad usa el ejemplo para los cálculos?",
+                    options: ["0.74", "1.0", "0.6"],
+                    correct: 2
+                }
+            },
+            {
+                id: 4,
+                title: "Esquema del Sistema",
+                speech: "Observemos el diagrama. Tenemos una altura vertical h, un codo, y un tramo inclinado TR2. La suma de las alturas verticales nos da la H mayúscula, que es nuestra ganancia total de cota.",
+                content: (
+                    <div className="flex justify-center">
+                        <div className="bg-white p-4 rounded-lg w-full max-w-md shadow-lg opacity-90">
+                            <svg viewBox="0 0 400 300" className="w-full h-auto">
+                                <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f0f0f0" strokeWidth="1"/></pattern></defs>
+                                <rect width="100%" height="100%" fill="url(#grid)" />
+                                <rect x="50" y="200" width="80" height="80" fill="#e2e8f0" stroke="#475569" strokeWidth="2" />
+                                <text x="90" y="245" textAnchor="middle" fill="#475569" fontSize="10" fontWeight="bold">CALENTADOR</text>
+                                <line x1="90" y1="200" x2="90" y2="140" stroke="#3b82f6" strokeWidth="6" />
+                                <text x="65" y="170" fill="#2563eb" fontSize="12" fontWeight="bold">h=22cm</text>
+                                <path d="M 90 140 Q 90 110 120 100" stroke="#ef4444" strokeWidth="6" fill="none" />
+                                <line x1="118" y1="101" x2="300" y2="40" stroke="#3b82f6" strokeWidth="6" />
+                                <text x="200" y="60" fill="#2563eb" fontSize="12" fontWeight="bold" transform="rotate(-18 200,60)">TR2=245cm</text>
+                                <circle cx="303" cy="40" r="8" stroke="#ef4444" strokeWidth="2" fill="white" />
+                                <line x1="350" y1="200" x2="350" y2="40" stroke="#10b981" strokeWidth="1" strokeDasharray="5,5" />
+                                <text x="360" y="120" fill="#10b981" fontSize="14" fontWeight="bold">H Total</text>
+                            </svg>
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Qué representa la variable H mayúscula en el diagrama?",
+                    options: ["La longitud del tubo", "La ganancia total de cota (Altura vertical)", "El ancho del calentador"],
+                    correct: 1
+                }
+            },
+            {
+                id: 5,
+                title: "Puntos: Positivos vs Negativos",
+                speech: "El sistema funciona como una balanza. La altura nos da puntos positivos porque ayuda a subir el humo. Los accesorios como codos y la longitud del tubo nos dan puntos negativos porque frenan el humo.",
+                content: (
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                        <div className="bg-green-900/20 border border-green-800 p-4 rounded-lg text-center">
+                            <Icon name="PlusCircle" className="mx-auto text-green-400 mb-2"/>
+                            <h4 className="text-green-400 font-bold">Ganancia</h4>
+                            <p className="text-xs mt-2">Altura (H)</p>
+                            <p className="text-xs">Ayuda a evacuar</p>
+                        </div>
+                        <div className="bg-red-900/20 border border-red-800 p-4 rounded-lg text-center">
+                            <Icon name="MinusCircle" className="mx-auto text-red-400 mb-2"/>
+                            <h4 className="text-red-400 font-bold">Pérdida</h4>
+                            <p className="text-xs mt-2">Codos, Longitud, Deflector</p>
+                            <p className="text-xs">Frenan el flujo</p>
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Qué efecto tienen los codos y la longitud de tubería en la valoración?",
+                    options: ["Suman puntos positivos", "Restan puntos (Negativos)", "No afectan"],
+                    correct: 1
+                }
+            },
+            {
+                id: 6,
+                title: "Tabla de Valores",
+                speech: "Aquí están los valores numéricos para nuestro ejercicio. La altura suma 0.6 puntos por cada 10 centímetros. El codo resta 2 puntos enteros. Es una penalización fuerte.",
+                content: (
+                    <div className="overflow-x-auto border border-gray-700 rounded-lg">
+                        <table className="w-full text-xs text-left tech-table">
+                            <thead>
+                                <tr><th className="px-4 py-2">Componente</th><th className="px-4 py-2 text-right">Puntos</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr className="bg-[#1f1f1f]"><td className="px-4 py-3">Ganancia Cota (H)</td><td className="px-4 py-3 text-right text-green-400">+0.6 / 10cm</td></tr>
+                                <tr className="bg-[#1a1a1a]"><td className="px-4 py-3">Deflector</td><td className="px-4 py-3 text-right text-red-400">-0.30</td></tr>
+                                <tr className="bg-[#1f1f1f]"><td className="px-4 py-3">Codo Vert-Horiz</td><td className="px-4 py-3 text-right text-red-400">-2.00</td></tr>
+                                <tr className="bg-[#1a1a1a]"><td className="px-4 py-3">Longitud Tubería</td><td className="px-4 py-3 text-right text-red-400">-0.5 / 100cm</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Cuántos puntos se restan por el codo Vertical-Horizontal?",
+                    options: ["-0.5", "-1.0", "-2.0"],
+                    correct: 2
+                }
+            },
+            {
+                id: 7,
+                title: "Análisis Caso Fallido",
+                speech: "Analicemos el primer intento. Con una altura H de 33 centímetros, solo ganamos 1.98 puntos. Pero el codo y la longitud nos quitan más de 3 puntos. El resultado es negativo, -1.66. Esto es peligroso y se rechaza.",
+                content: (
+                    <div className="bg-black/40 p-4 rounded border border-red-900/50">
+                        <div className="flex justify-between border-b border-gray-700 pb-2 mb-2">
+                            <span>Ganancia H (33cm)</span>
+                            <span className="text-green-400 font-mono">+1.98</span>
+                        </div>
+                        <div className="space-y-1 text-sm text-red-300">
+                            <div className="flex justify-between"><span>Accesorios y Longitud</span> <span>-3.64</span></div>
+                        </div>
+                        <div className="flex justify-between border-t border-gray-700 pt-2 mt-2 font-bold text-lg">
+                            <span>TOTAL</span>
+                            <span className="text-red-500">-1.66</span>
+                        </div>
+                        <p className="text-center text-xs mt-2 text-red-400 uppercase font-bold">RECHAZADO (Debe ser > +1.0)</p>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Por qué se rechazó el primer diseño?",
+                    options: ["El tubo era muy corto", "El puntaje total fue menor a +1.0", "El calentador era eléctrico"],
+                    correct: 1
+                }
+            },
+            {
+                id: 8,
+                title: "Solución: Aumentar Pendiente",
+                speech: "Para arreglarlo, la Alternativa 1 sugiere inclinar más el tubo horizontal. Si subimos 45 centímetros extra, nuestra H total llega a 78. Ahora ganamos 4.68 puntos por altura, suficiente para superar las pérdidas.",
+                content: (
+                    <div className="space-y-4">
+                        <div className="bg-green-900/10 p-3 rounded border border-green-800 text-sm">
+                            <p><strong>Estrategia:</strong> Aumentar H de 33cm a 78cm.</p>
+                        </div>
+                        <div className="bg-black/40 p-4 rounded border border-green-900/50">
+                            <div className="flex justify-between border-b border-gray-700 pb-2 mb-2">
+                                <span>Nueva H (78cm)</span>
+                                <span className="text-green-400 font-mono font-bold">+4.68</span>
+                            </div>
+                            <div className="space-y-1 text-sm text-red-300">
+                                <div className="flex justify-between"><span>Pérdidas (Iguales)</span> <span>-3.64</span></div>
+                            </div>
+                            <div className="flex justify-between border-t border-gray-700 pt-2 mt-2 font-bold text-lg">
+                                <span>NUEVO TOTAL</span>
+                                <span className="text-green-500">+1.04</span>
+                            </div>
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "¿Cuál fue la clave para aprobar en la Alternativa 1?",
+                    options: ["Quitar el codo", "Aumentar la altura H (Pendiente)", "Cambiar a tubería de cobre"],
+                    correct: 1
+                }
+            },
+            {
+                id: 9,
+                title: "Otras Alternativas",
+                speech: "Si no puedes inclinar tanto el tubo, tienes más opciones. La Alternativa 2 propone mover el calentador. La Alternativa 3 sugiere acortar distancias pero usando un tubo más ancho, de 6.5 pulgadas.",
+                content: (
+                    <div className="grid grid-cols-1 gap-3 text-sm">
+                        <div className="bg-[#222] p-3 rounded border-l-4 border-blue-500">
+                            <h4 className="font-bold text-blue-400">Alternativa 2</h4>
+                            <p>Mover el calentador para lograr H=0.6m y L=2m con diámetro de 6".</p>
+                        </div>
+                        <div className="bg-[#222] p-3 rounded border-l-4 border-purple-500">
+                            <h4 className="font-bold text-purple-400">Alternativa 3</h4>
+                            <p>Reducir longitudes (H=0.5m, L=0.5m) pero aumentando diámetro a 6.5".</p>
+                        </div>
+                    </div>
+                ),
+                quiz: {
+                    q: "En la Alternativa 3, al reducir la longitud, ¿qué se debe hacer con el diámetro?",
+                    options: ["Reducirlo", "Dejarlo igual", "Aumentarlo a 6.5 pulgadas"],
+                    correct: 2
+                }
+            },
+            {
+                id: 10,
+                title: "Finalización",
+                speech: "¡Felicidades! Has completado todos los módulos y aprobado las verificaciones. Ya estás listo para descargar tu constancia de reentrenamiento. Gracias por confiar en Entalpia.",
+                content: (
+                    <div className="text-center py-10">
+                        <div className="w-24 h-24 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-500/20">
+                            <Icon name="Award" size={48} className="text-white" />
+                        </div>
+                        <h2 className="text-3xl font-bold text-white mb-4">¡Curso Aprobado!</h2>
+                        <p className="text-gray-400 mb-8 max-w-md mx-auto">Has demostrado dominio en la valoración de conectores NTC 3833.</p>
+                    </div>
+                ),
+                quiz: null
+            }
+        ];
+
+        function App() {
+            const [currentStep, setCurrentStep] = useState(0); 
+            const [completedSteps, setCompletedSteps] = useState([0]); 
+            const [userName, setUserName] = useState("");
+            const [userCedula, setUserCedula] = useState("");
+            const [courseStarted, setCourseStarted] = useState(false);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [showQuiz, setShowQuiz] = useState(false);
+            
+            const speak = (text) => {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'es-ES'; 
+                    const voices = window.speechSynthesis.getVoices();
+                    const spanishVoice = voices.find(v => v.lang.includes('es') && (v.name.includes('Paulina') || v.name.includes('Monica') || v.name.includes('Helena') || v.name.includes('Google') || v.name.includes('Sabina')));
+                    
+                    if (spanishVoice) utterance.voice = spanishVoice;
+
+                    utterance.onstart = () => setIsPlaying(true);
+                    utterance.onend = () => setIsPlaying(false);
+                    utterance.onerror = () => setIsPlaying(false);
+                    
+                    window.speechSynthesis.speak(utterance);
+                }
+            };
+
+            const stopSpeech = () => {
+                window.speechSynthesis.cancel();
+                setIsPlaying(false);
+            };
+
+            useEffect(() => {
+                if (courseStarted && courseModules[currentStep]) {
+                    setShowQuiz(false); 
+                    setTimeout(() => speak(courseModules[currentStep].speech), 500);
+                }
+                return () => stopSpeech();
+            }, [currentStep, courseStarted]);
+
+            const handleQuizSubmit = (isCorrect) => {
+                if (isCorrect) {
+                    const nextStep = currentStep + 1;
+                    if (!completedSteps.includes(nextStep)) {
+                        setCompletedSteps([...completedSteps, nextStep]);
+                    }
+                    if (nextStep < courseModules.length) {
+                        setCurrentStep(nextStep);
+                    }
+                } else {
+                    alert("Respuesta incorrecta. La profesora te recomienda repasar este módulo.");
+                    speak("Parece que hubo un error. Repasemos el concepto nuevamente. " + courseModules[currentStep].speech);
+                    setShowQuiz(false); 
+                }
+            };
+
+            const generatePDF = () => {
+                const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+                
+                doc.setFillColor(15, 23, 42); // Fondo oscuro elegante
+                doc.rect(0, 0, 297, 210, 'F');
+
+                try {
+                    const img = document.getElementById('logo-entalpia');
+                    if (img) {
+                        const canvas = document.createElement("canvas");
+                        canvas.width = img.naturalWidth;
+                        canvas.height = img.naturalHeight;
+                        const ctx = canvas.getContext("2d");
+                        
+                        // Configuración de transparencia para la marca de agua
+                        ctx.globalAlpha = 0.1; // Atenuado
+                        ctx.drawImage(img, 0, 0);
+                        
+                        // Tamaño grande (75%)
+                        const pageWidth = 297;
+                        const pageHeight = 210;
+                        const imgWidth = pageWidth * 0.75;
+                        const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
+                        
+                        const x = (pageWidth - imgWidth) / 2;
+                        const y = (pageHeight - imgHeight) / 2;
+
+                        doc.addImage(canvas.toDataURL("image/png"), 'PNG', x, y, imgWidth, imgHeight, undefined, 'FAST');
+                    }
+                } catch(e) {}
+
+                // Marco dorado
+                doc.setLineWidth(1.5);
+                doc.setDrawColor(234, 179, 8); // Gold
+                doc.rect(15, 15, 267, 180);
+                
+                doc.setTextColor(255, 255, 255);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(36);
+                doc.text("CERTIFICADO DE EXCELENCIA", 148.5, 55, { align: "center" });
+                
+                doc.setFontSize(14);
+                doc.setTextColor(148, 163, 184); // Slate 400
+                doc.text("GasEngineering Hub otorga el presente reconocimiento a:", 148.5, 75, { align: "center" });
+                
+                doc.setFontSize(30);
+                doc.setTextColor(96, 165, 250); // Blue 400
+                doc.text(userName.toUpperCase(), 148.5, 95, { align: "center" });
+                
+                doc.setFontSize(16);
+                doc.setTextColor(255, 255, 255);
+                doc.text(`ID PROFESIONAL: ${userCedula}`, 148.5, 108, { align: "center" });
+                
+                doc.setFontSize(18);
+                doc.setTextColor(200, 200, 200);
+                doc.text("Por aprobar el programa avanzado de ingeniería:", 148.5, 130, { align: "center" });
+                
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(22);
+                doc.text("Evaluación NTC 3833 Anexo C", 148.5, 145, { align: "center" });
+                
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(148, 163, 184);
+                doc.text(`Fecha de Certificación: ${new Date().toLocaleDateString()}`, 148.5, 165, { align: "center" });
+                doc.text("Con el respaldo técnico de ENTALPIA", 148.5, 180, { align: "center" });
+
+                doc.save(`Certificado_NTC3833_${userName}.pdf`);
+            };
+
+            if (!courseStarted) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+                         <div className="absolute inset-0 login-watermark z-0"></div>
+                         <div className="bg-[#111]/90 backdrop-blur-xl p-8 rounded-2xl shadow-2xl max-w-md w-full border border-gray-800 relative z-10">
+                            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl rotate-3 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-900/40">
+                                <Icon name="BookOpen" size={40} className="text-white -rotate-3" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-center mb-2 text-white">NTC 3833</h1>
+                            <p className="text-center text-blue-400 text-sm font-semibold tracking-wider mb-8 uppercase">Evacuación en Fachada</p>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs text-gray-500 font-bold ml-1 uppercase">Profesional</label>
+                                    <input type="text" placeholder="Nombre Completo" className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors" 
+                                        value={userName} onChange={e => setUserName(e.target.value)} />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 font-bold ml-1 uppercase">Identificación</label>
+                                    <input type="number" placeholder="Cédula / ID" className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors" 
+                                        value={userCedula} onChange={e => setUserCedula(e.target.value)} />
+                                </div>
+                                <button 
+                                    onClick={() => (userName.length > 3 && userCedula.length > 4) ? setCourseStarted(true) : alert("Completa tus datos")}
+                                    className="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold text-white transition-all shadow-lg mt-2"
+                                >
+                                    Ingresar al Curso
+                                </button>
+                            </div>
+                         </div>
+                    </div>
+                );
+            }
+
+            const activeModule = courseModules[currentStep];
+
+            return (
+                <div className="flex h-screen overflow-hidden">
+                    {/* SIDEBAR */}
+                    <aside className="w-80 bg-[#080808] border-r border-gray-900 hidden md:flex flex-col z-20">
+                        <div className="p-6 border-b border-gray-900 flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-bold shadow-lg shadow-blue-900/20">GE</div>
+                            <div>
+                                <h1 className="font-bold text-white leading-tight">GasEngineering</h1>
+                                <p className="text-xs text-blue-500 font-medium">Training Hub</p>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
+                            {courseModules.map((mod, idx) => {
+                                const isUnlocked = completedSteps.includes(idx);
+                                const isCurrent = idx === currentStep;
+                                const isCompleted = completedSteps.includes(idx + 1);
+
+                                return (
+                                    <button 
+                                        key={mod.id} 
+                                        onClick={() => isUnlocked && setCurrentStep(idx)}
+                                        className={`w-full p-3 rounded-lg text-sm flex items-center gap-3 transition-all text-left ${isCurrent ? 'bg-blue-900/20 border border-blue-800 text-blue-200' : 'hover:bg-[#111] text-gray-400'} ${!isUnlocked ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                    >
+                                        <div className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${isCompleted ? 'bg-green-500/20 text-green-400' : isCurrent ? 'bg-blue-500 text-white' : 'bg-gray-800'}`}>
+                                            {isCompleted ? <Icon name="Check" size={12} /> : idx + 1}
+                                        </div>
+                                        <div className="flex-1 truncate font-medium">{mod.title}</div>
+                                        {!isUnlocked && <Icon name="Lock" size={12} />}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                        <div className="p-4 bg-[#050505] border-t border-gray-900">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 flex items-center justify-center text-xs font-bold text-white">
+                                    {userName.substring(0,2).toUpperCase()}
+                                </div>
+                                <div className="overflow-hidden">
+                                    <p className="text-sm font-bold text-gray-200 truncate">{userName}</p>
+                                    <p className="text-[10px] text-gray-500 truncate">ID: {userCedula}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+
+                    {/* MAIN CONTENT */}
+                    <main className="flex-1 flex flex-col relative z-10 bg-[#0a0a0a]">
+                        {/* Header */}
+                        <header className="px-6 py-4 border-b border-gray-900 flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-md sticky top-0 z-30">
+                            <div>
+                                <p className="text-xs text-blue-500 font-bold uppercase tracking-wider mb-1">Módulo Actual</p>
+                                <h2 className="font-bold text-xl text-white truncate max-w-md">{activeModule.title}</h2>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="relative w-20 h-10 overflow-hidden">
+                                    <VoiceWaveform isPlaying={isPlaying} height={40} />
+                                </div>
+                                <div className="hidden sm:block text-right">
+                                    <div className="font-bold text-sm text-gray-200">Ing. Ana</div>
+                                    <button onClick={() => isPlaying ? stopSpeech() : speak(activeModule.speech)} className="text-xs text-blue-400 hover:text-blue-300 flex items-center justify-end gap-1 mt-1">
+                                        {isPlaying ? <><Icon name="Pause" size={10}/> Pausar</> : <><Icon name="Play" size={10}/> Reproducir</>}
+                                    </button>
+                                </div>
+                            </div>
+                        </header>
+
+                        {/* Content Area */}
+                        <div className="flex-1 overflow-y-auto p-6 md:p-12 custom-scrollbar flex flex-col items-center">
+                            <div className="max-w-4xl w-full slide-enter key={currentStep}">
+                                
+                                {/* NUEVO BANNER GRANDE (Onda Sonora) */}
+                                <div className="w-full h-40 md:h-56 relative mb-6 rounded-xl overflow-hidden shadow-2xl border border-gray-800 group bg-[#050505]">
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <VoiceWaveform isPlaying={isPlaying} height={200} />
+                                    </div>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent"></div>
+                                    <div className="absolute bottom-4 left-6">
+                                        <span className="text-blue-400 text-xs font-bold uppercase tracking-wider bg-blue-900/20 px-2 py-1 rounded backdrop-blur-md border border-blue-500/20">
+                                            IA Docente
+                                        </span>
+                                        <h2 className="text-2xl font-bold text-white mt-1 drop-shadow-md">
+                                            Ingeniera Virtual
+                                        </h2>
+                                    </div>
+                                </div>
+
+                                <div className={`transition-all duration-500 ${showQuiz ? 'opacity-50 pointer-events-none blur-sm hidden' : 'opacity-100'}`}>
+                                    {activeModule.content}
+                                    
+                                    <div className="mt-8 flex justify-end">
+                                        {activeModule.quiz ? (
+                                            <button 
+                                                onClick={() => { stopSpeech(); setShowQuiz(true); }}
+                                                className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 shadow-lg animate-bounce"
+                                            >
+                                                Realizar Validación <Icon name="ArrowRight" size={18} />
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={generatePDF}
+                                                className="bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 shadow-lg"
+                                            >
+                                                Descargar Certificado <Icon name="Download" size={18} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Quiz Overlay */}
+                                {showQuiz && activeModule.quiz && (
+                                    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm slide-enter">
+                                        <div className="bg-[#111] p-8 rounded-2xl border border-gray-800 shadow-2xl max-w-2xl w-full relative">
+                                            <button onClick={() => setShowQuiz(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white"><Icon name="X" /></button>
+                                            
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="p-3 bg-blue-900/30 rounded-lg text-blue-400"><Icon name="HelpCircle" size={24} /></div>
+                                                <div>
+                                                    <p className="text-xs text-blue-400 font-bold uppercase tracking-wider">Evaluación de Progreso</p>
+                                                    <h3 className="text-xl font-bold text-white">Pregunta de Control</h3>
+                                                </div>
+                                            </div>
+
+                                            <h4 className="text-lg text-gray-200 mb-8 font-medium leading-relaxed">{activeModule.quiz.q}</h4>
+
+                                            <div className="space-y-3">
+                                                {activeModule.quiz.options.map((opt, idx) => (
+                                                    <button 
+                                                        key={idx}
+                                                        onClick={() => handleQuizSubmit(idx === activeModule.quiz.correct)}
+                                                        className="w-full text-left p-5 rounded-xl bg-[#1a1a1a] border border-gray-800 hover:border-blue-500 hover:bg-blue-900/10 transition-all flex justify-between items-center group"
+                                                    >
+                                                        <span className="text-gray-300 group-hover:text-white">{opt}</span>
+                                                        <div className="w-6 h-6 rounded-full border border-gray-600 group-hover:border-blue-500 flex items-center justify-center">
+                                                            <div className="w-3 h-3 rounded-full bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
