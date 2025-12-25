@@ -36,12 +36,12 @@
                     },
                     animation: {
                         'logo-entry': 'logoFadeIn 1.5s ease-out forwards',
-                        'card-entry': 'cardFadeIn 1.2s ease-out 0.8s forwards', // 0.8s delay para que entre después del logo
+                        'card-entry': 'cardFadeIn 1.2s ease-out 0.8s forwards',
                     },
                     keyframes: {
                         logoFadeIn: {
                             '0%': { opacity: '0', transform: 'scale(0.8)' },
-                            '100%': { opacity: '0.4', transform: 'scale(1)' }, // Opacidad final ajustada para fondo
+                            '100%': { opacity: '0.4', transform: 'scale(1)' },
                         },
                         cardFadeIn: {
                             '0%': { opacity: '0', transform: 'translateY(20px)' },
@@ -55,19 +55,17 @@
 
     <style>
         body {
+            /* CAMBIO: Se establece color negro puro y se elimina la imagen de fondo duplicada */
             background-color: #000;
-            background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.8)), url('ImagenesPlataformas/LogoEntalpia.png');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            background-repeat: no-repeat;
+            /* background-image eliminado para permitir el mimetismo perfecto con la marca de agua */
+            
             color: #fff;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            overflow: hidden; /* Evita scrollbars si el logo es muy grande */
+            overflow: hidden;
         }
         
         .streaming-panel {
@@ -76,7 +74,6 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* Clases de utilidad para animaciones manuales si Tailwind falla */
         .modal-enter { animation: modalIn 0.3s ease-out forwards; }
         @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         
@@ -169,11 +166,7 @@
                         <img 
                             src="ImagenesPlataformas/logo_entalpia.png" 
                             alt="" 
-                            /* CAMBIOS: 
-                                - w-[75vw]: Ocupa el 75% del ANCHO de la pantalla (viewport width).
-                                - animate-logo-entry: Animación personalizada de aparición.
-                                - Opacidad y Grayscale: Ajustado para efecto "iluminado".
-                            */
+                            /* Mantiene la configuración solicitada: 75vw y animación de entrada */
                             className="w-[75vw] max-h-[80vh] object-contain opacity-0 animate-logo-entry"
                             onError={(e) => {
                                 e.target.style.display = 'none';
@@ -182,7 +175,6 @@
                     </div>
 
                     {/* --- TARJETA DE LOGIN --- */}
-                    {/* animate-card-entry tiene un 'delay' configurado en tailwind config arriba para que aparezca DESPUÉS del logo */}
                     <div className="max-w-md w-full streaming-panel rounded-lg shadow-2xl p-10 md:p-14 border border-transparent opacity-0 animate-card-entry relative z-10 overflow-hidden">
                         
                         <div className="relative z-10">
