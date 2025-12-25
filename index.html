@@ -161,7 +161,10 @@
                             <img 
                                 src="ImagenesPlataformas/logo_entalpia.png" 
                                 alt="" 
-                                className="w-3/4 opacity-[0.05] grayscale object-contain"
+                                /* AQUI ESTÁ EL CAMBIO SOLICITADO */
+                                /* w-[75%] ocupa el 75% del contenedor */
+                                /* opacity-[0.2] es más visible que el 0.05 anterior */
+                                className="w-[75%] opacity-[0.2] grayscale object-contain"
                                 onError={(e) => {
                                     // Manejo de error silencioso: si la imagen no está, se oculta sin lanzar alertas
                                     e.target.style.display = 'none';
@@ -325,7 +328,3 @@
     </script>
 </body>
 </html>
-
-
-
-
