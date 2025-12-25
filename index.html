@@ -42,8 +42,8 @@
     <style>
         body {
             background-color: #000;
-            /* Fondo de pantalla general */
-            background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.8)), url('LogoEntalpia.png');
+            /* CAMBIO: Ruta de la imagen actualizada a la carpeta ImagenesPlataformas */
+            background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.8)), url('ImagenesPlataformas/LogoEntalpia.png');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -143,8 +143,10 @@
                 setTimeout(() => {
                     try {
                         const currentUrl = window.location.href;
+                        // Obtiene la base y añade la carpeta AppsPlataforma a la ruta
                         const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
-                        const targetUrl = baseUrl + 'AppHerramientasDeIngenieria.html';
+                        // CAMBIO: Nueva ruta de redirección
+                        const targetUrl = baseUrl + 'AppsPlataforma/AppHerramientasDeIngenieria.html';
                         window.location.href = targetUrl;
                     } catch (err) {
                         console.error("Redirección fallida:", err);
@@ -163,8 +165,9 @@
                         
                         {/* MARCA DE AGUA (WATERMARK) */}
                         <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
+                            {/* CAMBIO: Ruta de la imagen actualizada a ImagenesPlataformas */}
                             <img 
-                                src="LogoEntalpia.png" 
+                                src="ImagenesPlataformas/LogoEntalpia.png" 
                                 alt="" 
                                 className="w-3/4 opacity-[0.05] grayscale object-contain"
                             />
@@ -256,8 +259,9 @@
                                     </div>
                                     <h2 className="text-2xl font-bold text-white">Bienvenido de nuevo</h2>
                                     
+                                    {/* CAMBIO: Link directo actualizado por si el usuario hace clic manual */}
                                     <a 
-                                        href="AppHerramientasDeIngenieria.html"
+                                        href="AppsPlataforma/AppHerramientasDeIngenieria.html"
                                         className="inline-flex items-center gap-3 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold transition-all hover:scale-105 shadow-neon-blue"
                                     >
                                         Entrar al Panel <Icons.ArrowRight className="w-5 h-5" />
