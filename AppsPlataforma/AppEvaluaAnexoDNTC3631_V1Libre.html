@@ -1,476 +1,458 @@
-import React, { useState, useEffect } from 'react';
-import { FileText, User, MapPin, Calendar, CheckCircle2, XCircle, AlertCircle, Download, ClipboardList, Info, Printer, Calculator, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VentiCheck NTC 3631 - Evaluador</title>
+    
+    <!-- Tailwind CSS (Estilos) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome (Iconos) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-// Componente Principal
-export default function App() {
-  // Estados para Trazabilidad
-  const [technician, setTechnician] = useState('');
-  const [customerId, setCustomerId] = useState('');
-  const [location, setLocation] = useState('');
-  const [inspectionDate, setInspectionDate] = useState(new Date());
-  const [inspectionId, setInspectionId] = useState('');
-
-  // Estado para visualización de norma y calculadora
-  const [showRequirement, setShowRequirement] = useState(false);
-  const [showCalculator, setShowCalculator] = useState(true);
-
-  // Estado para el método de evaluación seleccionado (Pestañas)
-  const [selectedMethod, setSelectedMethod] = useState('D.1.1');
-
-  // Estado para Calculadora de Volúmenes (3 Recintos)
-  const [enclosures, setEnclosures] = useState([
-    { id: 1, name: 'Recinto 1', l: '', w: '', h: '' },
-    { id: 2, name: 'Recinto 2', l: '', w: '', h: '' },
-    { id: 3, name: 'Recinto 3', l: '', w: '', h: '' },
-  ]);
-
-  // Estados de las listas de chequeo
-  const [checksD11, setChecksD11] = useState({
-    altitude: false,
-    height: false,
-    area: false,
-    naturalVent: false,
-    communication: false,
-  });
-
-  const [checksD12, setChecksD12] = useState({
-    altitude: false,
-    openingType: false,
-    effectiveArea: false,
-  });
-
-  const [checksD2, setChecksD2] = useState({
-    altitude: false,
-    interiorComm: false,
-    pedestrian: false,
-  });
-
-  // Inicializar ID y Fecha al cargar
-  useEffect(() => {
-    const now = new Date();
-    setInspectionDate(now);
-    const uniqueId = `INS-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-    setInspectionId(uniqueId);
-  }, []);
-
-  // Manejadores de cambios en checkboxes
-  const handleCheckChange = (method, key) => {
-    if (method === 'D.1.1') setChecksD11(prev => ({ ...prev, [key]: !prev[key] }));
-    if (method === 'D.1.2') setChecksD12(prev => ({ ...prev, [key]: !prev[key] }));
-    if (method === 'D.2') setChecksD2(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  // Manejador de cambios en calculadora
-  const handleEnclosureChange = (id, field, value) => {
-    setEnclosures(prev => prev.map(enc => 
-      enc.id === id ? { ...enc, [field]: value } : enc
-    ));
-  };
-
-  // Cálculos auxiliares
-  const calculateVolume = (l, w, h) => {
-    const vol = (parseFloat(l) || 0) * (parseFloat(w) || 0) * (parseFloat(h) || 0);
-    return vol > 0 ? vol.toFixed(2) : '-';
-  };
-
-  const calculateCapacity = (l, w, h) => {
-    const vol = (parseFloat(l) || 0) * (parseFloat(w) || 0) * (parseFloat(h) || 0);
-    if (vol <= 0) return '-';
-    // División por 3.4 m3/Kw
-    return (vol / 3.4).toFixed(2);
-  };
-
-  // Función para determinar el estado de cumplimiento
-  const getComplianceStatus = () => {
-    let checks = {};
-    if (selectedMethod === 'D.1.1') checks = checksD11;
-    else if (selectedMethod === 'D.1.2') checks = checksD12;
-    else if (selectedMethod === 'D.2') checks = checksD2;
-
-    const allChecked = Object.values(checks).every(Boolean);
-    return allChecked ? 'CUMPLE' : 'NO CUMPLE';
-  };
-
-  // Función para imprimir
-  const handlePrint = () => {
-    window.print();
-  };
-
-  // Textos de los requisitos (Norma)
-  const requirementTexts = {
-    'D.1.1': `D.1.1: Una abertura permanente será permitida, ubicada a más de 1 m de altura del nivel del piso medida en el sentido vertical ascendente, si se cumplen todos los requisitos: a) Área libre mínima de 150 cm² por cada kW. b) Recinto a menos de 260 m de altura. c) Ventilación natural. d) Comunicación con exterior directa o por conducto.`,
-    'D.1.2': `D.1.2: Para recintos a menos de 260 m de altura, se puede considerar el espacio libre efectivo resultante de abrir las puertas y ventanas hacia el exterior, como área de abertura permanente que aporta el aire de combustión, dilución y renovación.`,
-    'D.2': `D.2: Para recintos a menos de 260 m de altura, se puede considerar el espacio libre resultante de abrir las puertas comunicadas con recintos interiores y utilizadas para circulación peatonal, como área de abertura permanente.`
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
-      
-      {/* Estilos para impresión */}
-      <style>{`
+    <!-- Estilos personalizados para impresión y transiciones -->
+    <style>
         @media print {
-          @page { margin: 15mm; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .no-print { display: none !important; }
-          .print-only { display: block !important; }
-          input[type="text"], input[type="number"] { border: none; background: transparent; padding: 0; font-weight: bold; }
-          .shadow-sm, .shadow-lg, .shadow-md { box-shadow: none !important; }
-          .bg-gray-50, .bg-slate-800, .bg-blue-50 { background-color: white !important; color: black !important; }
-          .text-white { color: black !important; }
-          header { border-bottom: 2px solid #333; margin-bottom: 20px; padding-bottom: 10px; }
-          .collapse-content { display: block !important; height: auto !important; opacity: 1 !important; visibility: visible !important; }
+            @page { margin: 15mm; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            input[type="text"], input[type="number"] { border: none; background: transparent; padding: 0; font-weight: bold; }
+            .shadow-sm, .shadow-lg, .shadow-md { box-shadow: none !important; }
+            .bg-gray-50, .bg-slate-800, .bg-blue-50 { background-color: white !important; color: black !important; }
+            .text-white { color: black !important; }
+            header { border-bottom: 2px solid #333; margin-bottom: 20px; padding-bottom: 10px; }
+            /* Asegurar que las secciones colapsadas se vean al imprimir si contienen info relevante */
+            #calculator-content { display: block !important; height: auto !important; opacity: 1 !important; visibility: visible !important; }
         }
         .print-only { display: none; }
-      `}</style>
+        
+        /* Transiciones suaves */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 font-sans text-gray-800">
 
-      {/* Header */}
-      <header className="bg-slate-800 text-white p-6 shadow-lg">
-        <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3">
-                <ClipboardList size={32} className="text-blue-400 no-print" />
+    <!-- Header -->
+    <header class="bg-slate-800 text-white p-6 shadow-lg">
+        <div class="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-clipboard-list text-3xl text-blue-400 no-print"></i>
                 <div>
-                    <h1 className="text-2xl font-bold">VentiCheck NTC 3631</h1>
-                    <p className="text-slate-400 text-sm print:text-gray-600">Evaluador de Anexo D (Menos de 260 msnm)</p>
+                    <h1 class="text-2xl font-bold">VentiCheck NTC 3631</h1>
+                    <p class="text-slate-400 text-sm print:text-gray-600">Evaluador de Anexo D (Menos de 260 msnm)</p>
                 </div>
             </div>
-            <div className="text-right">
-                <div className="text-sm text-slate-400 print:text-gray-600">ID Inspección</div>
-                <div className="font-mono text-xl text-blue-300 font-bold print:text-black">{inspectionId}</div>
+            <div class="text-right">
+                <div class="text-sm text-slate-400 print:text-gray-600">ID Inspección</div>
+                <div id="inspection-id" class="font-mono text-xl text-blue-300 font-bold print:text-black">Cargando...</div>
             </div>
         </div>
-      </header>
+    </header>
 
-      <main className="max-w-4xl mx-auto p-6 space-y-6 print:space-y-4">
+    <main class="max-w-4xl mx-auto p-6 space-y-6 print:space-y-4">
         
-        {/* Sección de Trazabilidad */}
-        <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 print:border-none print:p-0">
-            <h2 className="text-lg font-semibold flex items-center gap-2 mb-4 text-slate-700 print:text-black">
-                <FileText size={20} />
-                Información del Proyecto
+        <!-- Sección de Información del Proyecto -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 print:border-none print:p-0">
+            <h2 class="text-lg font-semibold flex items-center gap-2 mb-4 text-slate-700 print:text-black">
+                <i class="fa-solid fa-file-contract"></i> Información del Proyecto
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:gap-4 print:text-sm">
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                        <User size={16} /> Técnico Evaluador
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 print:gap-4 print:text-sm">
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <i class="fa-solid fa-user"></i> Técnico Evaluador
                     </label>
-                    <input 
-                        type="text" 
-                        value={technician}
-                        onChange={(e) => setTechnician(e.target.value)}
-                        placeholder="Nombre completo"
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                    />
+                    <input type="text" placeholder="Nombre completo" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition">
                 </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                        <User size={16} /> ID Cliente / Contrato
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <i class="fa-solid fa-id-card"></i> ID Cliente / Contrato
                     </label>
-                    <input 
-                        type="text" 
-                        value={customerId}
-                        onChange={(e) => setCustomerId(e.target.value)}
-                        placeholder="Número de identificación"
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                    />
+                    <input type="text" placeholder="Número de identificación" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition">
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                        <MapPin size={16} /> Ubicación / Dirección
+                <div class="space-y-2 md:col-span-2">
+                    <label class="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <i class="fa-solid fa-map-marker-alt"></i> Ubicación / Dirección
                     </label>
-                    <input 
-                        type="text" 
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        placeholder="Dirección del predio"
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                    />
+                    <input type="text" placeholder="Dirección del predio" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition">
                 </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                        <Calendar size={16} /> Fecha y Hora
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-alt"></i> Fecha y Hora
                     </label>
-                    <div className="w-full p-2 bg-gray-100 text-gray-600 rounded-lg border border-gray-200 print:bg-transparent print:border-none print:p-0 print:font-bold">
-                        {inspectionDate.toLocaleString()}
+                    <div id="inspection-date" class="w-full p-2 bg-gray-100 text-gray-600 rounded-lg border border-gray-200 print:bg-transparent print:border-none print:p-0 print:font-bold">
+                        --/--/----
                     </div>
                 </div>
             </div>
         </section>
 
-        {/* Sección Calculadora de Volumen */}
-        <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:border-none print:shadow-none">
-            <button 
-                onClick={() => setShowCalculator(!showCalculator)}
-                className="w-full flex justify-between items-center bg-gray-50 p-4 border-b border-gray-200 hover:bg-gray-100 transition-colors print:bg-transparent print:border-none print:px-0"
-            >
-                <h2 className="text-lg font-semibold text-slate-700 flex items-center gap-2 print:text-black">
-                    <Calculator size={20} />
-                    Cálculo de Volumen y Capacidad
+        <!-- Calculadora de Volumen -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:border-none print:shadow-none">
+            <button onclick="toggleCalculator()" class="w-full flex justify-between items-center bg-gray-50 p-4 border-b border-gray-200 hover:bg-gray-100 transition-colors print:bg-transparent print:border-none print:px-0">
+                <h2 class="text-lg font-semibold text-slate-700 flex items-center gap-2 print:text-black">
+                    <i class="fa-solid fa-calculator"></i> Cálculo de Volumen y Capacidad
                 </h2>
-                <div className="no-print">
-                    {showCalculator ? <ChevronUp size={20} className="text-gray-500"/> : <ChevronDown size={20} className="text-gray-500"/>}
-                </div>
+                <i id="calc-icon" class="fa-solid fa-chevron-up text-gray-500 no-print"></i>
             </button>
             
-            {showCalculator && (
-                <div className="p-6 overflow-x-auto print:px-0 collapse-content">
-                    <p className="text-sm text-gray-500 mb-4 print:text-xs">
-                        Ingrese las dimensiones de los recintos para calcular el volumen total y la potencia máxima permitida (Factor: 3.4 m³/kW).
-                    </p>
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 print:bg-gray-100">
-                            <tr>
-                                <th className="px-3 py-3 w-1/4">Recinto</th>
-                                <th className="px-3 py-3 text-center">Largo (m)</th>
-                                <th className="px-3 py-3 text-center">Ancho (m)</th>
-                                <th className="px-3 py-3 text-center">Alto (m)</th>
-                                <th className="px-3 py-3 text-right bg-blue-50 print:bg-transparent">Volumen (m³)</th>
-                                <th className="px-3 py-3 text-right bg-green-50 print:bg-transparent">Max kW (3.4)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {enclosures.map((enc) => (
-                                <tr key={enc.id} className="border-b last:border-0 hover:bg-gray-50">
-                                    <td className="px-3 py-3 font-medium">{enc.name}</td>
-                                    <td className="px-1 py-1">
-                                        <input 
-                                            type="number" 
-                                            placeholder="0.00"
-                                            className="w-full text-center p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                            value={enc.l}
-                                            onChange={(e) => handleEnclosureChange(enc.id, 'l', e.target.value)}
-                                        />
-                                    </td>
-                                    <td className="px-1 py-1">
-                                        <input 
-                                            type="number" 
-                                            placeholder="0.00"
-                                            className="w-full text-center p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                            value={enc.w}
-                                            onChange={(e) => handleEnclosureChange(enc.id, 'w', e.target.value)}
-                                        />
-                                    </td>
-                                    <td className="px-1 py-1">
-                                        <input 
-                                            type="number" 
-                                            placeholder="0.00"
-                                            className="w-full text-center p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                            value={enc.h}
-                                            onChange={(e) => handleEnclosureChange(enc.id, 'h', e.target.value)}
-                                        />
-                                    </td>
-                                    <td className="px-3 py-3 text-right font-bold bg-blue-50/50 print:bg-transparent">
-                                        {calculateVolume(enc.l, enc.w, enc.h)}
-                                    </td>
-                                    <td className="px-3 py-3 text-right font-bold text-green-700 bg-green-50/50 print:bg-transparent">
-                                        {calculateCapacity(enc.l, enc.w, enc.h)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            <div id="calculator-content" class="p-6 overflow-x-auto print:px-0 transition-all duration-300">
+                <p class="text-sm text-gray-500 mb-4 print:text-xs">
+                    Ingrese las dimensiones de los recintos para calcular el volumen total y la potencia máxima permitida (Factor: 3.4 m³/kW).
+                </p>
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 print:bg-gray-100">
+                        <tr>
+                            <th class="px-3 py-3 w-1/4">Recinto</th>
+                            <th class="px-3 py-3 text-center">Largo (m)</th>
+                            <th class="px-3 py-3 text-center">Ancho (m)</th>
+                            <th class="px-3 py-3 text-center">Alto (m)</th>
+                            <th class="px-3 py-3 text-right bg-blue-50 print:bg-transparent">Volumen (m³)</th>
+                            <th class="px-3 py-3 text-right bg-green-50 print:bg-transparent">Max kW (3.4)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calc-body">
+                        <!-- Las filas se generan con JS o se definen aquí estáticamente -->
+                        <tr class="border-b last:border-0 hover:bg-gray-50">
+                            <td class="px-3 py-3 font-medium">Recinto 1</td>
+                            <td class="px-1 py-1"><input type="number" oninput="calculateRow(this)" data-id="1" data-field="l" placeholder="0.00" class="w-full text-center p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"></td>
+                            <td class="px-1 py-1"><input type="number" oninput="calculateRow(this)" data-id="1" data-field="w" placeholder="0.00" class="w-full text-center p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"></td>
+                            <td class="px-1 py-1"><input type="number" oninput="calculateRow(this)" data-id="1" data-field="h" placeholder="0.00" class="w-full text-center p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"></td>
+                            <td class="px-3 py-3 text-right font-bold bg-blue-50/50 print:bg-transparent" id="vol-1">-</td>
+                            <td class="px-3 py-3 text-right font-bold text-green-700 bg-green-50/50 print:bg-transparent" id="cap-1">-</td>
+                        </tr>
+                        <tr class="border-b last:border-0 hover:bg-gray-50">
+                            <td class="px-3 py-3 font-medium">Recinto 2</td>
+                            <td class="px-1 py-1"><input type="number" oninput="calculateRow(this)" data-id="2" data-field="l" placeholder="0.00" class="w-full text-center p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"></td>
+                            <td class="px-1 py-1"><input type="number" oninput="calculateRow(this)" data-id="2" data-field="w" placeholder="0.00" class="w-full text-center p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"></td>
+                            <td class="px-1 py-1"><input type="number" oninput="calculateRow(this)" data-id="2" data-field="h" placeholder="0.00" class="w-full text-center p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"></td>
+                            <td class="px-3 py-3 text-right font-bold bg-blue-50/50 print:bg-transparent" id="vol-2">-</td>
+                            <td class="px-3 py-3 text-right font-bold text-green-700 bg-green-50/50 print:bg-transparent" id="cap-2">-</td>
+                        </tr>
+                        <tr class="border-b last:border-0 hover:bg-gray-50">
+                            <td class="px-3 py-3 font-medium">Recinto 3</td>
+                            <td class="px-1 py-1"><input type="number" oninput="calculateRow(this)" data-id="3" data-field="l" placeholder="0.00" class="w-full text-center p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"></td>
+                            <td class="px-1 py-1"><input type="number" oninput="calculateRow(this)" data-id="3" data-field="w" placeholder="0.00" class="w-full text-center p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"></td>
+                            <td class="px-1 py-1"><input type="number" oninput="calculateRow(this)" data-id="3" data-field="h" placeholder="0.00" class="w-full text-center p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"></td>
+                            <td class="px-3 py-3 text-right font-bold bg-blue-50/50 print:bg-transparent" id="vol-3">-</td>
+                            <td class="px-3 py-3 text-right font-bold text-green-700 bg-green-50/50 print:bg-transparent" id="cap-3">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
 
-        {/* Sección de Evaluación */}
-        <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:border-none print:shadow-none">
-            <div className="border-b border-gray-200 bg-gray-50 p-4 print:bg-transparent print:border-none print:px-0">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <!-- Sección de Evaluación -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:border-none print:shadow-none">
+            <div class="border-b border-gray-200 bg-gray-50 p-4 print:bg-transparent print:border-none print:px-0">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <h2 className="text-lg font-semibold text-slate-700 flex items-center gap-2 print:text-black">
-                            <CheckCircle2 size={20} />
-                            Evaluación de Cumplimiento
+                        <h2 class="text-lg font-semibold text-slate-700 flex items-center gap-2 print:text-black">
+                            <i class="fa-solid fa-check-circle"></i> Evaluación de Cumplimiento
                         </h2>
-                        <p className="text-sm text-gray-500 mt-1 print:hidden">Seleccione el método según Anexo D</p>
+                        <p class="text-sm text-gray-500 mt-1 print:hidden">Seleccione el método según Anexo D</p>
                     </div>
                     
-                    {/* Botón Ver Requisito */}
-                    <button 
-                        onClick={() => setShowRequirement(!showRequirement)}
-                        className="flex items-center gap-2 text-sm bg-blue-100 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-200 transition-colors no-print"
-                    >
-                        <BookOpen size={16} />
-                        {showRequirement ? 'Ocultar Texto Norma' : 'Ver Texto Norma'}
+                    <button onclick="toggleRequirement()" class="flex items-center gap-2 text-sm bg-blue-100 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-200 transition-colors no-print">
+                        <i class="fa-solid fa-book-open"></i>
+                        <span id="btn-req-text">Ver Texto Norma</span>
                     </button>
                 </div>
 
-                {/* Bloque Texto de la Norma (Colapsable) */}
-                {showRequirement && (
-                    <div className="mt-4 bg-slate-100 p-4 rounded-lg border border-slate-200 text-sm text-slate-700 italic animate-in slide-in-from-top-2 no-print">
-                        <strong>Texto del requisito seleccionado:</strong><br/>
-                        {requirementTexts[selectedMethod]}
-                    </div>
-                )}
-                <div className="print-only text-xs italic text-gray-600 mt-2 border-l-2 border-gray-300 pl-2">
-                    {requirementTexts[selectedMethod]}
+                <!-- Bloque Texto de la Norma -->
+                <div id="requirement-text" class="hidden mt-4 bg-slate-100 p-4 rounded-lg border border-slate-200 text-sm text-slate-700 italic no-print fade-in">
+                    <!-- El texto se inyecta con JS -->
+                </div>
+                <!-- Versión imprimible del texto -->
+                <div id="print-req-text" class="print-only text-xs italic text-gray-600 mt-2 border-l-2 border-gray-300 pl-2"></div>
+                
+                <p id="method-label" class="text-sm text-gray-800 mt-2 print-only font-bold">Método Evaluado: D.1.1</p>
+            </div>
+
+            <!-- Pestañas -->
+            <div class="flex border-b border-gray-200 overflow-x-auto no-print">
+                <button onclick="setMethod('D.1.1')" id="tab-D.1.1" class="tab-btn px-6 py-3 font-medium text-sm whitespace-nowrap transition-colors border-b-2 border-blue-600 text-blue-600 bg-blue-50">D.1.1 Abertura Única</button>
+                <button onclick="setMethod('D.1.2')" id="tab-D.1.2" class="tab-btn px-6 py-3 font-medium text-sm whitespace-nowrap transition-colors text-gray-500 hover:text-gray-700 border-transparent">D.1.2 Puertas/Ventanas Ext.</button>
+                <button onclick="setMethod('D.2')" id="tab-D.2" class="tab-btn px-6 py-3 font-medium text-sm whitespace-nowrap transition-colors text-gray-500 hover:text-gray-700 border-transparent">D.2 Aire del Interior</button>
+            </div>
+
+            <div class="p-6 print:px-0" id="checklist-container">
+                <!-- Checklists dinámicos -->
+                
+                <!-- D.1.1 -->
+                <div id="content-D.1.1" class="checklist-group space-y-4 fade-in">
+                    <label class="check-item flex items-start gap-3 p-4 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-all print:border-0 print:p-2">
+                        <input type="checkbox" onchange="checkCompliance()" class="mt-1 h-5 w-5 text-green-600 rounded border-gray-300 focus:ring-green-500 print:hidden">
+                        <span class="hidden print:inline-block font-bold text-lg checkbox-print">[ ]</span>
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-600 label-text">El recinto está localizado a menos de 260 m de altura respecto al nivel medio del mar.</span>
+                        </div>
+                    </label>
+                    
+                    <label class="check-item flex items-start gap-3 p-4 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-all print:border-0 print:p-2">
+                        <input type="checkbox" onchange="checkCompliance()" class="mt-1 h-5 w-5 text-green-600 rounded border-gray-300 focus:ring-green-500 print:hidden">
+                        <span class="hidden print:inline-block font-bold text-lg checkbox-print">[ ]</span>
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-600 label-text">La abertura está ubicada a más de 1 m de altura del nivel del piso (medida vertical ascendente).</span>
+                            <p class="text-xs text-amber-600 mt-1 font-medium flex items-center gap-1 no-print mandatory-alert hidden"><i class="fa-solid fa-exclamation-circle"></i> Requisito obligatorio</p>
+                        </div>
+                    </label>
+
+                    <label class="check-item flex items-start gap-3 p-4 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-all print:border-0 print:p-2">
+                        <input type="checkbox" onchange="checkCompliance()" class="mt-1 h-5 w-5 text-green-600 rounded border-gray-300 focus:ring-green-500 print:hidden">
+                        <span class="hidden print:inline-block font-bold text-lg checkbox-print">[ ]</span>
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-600 label-text">Cuenta con área libre mínima de 150 cm² por cada kW de potencia nominal agregada.</span>
+                            <p class="text-xs text-amber-600 mt-1 font-medium flex items-center gap-1 no-print mandatory-alert hidden"><i class="fa-solid fa-exclamation-circle"></i> Requisito obligatorio</p>
+                        </div>
+                    </label>
+
+                    <label class="check-item flex items-start gap-3 p-4 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-all print:border-0 print:p-2">
+                        <input type="checkbox" onchange="checkCompliance()" class="mt-1 h-5 w-5 text-green-600 rounded border-gray-300 focus:ring-green-500 print:hidden">
+                        <span class="hidden print:inline-block font-bold text-lg checkbox-print">[ ]</span>
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-600 label-text">El recinto posee ventilación natural.</span>
+                        </div>
+                    </label>
+
+                    <label class="check-item flex items-start gap-3 p-4 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-all print:border-0 print:p-2">
+                        <input type="checkbox" onchange="checkCompliance()" class="mt-1 h-5 w-5 text-green-600 rounded border-gray-300 focus:ring-green-500 print:hidden">
+                        <span class="hidden print:inline-block font-bold text-lg checkbox-print">[ ]</span>
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-600 label-text">La abertura comunica el recinto con la atmósfera exterior (directa o conducto).</span>
+                            <p class="text-xs text-amber-600 mt-1 font-medium flex items-center gap-1 no-print mandatory-alert hidden"><i class="fa-solid fa-exclamation-circle"></i> Requisito obligatorio</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- D.1.2 -->
+                <div id="content-D.1.2" class="checklist-group space-y-4 fade-in hidden">
+                    <label class="check-item flex items-start gap-3 p-4 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-all print:border-0 print:p-2">
+                        <input type="checkbox" onchange="checkCompliance()" class="mt-1 h-5 w-5 text-green-600 rounded border-gray-300 focus:ring-green-500 print:hidden">
+                        <span class="hidden print:inline-block font-bold text-lg checkbox-print">[ ]</span>
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-600 label-text">El recinto está localizado a menos de 260 m de altura respecto al nivel medio del mar.</span>
+                        </div>
+                    </label>
+                    <label class="check-item flex items-start gap-3 p-4 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-all print:border-0 print:p-2">
+                        <input type="checkbox" onchange="checkCompliance()" class="mt-1 h-5 w-5 text-green-600 rounded border-gray-300 focus:ring-green-500 print:hidden">
+                        <span class="hidden print:inline-block font-bold text-lg checkbox-print">[ ]</span>
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-600 label-text">Las puertas y ventanas abren directamente hacia el exterior.</span>
+                        </div>
+                    </label>
+                    <label class="check-item flex items-start gap-3 p-4 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-all print:border-0 print:p-2">
+                        <input type="checkbox" onchange="checkCompliance()" class="mt-1 h-5 w-5 text-green-600 rounded border-gray-300 focus:ring-green-500 print:hidden">
+                        <span class="hidden print:inline-block font-bold text-lg checkbox-print">[ ]</span>
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-600 label-text">El espacio libre efectivo es suficiente para combustión, dilución y renovación.</span>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- D.2 -->
+                <div id="content-D.2" class="checklist-group space-y-4 fade-in hidden">
+                    <label class="check-item flex items-start gap-3 p-4 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-all print:border-0 print:p-2">
+                        <input type="checkbox" onchange="checkCompliance()" class="mt-1 h-5 w-5 text-green-600 rounded border-gray-300 focus:ring-green-500 print:hidden">
+                        <span class="hidden print:inline-block font-bold text-lg checkbox-print">[ ]</span>
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-600 label-text">El recinto está localizado a menos de 260 m de altura respecto al nivel medio del mar.</span>
+                        </div>
+                    </label>
+                    <label class="check-item flex items-start gap-3 p-4 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-all print:border-0 print:p-2">
+                        <input type="checkbox" onchange="checkCompliance()" class="mt-1 h-5 w-5 text-green-600 rounded border-gray-300 focus:ring-green-500 print:hidden">
+                        <span class="hidden print:inline-block font-bold text-lg checkbox-print">[ ]</span>
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-600 label-text">Las puertas comunican con recintos interiores.</span>
+                        </div>
+                    </label>
+                    <label class="check-item flex items-start gap-3 p-4 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-all print:border-0 print:p-2">
+                        <input type="checkbox" onchange="checkCompliance()" class="mt-1 h-5 w-5 text-green-600 rounded border-gray-300 focus:ring-green-500 print:hidden">
+                        <span class="hidden print:inline-block font-bold text-lg checkbox-print">[ ]</span>
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-600 label-text">Dichos recintos interiores son utilizados para circulación peatonal.</span>
+                        </div>
+                    </label>
+                </div>
+
+            </div>
+
+            <!-- Footer Resultado -->
+            <div class="bg-gray-50 p-6 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4 print:bg-transparent print:border-t-2 print:border-black print:px-0">
+                <div class="flex items-center gap-3">
+                    <span class="text-gray-600 font-medium print:text-black">Resultado:</span>
+                    <span id="result-badge" class="flex items-center gap-2 text-red-600 font-bold bg-red-100 px-4 py-2 rounded-full border border-red-200 print:bg-transparent print:border-black print:text-black print:border-2">
+                        <i class="fa-solid fa-times-circle"></i> NO CUMPLE
+                    </span>
                 </div>
                 
-                <p className="text-sm text-gray-800 mt-2 print-only font-bold">Método Evaluado: {selectedMethod}</p>
-            </div>
-
-            {/* Pestañas de Selección (Ocultas al imprimir) */}
-            <div className="flex border-b border-gray-200 overflow-x-auto no-print">
-                <button 
-                    onClick={() => setSelectedMethod('D.1.1')}
-                    className={`px-6 py-3 font-medium text-sm whitespace-nowrap transition-colors ${selectedMethod === 'D.1.1' ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                    D.1.1 Abertura Única
-                </button>
-                <button 
-                    onClick={() => setSelectedMethod('D.1.2')}
-                    className={`px-6 py-3 font-medium text-sm whitespace-nowrap transition-colors ${selectedMethod === 'D.1.2' ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                    D.1.2 Puertas/Ventanas Ext.
-                </button>
-                <button 
-                    onClick={() => setSelectedMethod('D.2')}
-                    className={`px-6 py-3 font-medium text-sm whitespace-nowrap transition-colors ${selectedMethod === 'D.2' ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                    D.2 Aire del Interior
-                </button>
-            </div>
-
-            <div className="p-6 print:px-0">
-                
-                {/* Contenido D.1.1 */}
-                {selectedMethod === 'D.1.1' && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                        <CheckItem 
-                            label="El recinto está localizado a menos de 260 m de altura respecto al nivel medio del mar."
-                            checked={checksD11.altitude}
-                            onChange={() => handleCheckChange('D.1.1', 'altitude')}
-                        />
-                        <CheckItem 
-                            label="La abertura está ubicada a más de 1 m de altura del nivel del piso (medida vertical ascendente)."
-                            checked={checksD11.height}
-                            onChange={() => handleCheckChange('D.1.1', 'height')}
-                            highlight="debe"
-                        />
-                        <CheckItem 
-                            label="Cuenta con área libre mínima de 150 cm² por cada kW de potencia nominal agregada."
-                            checked={checksD11.area}
-                            onChange={() => handleCheckChange('D.1.1', 'area')}
-                            highlight="debe"
-                        />
-                        <CheckItem 
-                            label="El recinto posee ventilación natural."
-                            checked={checksD11.naturalVent}
-                            onChange={() => handleCheckChange('D.1.1', 'naturalVent')}
-                        />
-                        <CheckItem 
-                            label="La abertura comunica el recinto con la atmósfera exterior (directa o conducto)."
-                            checked={checksD11.communication}
-                            onChange={() => handleCheckChange('D.1.1', 'communication')}
-                            highlight="debe"
-                        />
-                    </div>
-                )}
-
-                {/* Contenido D.1.2 */}
-                {selectedMethod === 'D.1.2' && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                        <CheckItem 
-                            label="El recinto está localizado a menos de 260 m de altura respecto al nivel medio del mar."
-                            checked={checksD12.altitude}
-                            onChange={() => handleCheckChange('D.1.2', 'altitude')}
-                        />
-                        <CheckItem 
-                            label="Las puertas y ventanas abren directamente hacia el exterior."
-                            checked={checksD12.openingType}
-                            onChange={() => handleCheckChange('D.1.2', 'openingType')}
-                        />
-                        <CheckItem 
-                            label="El espacio libre efectivo es suficiente para combustión, dilución y renovación."
-                            checked={checksD12.effectiveArea}
-                            onChange={() => handleCheckChange('D.1.2', 'effectiveArea')}
-                        />
-                    </div>
-                )}
-
-                {/* Contenido D.2 */}
-                {selectedMethod === 'D.2' && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                        <CheckItem 
-                            label="El recinto está localizado a menos de 260 m de altura respecto al nivel medio del mar."
-                            checked={checksD2.altitude}
-                            onChange={() => handleCheckChange('D.2', 'altitude')}
-                        />
-                        <CheckItem 
-                            label="Las puertas comunican con recintos interiores."
-                            checked={checksD2.interiorComm}
-                            onChange={() => handleCheckChange('D.2', 'interiorComm')}
-                        />
-                        <CheckItem 
-                            label="Dichos recintos interiores son utilizados para circulación peatonal."
-                            checked={checksD2.pedestrian}
-                            onChange={() => handleCheckChange('D.2', 'pedestrian')}
-                        />
-                    </div>
-                )}
-            </div>
-
-            {/* Footer de Resultado */}
-            <div className="bg-gray-50 p-6 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4 print:bg-transparent print:border-t-2 print:border-black print:px-0">
-                <div className="flex items-center gap-3">
-                    <span className="text-gray-600 font-medium print:text-black">Resultado:</span>
-                    {getComplianceStatus() === 'CUMPLE' ? (
-                        <span className="flex items-center gap-2 text-green-600 font-bold bg-green-100 px-4 py-2 rounded-full border border-green-200 print:bg-transparent print:border-black print:text-black print:border-2">
-                            <CheckCircle2 size={20} /> CUMPLE
-                        </span>
-                    ) : (
-                        <span className="flex items-center gap-2 text-red-600 font-bold bg-red-100 px-4 py-2 rounded-full border border-red-200 print:bg-transparent print:border-black print:text-black print:border-2">
-                            <XCircle size={20} /> NO CUMPLE
-                        </span>
-                    )}
-                </div>
-                
-                <button 
-                    onClick={handlePrint}
-                    className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-md active:scale-95 no-print"
-                >
-                    <Printer size={20} />
+                <button onclick="window.print()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-md active:scale-95 no-print">
+                    <i class="fa-solid fa-print"></i>
                     Imprimir / Guardar PDF
                 </button>
             </div>
         </section>
 
-        <footer className="text-center text-gray-400 text-sm py-4 print:hidden">
-            <p>VentiCheck © {new Date().getFullYear()} - Basado en NTC 3631 Anexo D</p>
+        <footer class="text-center text-gray-400 text-sm py-4 print:hidden">
+            <p>VentiCheck © <span id="year"></span> - Basado en NTC 3631 Anexo D</p>
         </footer>
 
-      </main>
-    </div>
-  );
-}
+    </main>
 
-// Componente auxiliar para items de chequeo
-function CheckItem({ label, checked, onChange, highlight }) {
-    return (
-        <label className={`flex items-start gap-3 p-4 rounded-lg border transition-all cursor-pointer hover:bg-gray-50 print:border-0 print:p-2 print:hover:bg-transparent ${checked ? 'border-green-200 bg-green-50/50 print:bg-transparent' : 'border-gray-200'}`}>
-            <div className="relative flex items-center mt-0.5 print:hidden">
-                <input 
-                    type="checkbox" 
-                    className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-gray-300 shadow-sm checked:border-green-500 checked:bg-green-500 transition-all"
-                    checked={checked}
-                    onChange={onChange}
-                />
-                <CheckCircle2 className="pointer-events-none absolute h-5 w-5 text-white opacity-0 peer-checked:opacity-100 transition-opacity" size={14} />
-            </div>
-            {/* Checkbox visual solo para impresión */}
-            <div className="hidden print:block font-bold text-lg">
-                [{checked ? 'X' : '  '}]
-            </div>
+    <!-- Script de Lógica -->
+    <script>
+        // Datos y Textos
+        const requirementTexts = {
+            'D.1.1': `D.1.1: Una abertura permanente será permitida, ubicada a más de 1 m de altura del nivel del piso medida en el sentido vertical ascendente, si se cumplen todos los requisitos: a) Área libre mínima de 150 cm² por cada kW. b) Recinto a menos de 260 m de altura. c) Ventilación natural. d) Comunicación con exterior directa o por conducto.`,
+            'D.1.2': `D.1.2: Para recintos a menos de 260 m de altura, se puede considerar el espacio libre efectivo resultante de abrir las puertas y ventanas hacia el exterior, como área de abertura permanente que aporta el aire de combustión, dilución y renovación.`,
+            'D.2': `D.2: Para recintos a menos de 260 m de altura, se puede considerar el espacio libre resultante de abrir las puertas comunicadas con recintos interiores y utilizadas para circulación peatonal, como área de abertura permanente.`
+        };
 
-            <div className="flex-1">
-                <span className={`text-sm ${checked ? 'text-gray-800 font-medium' : 'text-gray-600'}`}>
-                    {label}
-                </span>
-                {highlight && !checked && (
-                    <p className="text-xs text-amber-600 mt-1 font-medium flex items-center gap-1 no-print">
-                        <AlertCircle size={12} /> Requisito obligatorio
-                    </p>
-                )}
-            </div>
-        </label>
-    );
-}
+        let currentMethod = 'D.1.1';
+        
+        // Estado de recintos para cálculos
+        const enclosures = [
+            { id: 1, l: 0, w: 0, h: 0 },
+            { id: 2, l: 0, w: 0, h: 0 },
+            { id: 3, l: 0, w: 0, h: 0 }
+        ];
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            // Fecha y Año
+            const now = new Date();
+            document.getElementById('inspection-date').textContent = now.toLocaleString();
+            document.getElementById('year').textContent = now.getFullYear();
+
+            // Generar ID
+            const uniqueId = `INS-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+            document.getElementById('inspection-id').textContent = uniqueId;
+
+            // Inicializar texto de norma
+            updateRequirementText();
+        });
+
+        // Funciones de Pestañas
+        function setMethod(method) {
+            currentMethod = method;
+            
+            // Actualizar botones
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-6 py-3 font-medium text-sm whitespace-nowrap transition-colors text-gray-500 hover:text-gray-700 border-transparent";
+            });
+            const activeBtn = document.getElementById(`tab-${method}`);
+            activeBtn.className = "tab-btn px-6 py-3 font-medium text-sm whitespace-nowrap transition-colors border-b-2 border-blue-600 text-blue-600 bg-blue-50";
+
+            // Mostrar contenido correspondiente
+            document.querySelectorAll('.checklist-group').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`content-${method}`).classList.remove('hidden');
+
+            // Actualizar textos
+            document.getElementById('method-label').textContent = `Método Evaluado: ${method}`;
+            updateRequirementText();
+            
+            // Re-evaluar cumplimiento
+            checkCompliance();
+        }
+
+        // Toggle Calculadora
+        function toggleCalculator() {
+            const content = document.getElementById('calculator-content');
+            const icon = document.getElementById('calc-icon');
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            } else {
+                content.classList.add('hidden');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            }
+        }
+
+        // Toggle Texto Requisito
+        function toggleRequirement() {
+            const textDiv = document.getElementById('requirement-text');
+            const btnText = document.getElementById('btn-req-text');
+            if (textDiv.classList.contains('hidden')) {
+                textDiv.classList.remove('hidden');
+                btnText.textContent = 'Ocultar Texto Norma';
+            } else {
+                textDiv.classList.add('hidden');
+                btnText.textContent = 'Ver Texto Norma';
+            }
+        }
+
+        function updateRequirementText() {
+            const text = requirementTexts[currentMethod];
+            document.getElementById('requirement-text').innerHTML = `<strong>Texto del requisito seleccionado:</strong><br/>${text}`;
+            document.getElementById('print-req-text').textContent = text;
+        }
+
+        // Calculadora
+        function calculateRow(input) {
+            const id = input.dataset.id;
+            const field = input.dataset.field;
+            const val = parseFloat(input.value) || 0;
+
+            // Actualizar estado local
+            const enclosure = enclosures.find(e => e.id == id);
+            enclosure[field] = val;
+
+            // Calcular
+            const vol = enclosure.l * enclosure.w * enclosure.h;
+            
+            // Actualizar UI
+            const volDisplay = vol > 0 ? vol.toFixed(2) : '-';
+            const capDisplay = vol > 0 ? (vol / 3.4).toFixed(2) : '-';
+
+            document.getElementById(`vol-${id}`).textContent = volDisplay;
+            document.getElementById(`cap-${id}`).textContent = capDisplay;
+        }
+
+        // Lógica de Checkbox y Cumplimiento
+        function checkCompliance() {
+            const activeContainer = document.getElementById(`content-${currentMethod}`);
+            const checkboxes = activeContainer.querySelectorAll('input[type="checkbox"]');
+            let allChecked = true;
+
+            checkboxes.forEach(cb => {
+                const parentLabel = cb.closest('label');
+                const printCheck = parentLabel.querySelector('.checkbox-print');
+                const mandatoryAlert = parentLabel.querySelector('.mandatory-alert');
+                const labelText = parentLabel.querySelector('.label-text');
+
+                // Estilos visuales
+                if (cb.checked) {
+                    parentLabel.classList.add('border-green-200', 'bg-green-50/50');
+                    parentLabel.classList.remove('border-gray-200');
+                    printCheck.textContent = '[X]';
+                    labelText.classList.add('text-gray-800', 'font-medium');
+                    labelText.classList.remove('text-gray-600');
+                    if (mandatoryAlert) mandatoryAlert.classList.add('hidden');
+                } else {
+                    allChecked = false;
+                    parentLabel.classList.remove('border-green-200', 'bg-green-50/50');
+                    parentLabel.classList.add('border-gray-200');
+                    printCheck.textContent = '[ ]';
+                    labelText.classList.remove('text-gray-800', 'font-medium');
+                    labelText.classList.add('text-gray-600');
+                    if (mandatoryAlert) mandatoryAlert.classList.remove('hidden');
+                }
+            });
+
+            // Actualizar Badge Final
+            const badge = document.getElementById('result-badge');
+            if (allChecked) {
+                badge.className = "flex items-center gap-2 text-green-600 font-bold bg-green-100 px-4 py-2 rounded-full border border-green-200 print:bg-transparent print:border-black print:text-black print:border-2";
+                badge.innerHTML = '<i class="fa-solid fa-check-circle"></i> CUMPLE';
+            } else {
+                badge.className = "flex items-center gap-2 text-red-600 font-bold bg-red-100 px-4 py-2 rounded-full border border-red-200 print:bg-transparent print:border-black print:text-black print:border-2";
+                badge.innerHTML = '<i class="fa-solid fa-times-circle"></i> NO CUMPLE';
+            }
+        }
+    </script>
+</body>
+</html>
