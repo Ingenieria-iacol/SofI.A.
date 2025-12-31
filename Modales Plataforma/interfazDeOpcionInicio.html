@@ -706,8 +706,11 @@
                         // Opcional: Solo animar si es visible o siempre animar (dejamos siempre para mantener lógica original)
                         img.style.opacity = '0.2';
                         setTimeout(() => {
+                            // CORRECCIÓN: Definimos la ruta base para que no se pierda al cambiar la imagen
+                            const basePath = '../ImagenesPlataformas/';
                             const newSrc = isAlternate ? imagePairs[index][1] : imagePairs[index][0];
-                            img.src = newSrc;
+                            // Concatenamos la ruta base con el nombre del archivo
+                            img.src = basePath + newSrc;
                             img.style.opacity = ''; 
                         }, 300);
                     }
@@ -718,9 +721,3 @@
 
 </body>
 </html>
-
-
-
-
-
-
