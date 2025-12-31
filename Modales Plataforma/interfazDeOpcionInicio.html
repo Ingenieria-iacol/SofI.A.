@@ -392,6 +392,8 @@
             /* Centrado inicial */
             top: 0;
             left: 0;
+            /* Permite hacer clic para traer al frente */
+            cursor: pointer; 
         }
 
         /* Imagen en el carrusel */
@@ -426,6 +428,40 @@
             line-height: 1.4;
         }
 
+        /* --- BOTONES DE CONTROL MANUAL --- */
+        .carousel-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            transition: background-color 0.3s, transform 0.2s;
+            user-select: none;
+        }
+
+        .carousel-nav-btn:hover {
+            background-color: var(--brand-blue);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .carousel-nav-btn.prev {
+            left: 5%;
+        }
+
+        .carousel-nav-btn.next {
+            right: 5%;
+        }
+
         /* --- Estados del Carrusel --- */
         
         /* Central (Activa) */
@@ -436,6 +472,7 @@
             filter: brightness(1.1);
             border-color: var(--brand-blue);
             box-shadow: 0 0 25px rgba(0, 113, 235, 0.3);
+            cursor: default; /* No clicable si ya está activa */
         }
 
         /* Siguiente (Derecha) */
@@ -445,6 +482,10 @@
             z-index: 5;
             filter: grayscale(80%) brightness(0.6);
         }
+        .carousel-item.next:hover {
+            filter: grayscale(40%) brightness(0.8);
+            opacity: 0.6;
+        }
 
         /* Anterior (Izquierda) */
         .carousel-item.prev {
@@ -452,6 +493,10 @@
             opacity: 0.4;
             z-index: 5;
             filter: grayscale(80%) brightness(0.6);
+        }
+        .carousel-item.prev:hover {
+            filter: grayscale(40%) brightness(0.8);
+            opacity: 0.6;
         }
 
         /* Ocultos (Detrás) */
@@ -522,6 +567,14 @@
             .carousel-item.prev {
                 transform: translate3d(-60%, 0, -150px) scale(0.8) rotateY(10deg);
             }
+
+            .carousel-nav-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+            .carousel-nav-btn.prev { left: 10px; }
+            .carousel-nav-btn.next { right: 10px; }
         }
 
         /* Móviles (hasta 480px) */
@@ -700,7 +753,7 @@
         </div>
     </div>
 
-    <!-- SECCIÓN DE PERFILES MODIFICADA (Carrusel) -->
+    <!-- SECCIÓN DE PERFILES MODIFICADA (Carrusel con Controles) -->
     
     <div class="feature-split-intro">
         <div class="feature-text">
@@ -711,6 +764,10 @@
 
     <!-- Contenedor del Carrusel -->
     <div class="carousel-container">
+        <!-- Botones de Navegación Manual -->
+        <button class="carousel-nav-btn prev" id="prev-btn">&#10094;</button>
+        <button class="carousel-nav-btn next" id="next-btn">&#10095;</button>
+
         <div class="carousel-track" id="profiles-track">
             <!-- Los items serán renderizados aquí por JS o inyectados directamente -->
             
@@ -802,10 +859,14 @@
                 });
             }
 
-            // --- Lógica del Carrusel 3D Automático ---
+            // --- Lógica del Carrusel 3D Automático y Manual ---
             const items = document.querySelectorAll('.carousel-item');
             const totalItems = items.length;
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const container = document.querySelector('.carousel-container');
             let currentIndex = 0;
+            let autoRotate;
 
             function updateCarousel() {
                 items.forEach((item, index) => {
@@ -824,30 +885,60 @@
                         item.classList.add('active');
                     } else if (diff === 1) {
                         item.classList.add('next');
+                        // Hacer clicable el item "next"
+                        item.onclick = () => { manualRotate(1); };
                     } else if (diff === -1) {
                         item.classList.add('prev');
+                        // Hacer clicable el item "prev"
+                        item.onclick = () => { manualRotate(-1); };
                     } else {
                         item.classList.add('hidden');
+                        item.onclick = null;
                     }
                 });
             }
 
-            // Rotación automática
-            function rotateCarousel() {
-                currentIndex = (currentIndex + 1) % totalItems;
+            // Función para rotar una posición (1 para derecha, -1 para izquierda)
+            function rotate(direction) {
+                if (direction === 1) {
+                    currentIndex = (currentIndex + 1) % totalItems;
+                } else {
+                    currentIndex = (currentIndex - 1 + totalItems) % totalItems;
+                }
                 updateCarousel();
             }
 
-            // Iniciar intervalo (3 segundos)
-            let autoRotate = setInterval(rotateCarousel, 3500);
+            // Función para rotación manual (resetea el timer)
+            function manualRotate(direction) {
+                rotate(direction);
+                resetTimer();
+            }
 
-            // Opcional: Pausar al pasar el mouse por encima
-            const container = document.querySelector('.carousel-container');
-            container.addEventListener('mouseenter', () => clearInterval(autoRotate));
-            container.addEventListener('mouseleave', () => autoRotate = setInterval(rotateCarousel, 3500));
+            // Iniciar intervalo automático
+            function startTimer() {
+                autoRotate = setInterval(() => rotate(1), 3500);
+            }
 
-            // Iniciar estado
+            function stopTimer() {
+                clearInterval(autoRotate);
+            }
+
+            function resetTimer() {
+                stopTimer();
+                startTimer();
+            }
+
+            // Event Listeners para botones
+            nextBtn.addEventListener('click', () => manualRotate(1));
+            prevBtn.addEventListener('click', () => manualRotate(-1));
+
+            // Pausar al pasar el mouse por encima (opcional, pero buena UX)
+            container.addEventListener('mouseenter', stopTimer);
+            container.addEventListener('mouseleave', startTimer);
+
+            // Iniciar todo
             updateCarousel();
+            startTimer();
         });
     </script>
 
