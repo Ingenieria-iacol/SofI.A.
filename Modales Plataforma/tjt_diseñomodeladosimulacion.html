@@ -29,20 +29,20 @@
             align-items: center;
             min-height: 100vh;
             padding: 20px;
-            /* Imagen de fondo de la plataforma */
+            /* Imagen de fondo de la plataforma (Original) */
             background-image: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('https://images.unsplash.com/photo-1581092921461-eab62e97a782?q=80&w=2070&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
         }
 
-        /* --- CONTENEDOR TIPO MODAL NETFLIX --- */
+        /* --- CONTENEDOR TIPO MODAL --- */
         .modal-container {
             background-color: #181818;
             width: 100%;
             max-width: 900px;
             border-radius: 10px;
-            overflow: hidden; /* Mantiene las esquinas redondeadas */
+            overflow: hidden;
             box-shadow: 0 0 50px rgba(0,0,0,0.8);
             animation: fadeInUp 0.5s ease-out forwards;
             position: relative;
@@ -53,13 +53,14 @@
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        /* Botón de cerrar */
+        /* Botón de cerrar (Atrás) */
         .close-btn {
             position: absolute;
             top: 15px;
             right: 15px;
-            background: #181818;
-            border: none;
+            background: rgba(24, 24, 24, 0.6);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.1);
             color: white;
             border-radius: 50%;
             width: 36px;
@@ -69,18 +70,24 @@
             justify-content: center;
             cursor: pointer;
             z-index: 10;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
-        .close-btn:hover { background: #333; }
+        .close-btn:hover { 
+            background: #cc2929; 
+            border-color: #cc2929;
+            transform: rotate(90deg);
+        }
 
-        /* --- CABECERA (HERO) --- */
+        /* --- CABECERA (HERO DINÁMICO) --- */
         .hero-section {
             position: relative;
             height: 400px;
             width: 100%;
-            background-image: url("ImagenesPlataformas/img_tjtmodeladordiseñosimulado_interfazopcioninicio.png");
+            /* Imagen por defecto (se sobreescribe con JS) */
+            background-image: url("ImagenesPlataformas/img_tjtmodeladordiseñosimulado_interfazopcioninicio.png"); 
             background-size: cover;
             background-position: center;
+            transition: background-image 1s ease-in-out; /* Transición suave */
         }
 
         /* Gradiente oscuro sobre la imagen */
@@ -103,16 +110,16 @@
         }
 
         h1 {
-            font-size: 3.5rem; /* Título grande */
+            font-size: 3.5rem;
             font-weight: 800;
             line-height: 1;
             margin-bottom: 20px;
             text-shadow: 2px 2px 10px rgba(0,0,0,0.7);
         }
 
-        .text-blue { color: #2563EB; } /* Azul Ingeniería */
+        .text-blue { color: #2563EB; }
 
-        /* Botonera */
+        /* Botonera Principal */
         .action-buttons {
             display: flex;
             gap: 15px;
@@ -135,7 +142,7 @@
         }
 
         .btn-primary {
-            background-color: #2563EB; /* Azul principal */
+            background-color: #2563EB;
             color: white;
         }
         .btn-primary:hover {
@@ -166,7 +173,7 @@
         /* --- CONTENIDO INFORMATIVO (GRID) --- */
         .info-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr; /* 2 columnas para info, 1 para detalles */
+            grid-template-columns: 2fr 1fr;
             gap: 40px;
             padding: 30px 40px;
         }
@@ -180,7 +187,7 @@
             font-size: 0.95rem;
             font-weight: 600;
         }
-        .match-score { color: #46d369; } /* Verde coincidencia */
+        .match-score { color: #46d369; }
         .age-rating { 
             border: 1px solid #888; 
             padding: 0 5px; 
@@ -188,7 +195,6 @@
             color: #ddd; 
         }
 
-        /* Descripción */
         .description {
             font-size: 1.1rem;
             line-height: 1.6;
@@ -201,7 +207,7 @@
             margin-bottom: 30px;
         }
 
-        /* Lista de herramientas (Episodios) */
+        /* Lista de herramientas (Módulos) */
         .tools-list-title {
             font-size: 1.4rem;
             margin-bottom: 20px;
@@ -209,33 +215,92 @@
             padding-top: 20px;
         }
 
+        /* ESTILO MEJORADO PARA LOS MÓDULOS */
         .tool-item {
             display: flex;
             gap: 20px;
             padding: 15px;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid transparent;
+            position: relative;
+            background-color: rgba(255, 255, 255, 0.02);
+            margin-bottom: 15px;
         }
-        .tool-item:hover { background-color: #333; }
+
+        /* Efecto Hover: Resaltar y mostrar opción de ir */
+        .tool-item:hover {
+            background-color: #2a2a2a;
+            transform: translateY(-3px) scale(1.01);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border-color: #2563EB;
+        }
 
         .tool-thumbnail {
             width: 140px;
-            height: 80px;
+            height: 90px;
             background-color: #444;
             border-radius: 4px;
             overflow: hidden;
-            position: relative;
             flex-shrink: 0;
+            position: relative;
         }
+
         .tool-thumbnail img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            opacity: 0.7;
+            opacity: 0.8;
+            transition: opacity 0.3s;
         }
-        .tool-info h4 { font-size: 1rem; margin-bottom: 5px; color: #fff; }
-        .tool-info p { font-size: 0.85rem; color: #aaa; }
+        
+        .tool-item:hover .tool-thumbnail img {
+            opacity: 1; /* Imagen full color al hover */
+        }
+
+        .tool-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .tool-info h4 { 
+            font-size: 1.1rem; 
+            margin-bottom: 5px; 
+            color: #fff; 
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .tool-info p { 
+            font-size: 0.9rem; 
+            color: #aaa; 
+            line-height: 1.4;
+        }
+
+        /* Indicador de "IR" que aparece */
+        .go-indicator {
+            font-size: 0.8rem;
+            color: #2563EB;
+            font-weight: bold;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .tool-item:hover .go-indicator {
+            opacity: 1;
+            transform: translateX(0);
+        }
 
         /* Detalles laterales */
         .details-col {
@@ -263,6 +328,8 @@
             .hero-content { padding: 20px; }
             .action-buttons { gap: 10px; }
             .btn { font-size: 1rem; padding: 10px 20px; }
+            .tool-item { flex-direction: column; gap: 10px; }
+            .tool-thumbnail { width: 100%; height: 150px; }
         }
     </style>
 </head>
@@ -271,16 +338,16 @@
     <!-- Contenedor Principal -->
     <div class="modal-container">
         
-        <!-- Botón cerrar -->
-        <button class="close-btn">
+        <!-- Botón cerrar (Función Atrás) -->
+        <button class="close-btn" onclick="history.back()" title="Volver atrás">
             <i data-lucide="x"></i>
         </button>
 
-        <!-- Imagen Principal -->
-        <div class="hero-section">
+        <!-- Imagen Principal (Banner Dinámico) -->
+        <div class="hero-section" id="dynamicBanner">
             <div class="hero-gradient"></div>
             <div class="hero-content">
-                <h1>DISEÑO, MODELADO<br><span class="text-blue">Y SIMULACION</span></h1>
+                <h1>DISEÑO, MODELADO<br><span class="text-blue">Y SIMULACIÓN</span></h1>
                 
                 <div class="action-buttons">
                     <!-- Botón PRINCIPAL que lleva a la App -->
@@ -322,48 +389,71 @@
 
                 <h3 class="tools-list-title">Módulos Incluidos</h3>
 
-                <!-- Lista de herramientas -->
-                <div class="tool-item">
+                <!-- LISTA DE HERRAMIENTAS (Rutas Originales) -->
+                
+                <!-- Módulo 1 -->
+                <a href="isoplano_mueller.html" class="tool-item">
                     <div class="tool-thumbnail">
-                        <img src="../ImagenesPlataformas/unnamed (3).png" alt="Fluidos">
+                        <!-- RUTA ORIGINAL -->
+                        <img src="../ImagenesPlataformas/unnamed (3).png" alt="Isoplano Mueller">
                     </div>
                     <div class="tool-info">
                         <h4>1. Isoplano Mueller</h4>
-                        <p>Partiendo del isoplano esta aplicacion puede estimar perdidas de carga, velocidad y deltas de presion en sistemas que conducen gas a media presion.</p>
+                        <p>Partiendo del isoplano esta aplicación puede estimar pérdidas de carga, velocidad y deltas de presión en sistemas que conducen gas a media presión.</p>
+                        <div class="go-indicator">
+                            Ir al módulo <i data-lucide="arrow-right" size="16"></i>
+                        </div>
                     </div>
-                </div>
+                </a>
 
-                <div class="tool-item">
+                <!-- Módulo 2 -->
+                <a href="modelador_mueller.html" class="tool-item">
                     <div class="tool-thumbnail">
-                        <img src="../ImagenesPlataformas/Imagen003DiseñoMueller.png" alt="Combustión">
+                        <!-- RUTA ORIGINAL -->
+                        <img src="../ImagenesPlataformas/Imagen003DiseñoMueller.png" alt="Modelador Mueller">
                     </div>                    
                     <div class="tool-info">
                         <h4>2. Modelador Mueller</h4>
-                        <p>Cargue los datos de su analisis del sistema: (Tramos, longitudes, diametros, materiales, etc...) y el software estimara perdidas de carga, velocidad y deltas de presion</p>
+                        <p>Cargue los datos de su análisis del sistema: (Tramos, longitudes, diámetros, materiales, etc...) y el software estimará pérdidas de carga, velocidad y deltas de presión.</p>
+                        <div class="go-indicator">
+                            Ir al módulo <i data-lucide="arrow-right" size="16"></i>
+                        </div>
                     </div>
-                </div>
+                </a>
                        
-                <div class="tool-item">
+                <!-- Módulo 3 -->
+                <a href="modelador_renouard.html" class="tool-item">
                     <div class="tool-thumbnail">
-                        <img src="../ImagenesPlataformas/Imagen002DiseñoRenouard.png" alt="Fluidos">
+                        <!-- RUTA ORIGINAL -->
+                        <img src="../ImagenesPlataformas/Imagen002DiseñoRenouard.png" alt="Modelador Renouard">
                     </div>
                     <div class="tool-info">
                         <h4>3. Modelador Renoaurd</h4>
-                        <p>Partiendo del isoplano esta aplicacion puede estimar perdidas de carga, velocidad y deltas de presion en sistemas que conducen gas a media presion.</p>
+                        <p>Partiendo del isoplano esta aplicación puede estimar pérdidas de carga, velocidad y deltas de presión en sistemas que conducen gas a media presión.</p>
+                        <div class="go-indicator">
+                            Ir al módulo <i data-lucide="arrow-right" size="16"></i>
+                        </div>
                     </div>
-                </div>
+                </a>
                   
-                <div class="tool-item">
+                <!-- Módulo 4 -->
+                <a href="isoplano_basico.html" class="tool-item">
                     <div class="tool-thumbnail">
-                        <img src="../ImagenesPlataformas/ImgAplicacionCAD_Vlibre.png" alt="Combustión">
+                        <!-- RUTA ORIGINAL -->
+                        <img src="../ImagenesPlataformas/ImgAplicacionCAD_Vlibre.png" alt="Isoplano Básico">
                     </div>
                     <div class="tool-info">
                         <h4>4. Isoplano Basico</h4>
-                        <p>Cargue los datos de su analisis del sistema: (Tramos, longitudes, diametros, materiales, etc...) y el software estimara perdidas de carga, velocidad y deltas de presion</p>
+                        <p>Cargue los datos de su análisis del sistema: (Tramos, longitudes, diámetros, materiales, etc...) y el software estimará pérdidas de carga, velocidad y deltas de presión.</p>
+                        <div class="go-indicator">
+                            Ir al módulo <i data-lucide="arrow-right" size="16"></i>
+                        </div>
                     </div>
-                </div>
+                </a>
+
              </div>
-            <!-- Columna Lateral -->
+            
+             <!-- Columna Lateral -->
             <div class="details-col">
                 <div class="details-row">
                     <span class="details-label">Categorías:</span><br>
@@ -390,18 +480,49 @@
     </div>
 
     <script>
-        // Inicializar los iconos de Lucide
+        // 1. Inicializar iconos
         lucide.createIcons();
+
+        // 2. Lógica del Banner Dinámico
+        const banner = document.getElementById('dynamicBanner');
+        
+        // LISTA DE IMÁGENES:
+        // IMPORTANTE: He puesto tu imagen original en la primera posición.
+        // Las siguientes son de relleno para que veas el efecto de rotación,
+        // ya que solo había una imagen original de portada.
+        const bannerImages = [
+            "ImagenesPlataformas/img_tjtmodeladordiseñosimulado_interfazopcioninicio.png", // RUTA ORIGINAL
+            "https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=2070&auto=format&fit=crop", 
+            "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=2070&auto=format&fit=crop", 
+            "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=2070&auto=format&fit=crop"
+        ];
+
+        let currentImageIndex = 0;
+
+        function rotateBanner() {
+            // Se intenta cargar la imagen antes de asignarla para evitar parpadeos si no existe
+            const img = new Image();
+            img.src = bannerImages[currentImageIndex];
+            
+            img.onload = () => {
+                banner.style.backgroundImage = `url('${bannerImages[currentImageIndex]}')`;
+            };
+            
+            img.onerror = () => {
+                // Si la imagen local no existe (ej. al previsualizar aquí sin tus archivos),
+                // intenta saltar a la siguiente.
+                console.warn(`Imagen no encontrada: ${bannerImages[currentImageIndex]}`);
+            };
+
+            currentImageIndex = (currentImageIndex + 1) % bannerImages.length;
+        }
+
+        // Ejecutar inmediatamente
+        rotateBanner();
+
+        // Rotar cada 5 segundos
+        setInterval(rotateBanner, 5000);
+
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
