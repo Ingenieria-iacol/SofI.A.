@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ENTALPIA | CAD Planner Pro</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,14 +18,16 @@
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
             overflow: hidden;
-            user-select: none; /* Evitar selección de texto al arrastrar */
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .canvas-wrapper {
-            background-color: #cbd5e1; /* Fondo gris fuera del papel */
+            background-color: #cbd5e1;
             overflow: hidden;
             position: relative;
             cursor: grab;
+            touch-action: none; /* CRITICO: Previene zoom/scroll del navegador */
         }
         .canvas-wrapper:active {
             cursor: grabbing;
@@ -56,8 +58,8 @@
 
         .input-tech {
             border: 1px solid #d1d5db;
-            padding: 4px 8px;
-            font-size: 0.85rem;
+            padding: 6px 8px; /* Más padding para touch */
+            font-size: 0.9rem;
             width: 100%;
             border-radius: 4px;
             font-family: 'Roboto Mono', monospace;
@@ -69,7 +71,7 @@
             box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
         }
 
-        /* Toolbar Superior Flotante */
+        /* Toolbar Superior Flotante con Scroll Horizontal */
         .top-toolbar {
             position: absolute;
             top: 1rem;
@@ -83,6 +85,9 @@
             gap: 0.5rem;
             z-index: 20;
             border: 1px solid #e2e8f0;
+            max-width: 90vw;
+            overflow-x: auto;
+            white-space: nowrap;
         }
 
         /* Estilos para secciones desplegables */
@@ -92,46 +97,80 @@
         details > summary::-webkit-details-marker {
             display: none;
         }
+
+        /* Sidebar Overlay en Mobile */
+        .sidebar-overlay {
+            background-color: rgba(0,0,0,0.5);
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            display: none;
+        }
+        .sidebar-open .sidebar-overlay {
+            display: block;
+        }
+        
+        /* Animaciones Sidebar */
+        #toolsSidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        /* Mobile: cerrado por defecto (-translate-x-full) */
+        /* Desktop: estático (translate-x-0) manejado por clases Tailwind md: */
     </style>
 </head>
 <body class="h-screen flex flex-col">
 
     <!-- Header -->
-    <header class="bg-slate-900 text-white h-14 flex items-center justify-between px-6 shadow-lg z-30">
+    <header class="bg-slate-900 text-white h-14 flex items-center justify-between px-4 shadow-lg z-50">
         <div class="flex items-center gap-3">
-            <i class="fa-solid fa-compass-drafting text-blue-400 text-xl"></i>
+            <!-- Botón Hamburguesa (Solo Móvil) -->
+            <button class="md:hidden text-white text-xl p-1" onclick="app.toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            
+            <i class="fa-solid fa-compass-drafting text-blue-400 text-xl hidden sm:block"></i>
             <div>
-                <h1 class="font-bold text-lg tracking-wide">ENTALPIA <span class="font-light text-gray-400">| CAD Pro</span></h1>
+                <h1 class="font-bold text-lg tracking-wide truncate max-w-[150px] sm:max-w-none">ENTALPIA <span class="font-light text-gray-400 hidden sm:inline">| CAD Pro</span></h1>
             </div>
         </div>
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
              <!-- Selector de Unidades -->
-            <div class="flex items-center bg-slate-800 rounded px-2 py-1 gap-2 border border-slate-700">
-                <span class="text-xs text-gray-400 uppercase font-bold">Unidades:</span>
+            <div class="hidden sm:flex items-center bg-slate-800 rounded px-2 py-1 gap-2 border border-slate-700">
+                <span class="text-xs text-gray-400 uppercase font-bold">Unid:</span>
                 <select id="unitSelector" onchange="app.setUnit(this.value)" class="bg-transparent text-white text-xs technical-font border-none outline-none cursor-pointer">
-                    <option value="m">Metros (m)</option>
-                    <option value="cm">Centímetros (cm)</option>
-                    <option value="mm">Milímetros (mm)</option>
+                    <option value="m">m</option>
+                    <option value="cm">cm</option>
+                    <option value="mm">mm</option>
                 </select>
             </div>
-            <div class="w-px h-6 bg-gray-700"></div>
-            <span class="text-xs text-gray-400 technical-font" id="clock">00:00:00</span>
-            <button onclick="app.exportPDF()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded text-sm font-medium transition flex items-center gap-2 shadow-md border border-blue-500">
-                <i class="fa-solid fa-file-pdf"></i> Exportar PDF
+            
+            <span class="text-xs text-gray-400 technical-font hidden md:block" id="clock">00:00</span>
+            <button onclick="app.exportPDF()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-sm font-medium transition flex items-center gap-2 shadow-md border border-blue-500">
+                <i class="fa-solid fa-file-pdf"></i> <span class="hidden sm:inline">PDF</span>
             </button>
         </div>
     </header>
 
     <!-- Main Container -->
-    <div class="flex-1 flex overflow-hidden">
+    <div class="flex-1 flex overflow-hidden relative">
         
+        <!-- Overlay para cerrar sidebar en móvil -->
+        <div id="sidebarOverlay" class="sidebar-overlay md:hidden" onclick="app.toggleSidebar(false)"></div>
+
         <!-- Sidebar Left: Libraries -->
-        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm z-20 overflow-y-auto">
+        <!-- Fixed en móvil, Relative en Desktop -->
+        <aside id="toolsSidebar" class="fixed inset-y-0 left-0 bg-white border-r border-gray-200 flex flex-col shadow-2xl z-40 w-72 transform -translate-x-full md:relative md:translate-x-0 md:shadow-none md:z-20 overflow-y-auto h-full pt-14 md:pt-0">
             
+            <!-- Mobile Header inside Sidebar -->
+            <div class="md:hidden flex justify-between items-center p-4 border-b bg-gray-50">
+                <h2 class="font-bold text-gray-700">Herramientas</h2>
+                <button onclick="app.toggleSidebar(false)" class="text-gray-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
             <!-- Project Info -->
             <div class="p-4 border-b border-gray-200 bg-gray-50">
                 <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Proyecto</h3>
-                <div class="space-y-2">
+                <div class="space-y-3">
                     <input type="text" id="project-name" class="input-tech" placeholder="Nombre Proyecto" value="Residencia Moderna">
                     <div class="flex gap-2">
                          <input type="text" id="engineer-name" class="input-tech" placeholder="Responsable" value="Ing. Usuario">
@@ -141,86 +180,72 @@
             </div>
 
             <!-- Tools List -->
-            <div class="p-3 space-y-5">
+            <div class="p-3 space-y-5 pb-20"> <!-- Padding bottom extra para scroll en móvil -->
                 
                 <!-- Structural -->
                 <div>
                     <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Estructura</h3>
-                    <div class="grid grid-cols-3 gap-1 mb-2">
-                        <button class="tool-btn p-2 border rounded text-xs flex flex-col items-center gap-1 text-gray-600" onclick="app.setTool('wall')">
-                            <i class="fa-solid fa-lines-leaning text-lg"></i> Muro
+                    <div class="grid grid-cols-3 gap-2 mb-2">
+                        <button class="tool-btn p-3 border rounded text-xs flex flex-col items-center gap-1 text-gray-600" onclick="app.setTool('wall')">
+                            <i class="fa-solid fa-lines-leaning text-xl"></i> Muro
                         </button>
-                        <button class="tool-btn p-2 border rounded text-xs flex flex-col items-center gap-1 text-gray-600" onclick="app.setTool('door')">
-                            <i class="fa-solid fa-door-open text-lg"></i> Puerta
+                        <button class="tool-btn p-3 border rounded text-xs flex flex-col items-center gap-1 text-gray-600" onclick="app.setTool('door')">
+                            <i class="fa-solid fa-door-open text-xl"></i> Puerta
                         </button>
-                        <button class="tool-btn p-2 border rounded text-xs flex flex-col items-center gap-1 text-gray-600" onclick="app.setTool('window')">
-                            <i class="fa-regular fa-window-maximize text-lg"></i> Ventana
+                        <button class="tool-btn p-3 border rounded text-xs flex flex-col items-center gap-1 text-gray-600" onclick="app.setTool('window')">
+                            <i class="fa-regular fa-window-maximize text-xl"></i> Ventana
                         </button>
                     </div>
                     
                     <details class="group mt-3" open>
-                        <summary class="flex items-center justify-between cursor-pointer text-[10px] font-semibold text-gray-400 uppercase mb-1 hover:text-gray-600 transition-colors select-none">
-                            <span>Espacios (Zonificación)</span>
-                            <i class="fa-solid fa-chevron-down transition-transform duration-200 group-open:rotate-180"></i>
+                        <summary class="flex items-center justify-between cursor-pointer p-2 bg-gray-50 rounded hover:bg-gray-100 select-none">
+                            <span class="text-xs font-bold text-gray-600 uppercase">Espacios</span>
+                            <i class="fa-solid fa-chevron-down text-gray-400 text-xs transition-transform duration-200 group-open:rotate-180"></i>
                         </summary>
-                        <div class="space-y-1 pb-2">
-                            <button class="tool-btn w-full text-left px-2 py-1.5 text-xs border rounded text-gray-700 flex items-center gap-2" onclick="app.setTool('room', 'Sala Comedor', '#e0f2fe')">
-                                <span class="w-3 h-3 rounded-full bg-blue-100 border border-blue-300"></span> Sala Comedor
+                        <div class="space-y-1 pt-2">
+                            <button class="tool-btn w-full text-left px-3 py-2 text-sm border rounded text-gray-700 flex items-center gap-3" onclick="app.setTool('room', 'Sala Comedor', '#e0f2fe')">
+                                <span class="w-4 h-4 rounded-full bg-blue-100 border border-blue-300"></span> Sala Comedor
                             </button>
-                            <button class="tool-btn w-full text-left px-2 py-1.5 text-xs border rounded text-gray-700 flex items-center gap-2" onclick="app.setTool('room', 'Sala Estar', '#dbeafe')">
-                                <span class="w-3 h-3 rounded-full bg-blue-200 border border-blue-400"></span> Sala de Estar
+                            <button class="tool-btn w-full text-left px-3 py-2 text-sm border rounded text-gray-700 flex items-center gap-3" onclick="app.setTool('room', 'Sala Estar', '#dbeafe')">
+                                <span class="w-4 h-4 rounded-full bg-blue-200 border border-blue-400"></span> Sala de Estar
                             </button>
-                            <button class="tool-btn w-full text-left px-2 py-1.5 text-xs border rounded text-gray-700 flex items-center gap-2" onclick="app.setTool('room', 'Biblioteca', '#f1f5f9')">
-                                <span class="w-3 h-3 rounded-full bg-slate-100 border border-slate-300"></span> Biblioteca/Estudio
+                            <button class="tool-btn w-full text-left px-3 py-2 text-sm border rounded text-gray-700 flex items-center gap-3" onclick="app.setTool('room', 'Biblioteca', '#f1f5f9')">
+                                <span class="w-4 h-4 rounded-full bg-slate-100 border border-slate-300"></span> Biblioteca
                             </button>
-                            <button class="tool-btn w-full text-left px-2 py-1.5 text-xs border rounded text-gray-700 flex items-center gap-2" onclick="app.setTool('room', 'Habitación', '#f0fdf4')">
-                                <span class="w-3 h-3 rounded-full bg-green-100 border border-green-300"></span> Habitación
+                            <button class="tool-btn w-full text-left px-3 py-2 text-sm border rounded text-gray-700 flex items-center gap-3" onclick="app.setTool('room', 'Habitación', '#f0fdf4')">
+                                <span class="w-4 h-4 rounded-full bg-green-100 border border-green-300"></span> Habitación
                             </button>
-                            <button class="tool-btn w-full text-left px-2 py-1.5 text-xs border rounded text-gray-700 flex items-center gap-2" onclick="app.setTool('room', 'Baño', '#fdf4ff')">
-                                <span class="w-3 h-3 rounded-full bg-purple-100 border border-purple-300"></span> Baño
+                            <button class="tool-btn w-full text-left px-3 py-2 text-sm border rounded text-gray-700 flex items-center gap-3" onclick="app.setTool('room', 'Baño', '#fdf4ff')">
+                                <span class="w-4 h-4 rounded-full bg-purple-100 border border-purple-300"></span> Baño
                             </button>
-                            <button class="tool-btn w-full text-left px-2 py-1.5 text-xs border rounded text-gray-700 flex items-center gap-2" onclick="app.setTool('room', 'Cocina', '#fff7ed')">
-                                <span class="w-3 h-3 rounded-full bg-orange-100 border border-orange-300"></span> Cocina
+                            <button class="tool-btn w-full text-left px-3 py-2 text-sm border rounded text-gray-700 flex items-center gap-3" onclick="app.setTool('room', 'Cocina', '#fff7ed')">
+                                <span class="w-4 h-4 rounded-full bg-orange-100 border border-orange-300"></span> Cocina
                             </button>
-                            <button class="tool-btn w-full text-left px-2 py-1.5 text-xs border rounded text-gray-700 flex items-center gap-2" onclick="app.setTool('room', 'Ropas', '#ffedd5')">
-                                <span class="w-3 h-3 rounded-full bg-orange-200 border border-orange-400"></span> Zona Ropas
-                            </button>
-                             <button class="tool-btn w-full text-left px-2 py-1.5 text-xs border rounded text-gray-700 flex items-center gap-2" onclick="app.setTool('room', 'Patio/Ext', '#ecfccb')">
-                                <span class="w-3 h-3 rounded-full bg-lime-100 border border-lime-300"></span> Patio / Exterior
+                             <button class="tool-btn w-full text-left px-3 py-2 text-sm border rounded text-gray-700 flex items-center gap-3" onclick="app.setTool('room', 'Patio/Ext', '#ecfccb')">
+                                <span class="w-4 h-4 rounded-full bg-lime-100 border border-lime-300"></span> Patio / Exterior
                             </button>
                         </div>
                     </details>
                 </div>
 
-                <!-- Furniture & Equipment -->
+                <!-- Furniture -->
                 <details class="group" open>
-                    <summary class="flex items-center justify-between cursor-pointer text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 hover:text-gray-700 transition-colors select-none">
-                        <span>Mobiliario y Enseres</span>
-                        <i class="fa-solid fa-chevron-down transition-transform duration-200 group-open:rotate-180"></i>
+                    <summary class="flex items-center justify-between cursor-pointer p-2 bg-gray-50 rounded hover:bg-gray-100 select-none">
+                        <span class="text-xs font-bold text-gray-600 uppercase">Mobiliario</span>
+                        <i class="fa-solid fa-chevron-down text-gray-400 text-xs transition-transform duration-200 group-open:rotate-180"></i>
                     </summary>
-                    <div class="grid grid-cols-2 gap-1 text-xs pb-2">
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'stove_4')"><i class="fa-solid fa-fire-burner"></i> Estufa 4Q</button>
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'fridge')"><i class="fa-solid fa-snowflake"></i> Nevera</button>
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'sink_kitchen')"><i class="fa-solid fa-sink"></i> Lavaplatos</button>
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'washer')"><i class="fa-solid fa-soap"></i> Lavadora</button>
-                        
-                        <div class="col-span-2 border-t border-gray-100 my-1"></div>
-                        
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'bed_double')"><i class="fa-solid fa-bed"></i> Cama Doble</button>
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'bed_single')"><i class="fa-solid fa-bed"></i> Cama Senc.</button>
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'sofa')"><i class="fa-solid fa-couch"></i> Sofá</button>
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'tv_unit')"><i class="fa-solid fa-tv"></i> Mueble TV</button>
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'dining_table')"><i class="fa-solid fa-utensils"></i> Comedor 6P</button>
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'desk')"><i class="fa-solid fa-laptop"></i> Escritorio</button>
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'bookshelf')"><i class="fa-solid fa-book"></i> Biblioteca</button>
-                        
-                        <div class="col-span-2 border-t border-gray-100 my-1"></div>
-
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'toilet')"><i class="fa-solid fa-toilet"></i> Sanitario</button>
-                        <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'shower')"><i class="fa-solid fa-shower"></i> Ducha</button>
-                         <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'sink_bath')"><i class="fa-solid fa-sink"></i> Lavamanos</button>
-                         <button class="tool-btn p-2 border rounded flex items-center gap-2" onclick="app.setTool('furniture', 'plant')"><i class="fa-brands fa-envira"></i> Planta</button>
-
+                    <div class="grid grid-cols-2 gap-2 pt-2 text-xs">
+                        <!-- Botones más grandes para touch -->
+                        <button class="tool-btn p-2 border rounded flex flex-col items-center gap-1 text-center" onclick="app.setTool('furniture', 'stove_4')"><i class="fa-solid fa-fire-burner text-lg"></i> Estufa</button>
+                        <button class="tool-btn p-2 border rounded flex flex-col items-center gap-1 text-center" onclick="app.setTool('furniture', 'fridge')"><i class="fa-solid fa-snowflake text-lg"></i> Nevera</button>
+                        <button class="tool-btn p-2 border rounded flex flex-col items-center gap-1 text-center" onclick="app.setTool('furniture', 'bed_double')"><i class="fa-solid fa-bed text-lg"></i> Cama Doble</button>
+                        <button class="tool-btn p-2 border rounded flex flex-col items-center gap-1 text-center" onclick="app.setTool('furniture', 'sofa')"><i class="fa-solid fa-couch text-lg"></i> Sofá</button>
+                        <button class="tool-btn p-2 border rounded flex flex-col items-center gap-1 text-center" onclick="app.setTool('furniture', 'dining_table')"><i class="fa-solid fa-utensils text-lg"></i> Comedor</button>
+                        <button class="tool-btn p-2 border rounded flex flex-col items-center gap-1 text-center" onclick="app.setTool('furniture', 'toilet')"><i class="fa-solid fa-toilet text-lg"></i> Baño</button>
+                        <button class="tool-btn p-2 border rounded flex flex-col items-center gap-1 text-center" onclick="app.setTool('furniture', 'shower')"><i class="fa-solid fa-shower text-lg"></i> Ducha</button>
+                        <button class="tool-btn p-2 border rounded flex flex-col items-center gap-1 text-center" onclick="app.setTool('furniture', 'sink_bath')"><i class="fa-solid fa-sink text-lg"></i> Lavamanos</button>
+                        <button class="tool-btn p-2 border rounded flex flex-col items-center gap-1 text-center" onclick="app.setTool('furniture', 'tv_unit')"><i class="fa-solid fa-tv text-lg"></i> TV</button>
+                        <button class="tool-btn p-2 border rounded flex flex-col items-center gap-1 text-center" onclick="app.setTool('furniture', 'plant')"><i class="fa-brands fa-envira text-lg"></i> Planta</button>
                     </div>
                 </details>
             </div>
@@ -231,56 +256,58 @@
             
             <!-- Floating Top Toolbar -->
             <div class="top-toolbar">
-                <button class="tool-btn active w-10 h-10 rounded flex items-center justify-center text-gray-600 border border-transparent hover:border-gray-300" onclick="app.setTool('select')" title="Seleccionar y Mover">
+                <button class="tool-btn active min-w-[40px] h-10 rounded flex items-center justify-center text-gray-600 border border-transparent hover:border-gray-300" onclick="app.setTool('select')" title="Seleccionar">
                     <i class="fa-solid fa-arrow-pointer"></i>
                 </button>
                 <div class="w-px bg-gray-300 mx-1"></div>
-                <button class="tool-btn w-10 h-10 rounded flex items-center justify-center text-gray-600 border border-transparent hover:border-gray-300" onclick="app.setTool('dimension')" title="Crear Cota/Medida">
+                <button class="tool-btn min-w-[40px] h-10 rounded flex items-center justify-center text-gray-600 border border-transparent hover:border-gray-300" onclick="app.setTool('dimension')" title="Cota">
                     <i class="fa-solid fa-ruler-horizontal"></i>
                 </button>
-                <button class="tool-btn w-10 h-10 rounded flex items-center justify-center text-gray-600 border border-transparent hover:border-gray-300" onclick="app.setTool('text')" title="Agregar Texto">
+                <button class="tool-btn min-w-[40px] h-10 rounded flex items-center justify-center text-gray-600 border border-transparent hover:border-gray-300" onclick="app.setTool('text')" title="Texto">
                     <i class="fa-solid fa-font"></i>
                 </button>
                  <div class="w-px bg-gray-300 mx-1"></div>
-                 <button class="tool-btn w-10 h-10 rounded flex items-center justify-center text-gray-600 border border-transparent hover:border-gray-300" onclick="app.resetView()" title="Centrar Vista">
+                 <button class="tool-btn min-w-[40px] h-10 rounded flex items-center justify-center text-gray-600 border border-transparent hover:border-gray-300" onclick="app.resetView()" title="Centrar">
                     <i class="fa-solid fa-compress-arrows-alt"></i>
                 </button>
-                 <button class="tool-btn w-10 h-10 rounded flex items-center justify-center text-gray-600 border border-transparent hover:border-gray-300" onclick="app.undo()" title="Deshacer (Ctrl+Z)">
+                 <button class="tool-btn min-w-[40px] h-10 rounded flex items-center justify-center text-gray-600 border border-transparent hover:border-gray-300" onclick="app.undo()" title="Deshacer">
                     <i class="fa-solid fa-rotate-left"></i>
                 </button>
-                <button class="tool-btn w-10 h-10 rounded flex items-center justify-center text-red-500 hover:bg-red-50 hover:border-red-200 border border-transparent" onclick="app.clearCanvas()" title="Borrar Todo">
+                <button class="tool-btn min-w-[40px] h-10 rounded flex items-center justify-center text-red-500 hover:bg-red-50 hover:border-red-200 border border-transparent" onclick="app.clearCanvas()" title="Borrar">
                     <i class="fa-solid fa-trash-can"></i>
                 </button>
             </div>
 
             <canvas id="blueprintCanvas" class="block origin-top-left"></canvas>
             
-            <!-- Zoom Controls -->
-            <div class="absolute bottom-4 left-4 flex gap-2">
-                 <button class="bg-white p-2 rounded shadow text-gray-600 hover:text-blue-600" onclick="app.adjustZoom(0.1)" title="Acercar (Rueda Arriba)"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
-                 <button class="bg-white p-2 rounded shadow text-gray-600 hover:text-blue-600" onclick="app.adjustZoom(-0.1)" title="Alejar (Rueda Abajo)"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
-                 <span class="bg-white/90 px-3 py-2 rounded shadow text-xs technical-font border border-gray-300 text-gray-600" id="zoomLevel">100%</span>
-            </div>
-
-            <!-- Helper Scale -->
-            <div class="absolute bottom-4 right-4 bg-white/90 px-3 py-2 rounded text-xs technical-font border border-gray-300 pointer-events-none shadow-sm text-gray-600">
-                Escala: 1 cuadro = 1m
+            <!-- Zoom Controls & Scale -->
+            <div class="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-none">
+                 <div class="flex gap-2 pointer-events-auto">
+                     <button class="bg-white p-3 rounded-full shadow-lg text-gray-600 hover:text-blue-600 active:bg-gray-100" onclick="app.adjustZoom(0.1)"><i class="fa-solid fa-plus"></i></button>
+                     <button class="bg-white p-3 rounded-full shadow-lg text-gray-600 hover:text-blue-600 active:bg-gray-100" onclick="app.adjustZoom(-0.1)"><i class="fa-solid fa-minus"></i></button>
+                     <span class="bg-white/90 px-3 py-3 rounded-full shadow text-xs technical-font border border-gray-300 text-gray-600 flex items-center" id="zoomLevel">100%</span>
+                 </div>
+                 
+                 <div class="bg-white/90 px-2 py-1 rounded text-[10px] sm:text-xs technical-font border border-gray-300 shadow-sm text-gray-600">
+                    1 cuadro = 1m
+                </div>
             </div>
         </main>
         
         <!-- Properties Panel (Right) -->
-        <aside class="w-72 bg-white border-l border-gray-200 p-4 hidden flex flex-col shadow-lg z-20" id="propertiesPanel">
+        <!-- Fixed Overlay en Mobile para que no quite espacio -->
+        <aside class="fixed inset-y-0 right-0 w-80 max-w-[90vw] bg-white border-l border-gray-200 p-4 hidden flex-col shadow-2xl z-50 overflow-y-auto" id="propertiesPanel">
             <div class="mb-4 flex items-center justify-between border-b pb-2">
                 <h3 class="font-bold text-gray-800"><i class="fa-solid fa-sliders"></i> Propiedades</h3>
-                <button onclick="app.closeProperties()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="app.closeProperties()" class="text-gray-500 p-2"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             
-            <div id="prop-content" class="text-sm text-gray-600 space-y-4 flex-1 overflow-y-auto">
+            <div id="prop-content" class="text-sm text-gray-600 space-y-4 flex-1">
                 <!-- Dynamic Content Here -->
             </div>
 
-            <div class="mt-auto pt-4 border-t border-gray-200">
-                <button onclick="app.deleteSelected()" class="w-full bg-red-50 text-red-600 border border-red-200 py-2 rounded text-sm hover:bg-red-100 flex items-center justify-center gap-2 font-medium transition">
+            <div class="mt-8 pt-4 border-t border-gray-200 pb-20 md:pb-0">
+                <button onclick="app.deleteSelected()" class="w-full bg-red-50 text-red-600 border border-red-200 py-3 rounded text-sm hover:bg-red-100 flex items-center justify-center gap-2 font-medium transition active:scale-95">
                     <i class="fa-solid fa-trash-can"></i> Eliminar Selección
                 </button>
             </div>
@@ -306,7 +333,7 @@
                     isDark: false 
                 };
                 
-                this.currentUnit = 'm'; // m, cm, mm
+                this.currentUnit = 'm'; 
                 
                 // Interaction State
                 this.isDrawing = false;
@@ -317,11 +344,15 @@
                 this.currentPos = { x: 0, y: 0 }; 
                 this.panStart = { x: 0, y: 0 }; 
                 
+                // Pinch Zoom State
+                this.isPinching = false;
+                this.lastPinchDist = 0;
+
                 this.selectedElementIndex = -1;
                 this.dragOffset = { x: 0, y: 0 };
-                this.activeSnapLines = []; // For visualization
+                this.activeSnapLines = []; 
 
-                // Viewport (Camera)
+                // Viewport
                 this.scale = 1;
                 this.offsetX = 0;
                 this.offsetY = 0;
@@ -338,15 +369,27 @@
                 this.canvas.height = 1500;
             }
 
-            setUnit(unit) {
-                this.currentUnit = unit;
-                this.renderProperties(); // Update if open
-                this.draw(); // Update dimensions/labels
+            toggleSidebar(forceState) {
+                const sidebar = document.getElementById('toolsSidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                const isOpen = !sidebar.classList.contains('-translate-x-full');
+                const newState = forceState !== undefined ? forceState : !isOpen;
+
+                if (newState) {
+                    sidebar.classList.remove('-translate-x-full');
+                    overlay.style.display = 'block';
+                } else {
+                    sidebar.classList.add('-translate-x-full');
+                    overlay.style.display = 'none';
+                }
             }
 
-            // --- Units Helpers ---
-            // Internal storage is always CM (centimeters) roughly
-            // 1 unit in code = 1 cm in real life (approx scale for logic)
+            setUnit(unit) {
+                this.currentUnit = unit;
+                this.renderProperties();
+                this.draw(); 
+            }
+
             formatValue(valInCm, decimals = 2) {
                 if (this.currentUnit === 'm') return (valInCm / 100).toFixed(decimals) + 'm';
                 if (this.currentUnit === 'cm') return Math.round(valInCm) + 'cm';
@@ -355,7 +398,6 @@
             }
 
             toInternal(val) {
-                // Input comes from user based on current unit, convert to CM
                 const v = parseFloat(val);
                 if (isNaN(v)) return 0;
                 if (this.currentUnit === 'm') return v * 100;
@@ -365,7 +407,6 @@
             }
 
             fromInternal(valInCm) {
-                // Convert internal CM to user value number
                 if (this.currentUnit === 'm') return (valInCm / 100);
                 if (this.currentUnit === 'cm') return Math.round(valInCm);
                 if (this.currentUnit === 'mm') return Math.round(valInCm * 10);
@@ -373,7 +414,8 @@
             }
 
             resetView() {
-                this.scale = 0.8;
+                this.scale = 0.5; // Start zoomed out a bit more for mobile
+                // Center in container
                 const rect = this.container.getBoundingClientRect();
                 this.offsetX = (rect.width - this.canvas.width * this.scale) / 2;
                 this.offsetY = (rect.height - this.canvas.height * this.scale) / 2;
@@ -386,11 +428,9 @@
                 const newScale = Math.max(0.1, Math.min(5, oldScale + delta));
                 if (newScale === oldScale) return;
 
-                // Determine Focus Point (World Coords)
                 let targetX, targetY;
                 
                 if (this.selectedElementIndex !== -1) {
-                    // Focus on selection
                     const el = this.elements[this.selectedElementIndex];
                     if(el.type === 'wall' || el.type === 'dimension') {
                         targetX = (el.x + (el.ex || el.x2)) / 2;
@@ -400,32 +440,13 @@
                         targetY = el.y + el.h/2;
                     }
                 } else {
-                    // Focus on center of all elements (bounding box)
-                    if (this.elements.length > 0) {
-                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                        this.elements.forEach(el => {
-                            if (el.x !== undefined) { minX = Math.min(minX, el.x); maxX = Math.max(maxX, el.x + (el.w || 0)); }
-                            if (el.y !== undefined) { minY = Math.min(minY, el.y); maxY = Math.max(maxY, el.y + (el.h || 0)); }
-                        });
-                        targetX = (minX + maxX) / 2;
-                        targetY = (minY + maxY) / 2;
-                        // Safety if bounds are weird
-                        if(!isFinite(targetX)) { targetX = this.canvas.width/2; targetY = this.canvas.height/2; }
-                    } else {
-                        // Default center canvas
-                        targetX = this.canvas.width / 2;
-                        targetY = this.canvas.height / 2;
-                    }
+                    targetX = this.canvas.width / 2;
+                    targetY = this.canvas.height / 2;
                 }
 
-                // Math to keep target stationary in screen center
                 const containerRect = this.container.getBoundingClientRect();
-                const screenCenterX = containerRect.width / 2;
-                const screenCenterY = containerRect.height / 2;
-
-                // New Offset = ScreenCenter - (TargetWorld * NewScale)
-                this.offsetX = screenCenterX - (targetX * newScale);
-                this.offsetY = screenCenterY - (targetY * newScale);
+                this.offsetX = (containerRect.width/2) - (targetX * newScale);
+                this.offsetY = (containerRect.height/2) - (targetY * newScale);
                 
                 this.scale = newScale;
                 this.updateZoomDisplay();
@@ -459,6 +480,12 @@
                 
                 this.selectedElementIndex = -1;
                 this.updateUI();
+                
+                // Auto close sidebar on mobile when selecting a tool
+                if (window.innerWidth < 768) {
+                    this.toggleSidebar(false);
+                }
+
                 const cursor = tool === 'select' ? 'default' : 'crosshair';
                 this.container.style.cursor = cursor;
             }
@@ -477,9 +504,11 @@
                 const panel = document.getElementById('propertiesPanel');
                 if (this.selectedElementIndex !== -1) {
                     panel.classList.remove('hidden');
+                    panel.classList.add('flex');
                     this.renderProperties();
                 } else {
                     panel.classList.add('hidden');
+                    panel.classList.remove('flex');
                 }
             }
 
@@ -491,18 +520,21 @@
                 typeLabel = typeLabel.replace('_', ' ').toUpperCase();
 
                 let html = `
-                    <div class="space-y-4">
-                        <div class="bg-blue-50 p-2 rounded border border-blue-100">
-                            <span class="text-xs font-bold text-blue-500 uppercase block">Elemento</span>
-                            <span class="text-gray-900 font-bold text-lg">${typeLabel}</span>
+                    <div class="space-y-4 pb-4">
+                        <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-blue-500 uppercase block">Elemento</span>
+                                <span class="text-gray-900 font-bold text-lg">${typeLabel}</span>
+                            </div>
+                            <i class="fa-solid fa-pen-to-square text-blue-300 text-xl"></i>
                         </div>
                 `;
 
                 if (['room', 'furniture', 'door', 'window'].includes(el.type)) {
                     html += `
                         <div>
-                            <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Geometría (${this.currentUnit})</h4>
-                            <div class="grid grid-cols-2 gap-3">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Dimensiones (${this.currentUnit})</h4>
+                            <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="text-xs text-gray-500 block mb-1">Ancho</label>
                                     <input type="number" step="0.1" class="input-tech" value="${this.fromInternal(el.w)}" onchange="app.updateSelectedProperty('w', this.value)">
@@ -515,7 +547,7 @@
                                     <label class="text-xs text-gray-500 block mb-1">Rotación (°)</label>
                                     <div class="flex gap-2">
                                         <input type="number" class="input-tech" value="${el.rotation || 0}" onchange="app.updateSelectedProperty('rotation', this.value)">
-                                        <button class="bg-gray-100 border hover:bg-gray-200 rounded px-2" onclick="app.rotateSelected(45)"><i class="fa-solid fa-rotate-right"></i></button>
+                                        <button class="bg-gray-100 border hover:bg-gray-200 rounded px-3 py-1" onclick="app.rotateSelected(45)"><i class="fa-solid fa-rotate-right"></i> +45°</button>
                                     </div>
                                 </div>
                             </div>
@@ -525,8 +557,8 @@
 
                 if (el.type === 'room') {
                      html += `
-                        <div class="border-t border-gray-100 pt-3">
-                            <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Estilo & Datos</h4>
+                        <div class="border-t border-gray-100 pt-4">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Estilo</h4>
                             <div class="space-y-3">
                                 <div>
                                     <label class="text-xs text-gray-500 block mb-1">Nombre</label>
@@ -535,11 +567,11 @@
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
                                         <label class="text-xs text-gray-500 block mb-1">Fondo</label>
-                                        <input type="color" class="w-full h-8 cursor-pointer border rounded" value="${el.color}" oninput="app.updateSelectedProperty('color', this.value)">
+                                        <input type="color" class="w-full h-10 cursor-pointer border rounded" value="${el.color}" oninput="app.updateSelectedProperty('color', this.value)">
                                     </div>
                                      <div>
                                         <label class="text-xs text-gray-500 block mb-1">Texto</label>
-                                        <input type="color" class="w-full h-8 cursor-pointer border rounded" value="${el.textColor || '#000000'}" oninput="app.updateSelectedProperty('textColor', this.value)">
+                                        <input type="color" class="w-full h-10 cursor-pointer border rounded" value="${el.textColor || '#000000'}" oninput="app.updateSelectedProperty('textColor', this.value)">
                                     </div>
                                 </div>
                             </div>
@@ -551,7 +583,7 @@
                      html += `
                         <div>
                              <label class="text-xs text-gray-500 block mb-1">Color</label>
-                            <input type="color" class="w-full h-8 cursor-pointer" value="${el.color || '#000000'}" oninput="app.updateSelectedProperty('color', this.value)">
+                            <input type="color" class="w-full h-10 cursor-pointer" value="${el.color || '#000000'}" oninput="app.updateSelectedProperty('color', this.value)">
                         </div>
                     `;
                 }
@@ -603,15 +635,20 @@
             }
 
             addEventListeners() {
+                // Mouse Events
                 this.container.addEventListener('mousedown', (e) => this.onMouseDown(e));
                 window.addEventListener('mousemove', (e) => this.onMouseMove(e));
                 window.addEventListener('mouseup', (e) => this.onMouseUp(e));
-                
                 this.container.addEventListener('wheel', (e) => {
                     e.preventDefault();
                     const delta = e.deltaY > 0 ? -0.1 : 0.1;
                     this.adjustZoom(delta);
                 }, { passive: false });
+
+                // Touch Events
+                this.container.addEventListener('touchstart', (e) => this.onTouchStart(e), {passive: false});
+                this.container.addEventListener('touchmove', (e) => this.onTouchMove(e), {passive: false});
+                this.container.addEventListener('touchend', (e) => this.onTouchEnd(e), {passive: false});
 
                 window.addEventListener('keydown', (e) => {
                     if ((e.key === 'Delete' || e.key === 'Backspace') && document.activeElement.tagName !== 'INPUT') {
@@ -621,10 +658,74 @@
                 });
             }
 
-            onMouseDown(e) {
-                if (e.button === 1 || (this.currentTool === 'select' && e.target === this.container)) {
-                    // Middle click or bg click logic below
+            // --- TOUCH HANDLERS ---
+            getDistance(t1, t2) {
+                const dx = t1.clientX - t2.clientX;
+                const dy = t1.clientY - t2.clientY;
+                return Math.sqrt(dx*dx + dy*dy);
+            }
+
+            onTouchStart(e) {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    this.isPinching = true;
+                    this.lastPinchDist = this.getDistance(e.touches[0], e.touches[1]);
+                } else if (e.touches.length === 1) {
+                    e.preventDefault(); // Prevent scrolling
+                    // Create simulated mouse event
+                    const touch = e.touches[0];
+                    const simulatedEvent = {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY,
+                        button: 0,
+                        target: e.target,
+                        preventDefault: () => {}
+                    };
+                    this.onMouseDown(simulatedEvent);
                 }
+            }
+
+            onTouchMove(e) {
+                e.preventDefault();
+                if (this.isPinching && e.touches.length === 2) {
+                    const dist = this.getDistance(e.touches[0], e.touches[1]);
+                    const diff = dist - this.lastPinchDist;
+                    
+                    // Throttle zoom speed
+                    if (Math.abs(diff) > 2) {
+                        this.adjustZoom(diff * 0.005);
+                        this.lastPinchDist = dist;
+                    }
+                } else if (e.touches.length === 1 && !this.isPinching) {
+                    const touch = e.touches[0];
+                    const simulatedEvent = {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY,
+                        preventDefault: () => {}
+                    };
+                    this.onMouseMove(simulatedEvent);
+                }
+            }
+
+            onTouchEnd(e) {
+                e.preventDefault();
+                if (this.isPinching && e.touches.length < 2) {
+                    this.isPinching = false;
+                }
+                
+                // Always fire mouse up logic if not pinching
+                if (!this.isPinching) {
+                     const simulatedEvent = {
+                        preventDefault: () => {}
+                    };
+                    this.onMouseUp(simulatedEvent);
+                }
+            }
+
+            // --- MOUSE HANDLERS ---
+            onMouseDown(e) {
+                // Ignore if clicking UI buttons that might bubble up (unlikely due to structure but safe)
+                if (e.target !== this.container && e.target !== this.canvas) return;
 
                 const screenX = e.clientX;
                 const screenY = e.clientY;
@@ -632,6 +733,7 @@
                 this.startPos = pos;
                 
                 let hitIndex = -1;
+                // Reverse iterate for Z-order selection
                 for (let i = this.elements.length - 1; i >= 0; i--) {
                     if (this.hitTest(pos, this.elements[i])) {
                         hitIndex = i;
@@ -652,6 +754,7 @@
                             this.dragOffset = { x: pos.x - el.x, y: pos.y - el.y };
                         }
                     } else {
+                        // Pan Mode on Empty space
                         this.isPanning = true;
                         this.panStart = { x: screenX, y: screenY };
                         this.selectedElementIndex = -1;
@@ -660,7 +763,9 @@
                     this.updateUI();
                     this.draw();
                 } else {
+                    // Create new item
                     this.isDrawing = true;
+                    this.currentPos = pos; // Init current pos immediately
                     if (['furniture', 'door', 'window'].includes(this.currentTool)) {
                         this.placeItem(pos);
                         this.isDrawing = false; 
@@ -675,28 +780,22 @@
                 }
             }
 
-            // --- Snapping / Magnetism Logic ---
-            applyMagnetism(x, y, ignoreIndex = -1) {
-                const threshold = 15; // px snap distance
+            // ... applyMagnetism, onMouseMove, etc same as previous but integrated
+             applyMagnetism(x, y, ignoreIndex = -1) {
+                const threshold = 15; 
                 let snappedX = x;
                 let snappedY = y;
-                this.activeSnapLines = []; // Clear previous guidelines
+                this.activeSnapLines = []; 
 
-                // We want to snap X to other's X or X+W
-                // We want to snap Y to other's Y or Y+H
-                
                 let snapXFound = false;
                 let snapYFound = false;
 
                 for (let i = 0; i < this.elements.length; i++) {
                     if (i === ignoreIndex) continue;
                     const el = this.elements[i];
-                    // Only snap to box-like objects for simplicity
                     if (!['room', 'furniture'].includes(el.type)) continue;
 
-                    // Targets: Left, Right, Center X
                     const targetsX = [el.x, el.x + el.w, el.x + el.w/2];
-                    // Targets: Top, Bottom, Center Y
                     const targetsY = [el.y, el.y + el.h, el.y + el.h/2];
 
                     if (!snapXFound) {
@@ -704,18 +803,17 @@
                             if (Math.abs(x - tx) < threshold) {
                                 snappedX = tx;
                                 snapXFound = true;
-                                this.activeSnapLines.push({type:'v', x: tx}); // Vertical Guide
+                                this.activeSnapLines.push({type:'v', x: tx}); 
                                 break;
                             }
                         }
                     }
-
                     if (!snapYFound) {
                         for (let ty of targetsY) {
                             if (Math.abs(y - ty) < threshold) {
                                 snappedY = ty;
                                 snapYFound = true;
-                                this.activeSnapLines.push({type:'h', y: ty}); // Horizontal Guide
+                                this.activeSnapLines.push({type:'h', y: ty}); 
                                 break;
                             }
                         }
@@ -725,6 +823,9 @@
             }
 
             onMouseMove(e) {
+                // If mouse move not triggered by touch, ensure we have coords
+                if (!e.clientX) return;
+
                 const pos = this.toWorld(e.clientX, e.clientY);
                 this.currentPos = pos;
 
@@ -738,7 +839,6 @@
                     return;
                 }
                 
-                // Dragging or Drawing
                 if (this.currentTool === 'select' && this.isDraggingElement && this.selectedElementIndex !== -1) {
                     const el = this.elements[this.selectedElementIndex];
                     
@@ -746,26 +846,23 @@
                         let newX = this.currentPos.x - this.dragOffset.x;
                         let newY = this.currentPos.y - this.dragOffset.y;
                         
-                        // Apply Magnetism
                         const snapped = this.applyMagnetism(newX, newY, this.selectedElementIndex);
                         el.x = snapped.x;
                         el.y = snapped.y;
                         
                     } else if (el.type === 'wall') {
-                        // Wall moving is relative, tricky to snap perfectly without anchor points logic
                         const dx = this.currentPos.x - this.dragOffset.x;
                         const dy = this.currentPos.y - this.dragOffset.y;
                         el.x += dx; el.y += dy; el.ex += dx; el.ey += dy;
                         this.dragOffset = this.currentPos;
                     } else if (el.type === 'dimension') {
-                        // ... dim move ...
+                        // dim move skipped for simplicity
                     } else {
                         el.x = this.currentPos.x - this.dragOffset.x;
                         el.y = this.currentPos.y - this.dragOffset.y;
                     }
                     this.draw();
                 } else if (this.isDrawing) {
-                    // Apply magnetism to currentPos if drawing room
                     if (this.currentTool === 'room') {
                          const snapped = this.applyMagnetism(this.currentPos.x, this.currentPos.y);
                          this.currentPos = snapped;
@@ -777,7 +874,7 @@
             onMouseUp(e) {
                 this.isPanning = false;
                 this.isDraggingElement = false;
-                this.activeSnapLines = []; // Clear guidelines
+                this.activeSnapLines = []; 
                 this.container.style.cursor = this.currentTool === 'select' ? 'default' : 'crosshair';
 
                 if (!this.isDrawing) return;
@@ -841,13 +938,12 @@
                     w = s.w; h = s.h;
                 }
 
-                // Snap Placement too
                 const snapped = this.applyMagnetism(pos.x - w/2, pos.y - h/2);
 
                 this.elements.push({
                     type: type,
                     subtype: subtype,
-                    x: snapped.x, // snapped pos
+                    x: snapped.x, 
                     y: snapped.y,
                     w: w, h: h,
                     rotation: 0
@@ -856,6 +952,7 @@
                 this.setTool('select');
             }
 
+            // --- DRAWING ---
             draw() {
                 this.ctx.setTransform(1, 0, 0, 1, 0, 0);
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -866,24 +963,20 @@
 
                 this.ctx.setTransform(this.scale, 0, 0, this.scale, this.offsetX, this.offsetY);
 
-                // Draw Elements
+                // Draw Order
                 this.elements.filter(e => e.type === 'room').forEach(e => this.drawElement(e, e === this.elements[this.selectedElementIndex]));
                 this.elements.filter(e => e.type === 'wall').forEach(e => this.drawElement(e, e === this.elements[this.selectedElementIndex]));
                 this.elements.filter(e => e.type === 'door' || e.type === 'window').forEach(e => this.drawElement(e, e === this.elements[this.selectedElementIndex]));
                 this.elements.filter(e => e.type === 'furniture').forEach(e => this.drawElement(e, e === this.elements[this.selectedElementIndex]));
                 this.elements.filter(e => e.type === 'text' || e.type === 'dimension').forEach(e => this.drawElement(e, e === this.elements[this.selectedElementIndex]));
 
-                // Ghosting
-                if (this.isDrawing) {
-                    this.drawGhost();
-                }
+                if (this.isDrawing) this.drawGhost();
 
-                // Snap Guidelines
                 if (this.activeSnapLines.length > 0) {
                     this.ctx.save();
-                    this.ctx.strokeStyle = '#06b6d4'; // Cyan
-                    this.ctx.lineWidth = 1;
-                    this.ctx.setLineDash([4, 4]);
+                    this.ctx.strokeStyle = '#06b6d4'; 
+                    this.ctx.lineWidth = 1/this.scale; // Keep line thin regardless of zoom
+                    this.ctx.setLineDash([4/this.scale, 4/this.scale]);
                     this.activeSnapLines.forEach(line => {
                         this.ctx.beginPath();
                         if (line.type === 'v') {
@@ -929,7 +1022,6 @@
                     const mx = (el.x1 + el.x2) / 2;
                     const my = (el.y1 + el.y2) / 2;
                     const dist = Math.sqrt(Math.pow(el.x2 - el.x1, 2) + Math.pow(el.y2 - el.y1, 2));
-                    // Format Dimension based on units
                     const distUser = this.formatValue(dist);
                     
                     this.ctx.save();
@@ -951,7 +1043,6 @@
                     return;
                 }
 
-                // Rotated objects
                 const cx = el.x + el.w/2;
                 const cy = el.y + el.h/2;
                 this.ctx.translate(cx, cy);
@@ -980,8 +1071,6 @@
                     this.ctx.shadowBlur = 0; 
                     this.ctx.fillText(el.label, el.w/2, el.h/2);
                     this.ctx.font = '12px "Inter"';
-                    // Area calc (always m2 for engineering standard or adaptable?)
-                    // Let's keep m2 but formatted
                     const areaM2 = ((el.w * el.h) / 10000).toFixed(2);
                     this.ctx.fillText(`${areaM2}m²`, el.w/2, el.h/2 + 20);
                 } 
@@ -1022,7 +1111,6 @@
             }
 
             drawFurnitureSymbol(el) {
-                // ... (mismo código de muebles, sin cambios lógicos)
                 const sub = el.subtype;
                 this.ctx.fillStyle = '#fff';
                 this.ctx.fillRect(0, 0, el.w, el.h); 
@@ -1116,7 +1204,7 @@
                 this.ctx.setTransform(this.scale, 0, 0, this.scale, this.offsetX, this.offsetY);
                 this.ctx.strokeStyle = '#e2e8f0';
                 this.ctx.lineWidth = 1;
-                const step = 100; // 100cm = 1m grid
+                const step = 100; 
                 
                 const startX = -2000; const endX = 4000;
                 const startY = -2000; const endY = 4000;
@@ -1130,6 +1218,7 @@
                 this.ctx.restore();
             }
 
+            // ... pointLineDist, hitTest same as before but included for completeness in final file
             hitTest(pos, el) {
                 if (['room', 'furniture', 'door', 'window'].includes(el.type)) {
                     const cx = el.x + el.w/2;
@@ -1144,7 +1233,7 @@
 
                 } else if (el.type === 'wall' || el.type === 'dimension') {
                     const dist = this.pointLineDist(pos, el.x || el.x1, el.y || el.y1, el.ex || el.x2, el.ey || el.y2);
-                    return dist < 15;
+                    return dist < 20; // Increased hit tolerance slightly for touch
                 } else if (el.type === 'text') {
                     return pos.x >= el.x && pos.x <= el.x + 100 && pos.y >= el.y - 20 && pos.y <= el.y + 10;
                 }
@@ -1171,7 +1260,8 @@
 
             startClock() {
                 setInterval(() => {
-                    document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+                    const now = new Date();
+                    document.getElementById('clock').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 }, 1000);
             }
 
@@ -1190,7 +1280,7 @@
             }
             
             clearCanvas() {
-                if(confirm("¿Estás seguro de borrar todo el diseño?")) {
+                if(confirm("¿Estás seguro de borrar todo?")) {
                     this.elements = [];
                     this.resetView();
                 }
