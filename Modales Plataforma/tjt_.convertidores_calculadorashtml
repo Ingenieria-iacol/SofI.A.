@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENTALPÍA - Vista Previa</title>
+    <!-- Fuentes de Google -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Librería de Iconos Ligera (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* --- ESTILOS GENERALES (RESET) --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            /* Imagen de fondo de la plataforma */
+            background-image: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('https://images.unsplash.com/photo-1581092921461-eab62e97a782?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            position: relative; /* Para posicionar la marca de agua respecto al body */
+        }
+
+        /* --- MARCA DE AGUA GENERAL (PIE DE PÁGINA) --- */
+        .watermark {
+            position: fixed;
+            bottom: 15px;
+            right: 20px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.3);
+            pointer-events: none; /* Para que no interfiera con clicks */
+            z-index: 9999;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* --- CONTENEDOR TIPO MODAL NETFLIX --- */
+        .modal-container {
+            background-color: #181818;
+            width: 100%;
+            max-width: 900px;
+            border-radius: 10px;
+            overflow: hidden; /* Mantiene las esquinas redondeadas */
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            animation: fadeInUp 0.5s ease-out forwards;
+            position: relative;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        /* Clase para ocultar el modal al cerrar */
+        .modal-container.closed {
+            opacity: 0;
+            transform: scale(0.9);
+            pointer-events: none;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Botón de cerrar */
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(24, 24, 24, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.2s;
+            backdrop-filter: blur(4px);
+        }
+        .close-btn:hover { 
+            background: #fff; 
+            color: #000;
+            transform: rotate(90deg);
+        }
+
+        /* --- CABECERA (HERO) - BANNER DINÁMICO --- */
+        .hero-section {
+            position: relative;
+            height: 400px;
+            width: 100%;
+            /* Imagen inicial */
+            background-image: url("../ImagenesPlataformas/img_tjtmodeladordiseñosimulado_interfazopcioninicio.png");
+            background-size: cover;
+            background-position: center;
+            /* Transición suave para el cambio de imagen */
+            transition: background-image 1s ease-in-out;
+        }
+
+        /* Gradiente oscuro sobre la imagen */
+        .hero-gradient {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, #181818 0%, transparent 60%, rgba(0,0,0,0.4) 100%);
+        }
+
+        .hero-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            padding: 40px;
+            width: 100%;
+            z-index: 2;
+        }
+
+        h1 {
+            font-size: 3.5rem; /* Título grande */
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.7);
+        }
+
+        .text-green { color: #22c55e; } /* Verde Ingeniería (Cambio solicitado) */
+
+        /* Botonera */
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 28px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: transform 0.2s, background 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: #22c55e; /* Verde principal */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #16a34a; /* Verde más oscuro al hover */
+            transform: scale(1.05);
+        }
+
+        .btn-secondary {
+            background-color: rgba(109, 109, 110, 0.7);
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: rgba(109, 109, 110, 0.4);
+        }
+
+        .btn-icon-only {
+            padding: 10px;
+            border-radius: 50%;
+            border: 2px solid #888;
+            background: transparent;
+            color: #888;
+        }
+        .btn-icon-only:hover {
+            border-color: white;
+            color: white;
+        }
+
+        /* --- CONTENIDO INFORMATIVO (GRID) --- */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr; /* 2 columnas para info, 1 para detalles */
+            gap: 40px;
+            padding: 30px 40px;
+            position: relative; /* Necesario para la marca de agua interna */
+            z-index: 1; /* Contexto de apilamiento */
+        }
+
+        /* NUEVA MARCA DE AGUA (FONDO LOGO) */
+        .info-grid::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Ruta especificada por el usuario */
+            background-image: url('../ImagenesPlataformas/logo_entalpia.png');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: cover; /* AHORA OCUPA TODO EL ÁREA */
+            opacity: 0.15; /* Opacidad baja para que sea sutil */
+            z-index: -1; /* Detrás del texto */
+            pointer-events: none;
+        }
+
+        /* Metadatos */
+        .meta-tags {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .match-score { color: #46d369; } /* Verde coincidencia */
+        .age-rating { 
+            border: 1px solid #888; 
+            padding: 0 5px; 
+            font-size: 0.8rem; 
+            color: #ddd; 
+        }
+
+        /* Descripción */
+        .description {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+        .description-sub {
+            font-size: 1rem;
+            color: #aaa;
+            margin-bottom: 30px;
+        }
+
+        /* Lista de herramientas (Episodios) */
+        .tools-list-title {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            border-top: 1px solid #444;
+            padding-top: 20px;
+        }
+
+        /* --- ESTILOS MEJORADOS PARA LAS TARJETAS (TOOL-ITEM) --- */
+        .tool-item {
+            display: flex;
+            gap: 20px;
+            padding: 15px;
+            border-radius: 8px; /* Bordes un poco más suaves */
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            text-decoration: none; 
+            color: inherit;     
+            position: relative; /* Necesario para posicionar el botón "Ir" */
+            border: 1px solid transparent; /* Para evitar saltos al añadir borde */
+        }
+
+        /* Efecto Hover en la Tarjeta */
+        .tool-item:hover { 
+            background-color: rgba(37, 37, 37, 0.8); /* Fondo semi-transparente al hover para ver marca de agua */
+            transform: scale(1.02); /* Ligero aumento de tamaño */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            border-color: rgba(34, 197, 94, 0.3); /* Borde sutil verde */
+        }
+
+        /* Botón "Ir" que aparece al hacer hover */
+        .go-btn {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%) translateX(10px);
+            background-color: #22c55e; /* Verde */
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            opacity: 0; /* Invisible por defecto */
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        /* Mostrar botón "Ir" al hacer hover en la tarjeta */
+        .tool-item:hover .go-btn {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+        }
+
+        /* MINIATURAS: Tamaño aumentado según solicitud */
+        .tool-thumbnail {
+            width: 180px;  /* Aumentado (antes 140px) */
+            height: 110px; /* Aumentado (antes 80px) */
+            background-color: #444;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .tool-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        
+        .tool-item:hover .tool-thumbnail img {
+            opacity: 1; /* Imagen se aclara al hacer hover */
+        }
+
+        .tool-info {
+            flex-grow: 1;
+            padding-right: 60px; /* Espacio para que el botón "Ir" no tape texto */
+        }
+
+        .tool-info h4 { font-size: 1rem; margin-bottom: 5px; color: #fff; }
+        .tool-info p { font-size: 0.85rem; color: #aaa; }
+
+        /* Detalles laterales */
+        .details-col {
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .details-row { margin-bottom: 15px; }
+        .details-label { color: #777; }
+        .details-value { color: #fff; cursor: pointer; }
+        .details-value:hover { text-decoration: underline; }
+
+        .coming-soon {
+            margin-top: 30px;
+            background: #222;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 3px solid #22c55e; /* Borde verde */
+        }
+
+        /* --- RESPONSIVE (MÓVIL) --- */
+        @media (max-width: 768px) {
+            .hero-section { height: 300px; }
+            h1 { font-size: 2.5rem; }
+            .info-grid { grid-template-columns: 1fr; padding: 20px; }
+            .hero-content { padding: 20px; }
+            .action-buttons { gap: 10px; }
+            .btn { font-size: 1rem; padding: 10px 20px; }
+            
+            /* Ajustes para móvil en hover */
+            .go-btn {
+                position: static;
+                opacity: 1;
+                transform: none;
+                margin-top: 10px;
+                display: inline-flex;
+                width: auto;
+            }
+            .tool-item {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .tool-thumbnail {
+                width: 100%;
+                height: 150px; /* Aún más grande en móvil para verse bien */
+            }
+            .tool-info { padding-right: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Marca de Agua Fija -->
+    <div class="watermark">Entalpía © 2026</div>
+
+    <!-- Contenedor Principal -->
+    <div class="modal-container" id="mainModal">
+        
+        <!-- Botón cerrar -->
+        <button class="close-btn" id="closeBtn" title="Cerrar vista previa">
+            <i data-lucide="x"></i>
+        </button>
+
+        <!-- Imagen Principal (Banner Dinámico) -->
+        <div class="hero-section" id="heroBanner">
+            <div class="hero-gradient"></div>
+            <div class="hero-content">
+                <!-- TÍTULO ACTUALIZADO -->
+                <h1>CALCULADORAS Y<br><span class="text-green">CONVERTIDORES</span></h1>
+                
+                <div class="action-buttons">
+                    <!-- Botón PRINCIPAL que lleva a la App -->
+                    <a href="../AppHerramientasDeIngenieria.html" class="btn btn-primary">
+                        <i data-lucide="play-circle" fill="currentColor"></i>
+                        <span>Iniciar Simulación</span>
+                    </a>
+
+                    <button class="btn btn-secondary">
+                        <i data-lucide="plus"></i>
+                        <span>Mi Lista</span>
+                    </button>
+
+                    <button class="btn btn-icon-only">
+                        <i data-lucide="thumbs-up"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información -->
+        <div class="info-grid">
+            
+            <!-- Columna Principal -->
+            <div>
+                <div class="meta-tags">
+                    <span class="match-score">98% para ti</span>
+                    <span>2024</span>
+                    <span class="age-rating">v2.1</span>
+                    <span>Ingeniería Avanzada</span>
+                </div>
+
+                <p class="description">
+                    Escale sus proyectos de ingeniería con software de vanguardia. Modelado preciso de redes de distribución y optimización de sistemas de combustión, diseñados para cumplir con los estándares de seguridad y sostenibilidad más exigentes de la industria.
+                </p>
+                <p class="description-sub">
+                    Integre soluciones avanzadas de modelado y simulación mediante el análisis predictivo de redes y la validación paramétrica de los procesos involucrados.
+                </p>
+
+                <h3 class="tools-list-title">Módulos Incluidos</h3>
+
+                <!-- Lista de herramientas con Botón "Ir" integrado -->
+                
+                <!-- 1. Isoplano Mueller -->
+                <a href="../AppsPlataforma/app_cad_muellerenouard_v1_pro.html" class="tool-item">
+                    <div class="tool-thumbnail">
+                        <img src="../ImagenesPlataformas/unnamed (3).png" alt="Fluidos">
+                    </div>
+                    <div class="tool-info">
+                        <h4>1. Isoplano Mueller</h4>
+                        <p>Partiendo del isoplano esta aplicacion puede estimar, caudales, velocidad y perdidas de carga en sistemas que conducen gas a media presion.</p>
+                    </div>
+                    <!-- Botón Flotante -->
+                    <span class="go-btn">Ir <i data-lucide="arrow-right" size="16"></i></span>
+                </a>
+
+                <!-- 2. Modelador Mueller -->
+                <a href="../AppsPlataforma/Modelador Mueller V_Pro (1211).html" class="tool-item">
+                    <div class="tool-thumbnail">
+                        <img src="../ImagenesPlataformas/Imagen003DiseñoMueller.png" alt="Combustión">
+                    </div>                    
+                    <div class="tool-info">
+                        <h4>2. Modelador Mueller</h4>
+                        <p>La "fórmula de Mueller" generalmente se refiere al concepto en el campo de ingeniería, una ecuación para calcular la perdida de carga en sistemas de media presión (70-7000 mbar).</p>
+                    </div>
+                    <span class="go-btn">Ir <i data-lucide="arrow-right" size="16"></i></span>
+                </a>
+                       
+                <!-- 3. Modelador Renoaurd -->
+                <a href="../AppsPlataforma/Modelador Renoaurd-V_Pro.html" class="tool-item">
+                    <div class="tool-thumbnail">
+                        <img src="../ImagenesPlataformas/Imagen002DiseñoRenouard.png" alt="Fluidos">
+                    </div>
+                    <div class="tool-info">
+                        <h4>3. Modelador Renoaurd</h4>
+                        <p>La fórmula de Renouard es una ecuación empírica utilizada en ingeniería para calcular la caída de presión (𝛥𝑃) o el diámetro de tuberías en redes de distribución de gas principalmente en baja presión. Relaciona caudal, diámetro, longitud y densidad relativa del gas.</p>
+                    </div>
+                    <span class="go-btn">Ir <i data-lucide="arrow-right" size="16"></i></span>
+                </a>
+                  
+                <!-- 4. Isoplano Basico -->
+                <a href="../AppsPlataforma/app_cad_modela_mueller.html" class="tool-item">
+                    <div class="tool-thumbnail">
+                        <img src="../ImagenesPlataformas/ImgAplicacionCAD_Vlibre.png" alt="Combustión">
+                    </div>
+                    <div class="tool-info">
+                        <h4>4. Isoplano Basico</h4>
+                        <p>Plano de trabajo 2D especializado que simula una perspectiva tridimensional. Permite dibujar objetos 3D en 2D, utilizando ángulos de 30, 90 y 150 grados para alinear ejes (altura, anchura y profundidad).</p>
+                    </div>
+                    <span class="go-btn">Ir <i data-lucide="arrow-right" size="16"></i></span>
+                </a>
+
+                <!-- 5. Sumulador CPD -->
+                <a href="../AppsPlataforma/appcalibradorcombustion.html" class="tool-item">
+                    <div class="tool-thumbnail">
+                        <img src="../ImagenesPlataformas/ImgModeladorCPD_Vlibre.png" alt="Combustión">
+                    </div>
+                    <div class="tool-info">
+                        <h4>5. Modelador CPD</h4>
+                        <p>Simule el comportamiento de una red hidraulica caliente domestica en funcion de los parametros de alimentacion del artefacto y la carga instalada</p>
+                    </div>
+                    <span class="go-btn">Ir <i data-lucide="arrow-right" size="16"></i></span>
+                </a>
+
+                <!-- 6. Entalpia Planner -->
+                <a href="../AppsPlataforma/app_entalpiaplaner.html" class="tool-item">
+                    <div class="tool-thumbnail">
+                        <img src="../ImagenesPlataformas/img_appentalpiaplanner.png" alt="Combustión">
+                    </div>
+                    <div class="tool-info">
+                        <h4>6. Entalpia Planner</h4>
+                        <p>Levante un plano en planta, esta aplicacion permite crear un espacio mediante bloques de inserccion y elementos prediseñados, tan facil como pegar adhesivos o estiquer's.</p>
+                    </div>
+                    <span class="go-btn">Ir <i data-lucide="arrow-right" size="16"></i></span>
+                </a>
+
+             </div>
+            <!-- Columna Lateral -->
+            <div class="details-col">
+                <div class="details-row">
+                    <span class="details-label">Categorías:</span><br>
+                    <span class="details-value">Termodinámica</span>, <span class="details-value">Hidráulica</span>
+                </div>
+                <div class="details-row">
+                    <span class="details-label">Uso:</span><br>
+                    <span class="details-value">Gas Natural</span>, <span class="details-value">GLP</span>
+                </div>
+                
+                <div class="coming-soon">
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1200px-Python-logo-notext.svg.png" style="width: 25px;" alt="Python">
+                        <div>
+                            <strong style="font-size: 0.8rem; display: block; margin-bottom: 5px;">PRÓXIMAMENTE</strong>
+                            <span style="font-size: 0.75rem; color: #aaa;">Módulo de diseño de anillo cerrado Metodo Hardy Cross / Hasen Willian's.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        // 1. Inicializar iconos
+        lucide.createIcons();
+
+        // 2. Funcionalidad del Botón Cerrar
+        const closeBtn = document.getElementById('closeBtn');
+        const modalContainer = document.getElementById('mainModal');
+
+        closeBtn.addEventListener('click', () => {
+            // Animación de cierre
+            modalContainer.classList.add('closed');
+            
+            // Opcional: Si quieres que realmente 'cierre' o recargue o vaya atrás:
+            setTimeout(() => window.history.back(), 300); 
+            // Por ahora solo oculta el modal visualmente
+        });
+
+        // 3. Funcionalidad del Banner Dinámico
+        const heroBanner = document.getElementById('heroBanner');
+        
+        // CONFIGURACIÓN DE IMÁGENES:
+        // Agrega aquí los nombres de tus imágenes alojadas en la carpeta.
+        // Asumo la ruta "../ImagenesPlataformas/" como solicitaste.
+        const imageFolder = "../ImagenesPlataformas/";
+        const bannerImages = [
+            "../ImagenesPlataformas/img_tjtmodeladordiseñosimulado_interfazopcioninicio.png", // Imagen original
+            "../ImagenesPlataformas/Imagen002DiseñoRenouard.png",   // Reemplaza con tus nombres reales
+            "../ImagenesPlataformas/Imagen003DiseñoMueller.png",     // Reemplaza con tus nombres reales
+        ];
+
+        let currentImageIndex = 0;
+
+        function rotateBanner() {
+            // Avanzar índice
+            currentImageIndex = (currentImageIndex + 1) % bannerImages.length;
+            
+            // Construir nueva URL
+            const nextImage = `url("${imageFolder}${bannerImages[currentImageIndex]}")`;
+            
+            // Aplicar cambio
+            heroBanner.style.backgroundImage = nextImage;
+        }
+
+        // Rotar cada 5 segundos (5000 ms)
+        setInterval(rotateBanner, 5000);
+
+    </script>
+</body>
+</html>
