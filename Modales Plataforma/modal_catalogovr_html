@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VR FLIX | Cine Inmersivo</title>
+    <style>
+        /* --- ESTILOS GENERALES Y TEMA OSCURO --- */
+        :root {
+            --bg-color: #0f0f0f;
+            --nav-bg: rgba(0, 0, 0, 0.9);
+            --text-color: #ffffff;
+            --accent-color: #e50914; /* Rojo tipo Netflix */
+            --card-hover-border: #fff;
+            --vr-split-line: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+            padding-bottom: 50px;
+        }
+
+        /* --- NAVBAR --- */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            height: 60px;
+            background: var(--nav-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 4%;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .logo span { color: white; font-weight: 300; }
+
+        .nav-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        /* Botón de cambio de modo */
+        .mode-btn {
+            background: transparent;
+            border: 1px solid #fff;
+            color: #fff;
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .mode-btn:hover { background: rgba(255,255,255,0.1); }
+
+        /* --- CONTENEDOR 2D (Visible por defecto) --- */
+        #ui-2d {
+            transition: opacity 0.5s;
+        }
+
+        /* --- HERO SECTION 2D --- */
+        .hero {
+            height: 70vh;
+            background: linear-gradient(to top, var(--bg-color), transparent 50%),
+                        url('https://images.unsplash.com/photo-1535498730771-e735b998cd64?q=80&w=1200') center/cover;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 4%;
+            margin-bottom: 20px;
+        }
+
+        .hero h1 { font-size: 3rem; max-width: 600px; text-shadow: 2px 2px 4px black; }
+        .hero p { margin: 10px 0 20px; font-size: 1.2rem; max-width: 500px; text-shadow: 1px 1px 2px black; }
+        
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .btn-primary { background-color: var(--accent-color); color: white; }
+        .btn-secondary { background-color: rgba(109, 109, 110, 0.7); color: white; margin-left: 10px; }
+        .btn:hover { transform: scale(1.05); }
+
+        /* --- CATEGORÍAS Y CARROUSEL --- */
+        .category-section { padding: 20px 4%; }
+        .category-title { font-size: 1.2rem; margin-bottom: 10px; font-weight: 600; color: #e5e5e5; }
+
+        .carousel {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 20px;
+            scrollbar-width: none; 
+        }
+        .carousel::-webkit-scrollbar { display: none; }
+
+        .card {
+            min-width: 200px;
+            height: 120px;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.3s, border 0.2s;
+            background-color: #222;
+        }
+
+        .card:hover { transform: scale(1.1); z-index: 10; border: 2px solid var(--card-hover-border); }
+        .card img { width: 100%; height: 100%; object-fit: cover; }
+
+        .card-overlay {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            padding: 10px; opacity: 0; transition: opacity 0.3s;
+        }
+        .card:hover .card-overlay { opacity: 1; }
+        .card-title { font-size: 0.9rem; font-weight: bold; }
+        .badge { background: var(--accent-color); padding: 2px 5px; font-size: 0.6rem; border-radius: 2px; }
+
+
+        /* --- UI VR (MENÚ EN MODO GAFAS) --- */
+        #ui-vr {
+            display: none; /* Oculto por defecto */
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: #000;
+            z-index: 2000;
+            flex-direction: row;
+        }
+
+        #ui-vr.active { display: flex; }
+
+        .vr-viewport {
+            width: 50%;
+            height: 100%;
+            overflow-y: auto; /* Scroll vertical */
+            border-right: 1px solid #333;
+            position: relative;
+            padding: 20px;
+            /* Ocultar scrollbar pero permitir scroll */
+            scrollbar-width: none;
+        }
+        .vr-viewport::-webkit-scrollbar { display: none; }
+
+        .vr-content-wrapper {
+            /* Transformación para simular un poco de profundidad/pantalla */
+            transform-origin: center top;
+            padding-bottom: 100px;
+        }
+
+        /* Ajustes específicos para VR UI */
+        .vr-viewport h1 { font-size: 1.5rem; margin-bottom: 10px; }
+        .vr-viewport .category-section { padding: 10px 0; }
+        /* En VR, las tarjetas se ven mejor en grid vertical que carrousel horizontal */
+        .vr-viewport .carousel { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px;
+            overflow: visible;
+        }
+        .vr-viewport .card {
+            min-width: auto;
+            width: 100%;
+            height: 100px;
+        }
+        /* Overlay siempre visible en VR para saber qué es */
+        .vr-viewport .card-overlay { opacity: 1; padding: 5px; }
+        
+        .btn-exit-vr-ui {
+            background: #333;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #555;
+            cursor: pointer;
+            font-weight: bold;
+            display: block;
+        }
+
+
+        /* --- REPRODUCTOR VR (VIDEO) --- */
+        #vr-player-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: black;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+        }
+        #vr-player-container.active { display: flex; }
+
+        .vr-controls {
+            position: absolute; top: 20px; left: 50%;
+            transform: translateX(-50%); z-index: 10000;
+            display: flex; gap: 20px; opacity: 0.5; transition: opacity 0.3s;
+        }
+        .vr-controls:hover { opacity: 1; }
+
+        .vr-screen-wrapper { display: flex; width: 100%; height: 100%; align-items: center; }
+        
+        .vr-eye {
+            width: 50%; height: 100%; position: relative;
+            overflow: hidden; display: flex; align-items: center; justify-content: center;
+            border-right: 1px solid #111;
+        }
+        .vr-eye video { width: 95%; max-width: 100%; height: auto; max-height: 100%; object-fit: contain; }
+
+        .center-line {
+            position: absolute; left: 50%; top: 0; bottom: 0; width: 2px;
+            background: rgba(255,255,255,0.2); z-index: 5000; pointer-events: none;
+        }
+        
+        #rotate-msg {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #fff; z-index: 20000;
+            align-items: center; justify-content: center; text-align: center; flex-direction: column;
+        }
+        
+        @media screen and (orientation: portrait) {
+            #vr-player-container.active ~ #rotate-msg, #ui-vr.active ~ #rotate-msg { display: flex; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR 2D -->
+    <nav id="navbar-2d">
+        <div class="logo">VR<span>FLIX</span></div>
+        <div class="nav-actions">
+            <button class="mode-btn" onclick="toggleVRInterface()">
+                <span>👓</span> Modo Gafas VR
+            </button>
+        </div>
+    </nav>
+
+    <!-- MENSAJE DE GIRO (Para móviles) -->
+    <div id="rotate-msg">
+        <h2 style="font-size: 3rem;">↺</h2>
+        <p>Gira tu dispositivo<br>para usar las gafas VR</p>
+    </div>
+
+    <!-- UI 2D (ESTÁNDAR) -->
+    <div id="ui-2d">
+        <header class="hero">
+            <h1>Explora el Universo</h1>
+            <p>Experiencias inmersivas seleccionadas para ti.</p>
+            <div>
+                <button class="btn btn-primary" onclick="startVR('https://media.istockphoto.com/id/1364376361/video/abstract-space-background.mp4?s=mp4-640x640-is&k=20&c=i-qT57l8kK9rS9X6iJ6kLz8kM-4qP8_r1_x8qX9-5_o=')">
+                    ▶ Ver Destacado
+                </button>
+            </div>
+        </header>
+        <div id="content-container-2d"></div>
+    </div>
+
+    <!-- UI VR (MENÚ DIVIDIDO) -->
+    <div id="ui-vr">
+        <!-- OJO IZQUIERDO MENU -->
+        <div class="vr-viewport" id="vr-menu-left">
+            <div class="vr-content-wrapper">
+                <div class="btn-exit-vr-ui" onclick="toggleVRInterface()">⬅ SALIR DEL MODO GAFAS</div>
+                <div style="text-align:center; margin-bottom:20px;">
+                    <h2 style="color:var(--accent-color)">VR FLIX</h2>
+                    <p style="font-size:0.8rem; color:#aaa">Interfaz VR v1.0</p>
+                </div>
+                <!-- Contenido inyectado por JS -->
+                <div id="vr-content-left"></div>
+            </div>
+        </div>
+
+        <!-- OJO DERECHO MENU -->
+        <div class="vr-viewport" id="vr-menu-right">
+            <div class="vr-content-wrapper">
+                <div class="btn-exit-vr-ui" onclick="toggleVRInterface()">⬅ SALIR DEL MODO GAFAS</div>
+                <div style="text-align:center; margin-bottom:20px;">
+                    <h2 style="color:var(--accent-color)">VR FLIX</h2>
+                    <p style="font-size:0.8rem; color:#aaa">Interfaz VR v1.0</p>
+                </div>
+                <!-- Contenido inyectado por JS -->
+                <div id="vr-content-right"></div>
+            </div>
+        </div>
+        <div class="center-line"></div>
+    </div>
+
+    <!-- REPRODUCTOR DE VIDEO VR -->
+    <div id="vr-player-container">
+        <div class="center-line"></div>
+        <div class="vr-controls">
+            <button class="btn btn-secondary" onclick="exitVideoVR()">Cerrar Video</button>
+            <button class="btn btn-primary" onclick="togglePlay()">⏯</button>
+        </div>
+        <div class="vr-screen-wrapper">
+            <div class="vr-eye"><video id="video-left" loop playsinline><source src="" type="video/mp4"></video></div>
+            <div class="vr-eye"><video id="video-right" loop playsinline muted><source src="" type="video/mp4"></video></div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        const database = [
+            {
+                category: "Naturaleza",
+                items: [
+                    { title: "Bosque", img: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=500", url: "https://media.istockphoto.com/id/1182459990/video/flying-through-the-forest-trees.mp4?s=mp4-640x640-is&k=20&c=r5-h2_t5-x6_q5_v7_z5-x4-r1_t8-x6_q5_v7_z5" },
+                    { title: "Océano", img: "https://images.unsplash.com/photo-1582967788606-a171f1080ca8?w=500", url: "https://media.istockphoto.com/id/1169335661/video/underwater-coral-reef.mp4?s=mp4-640x640-is&k=20&c=j-r5-h2_t5-x6_q5_v7_z5-x4-r1_t8-x6_q5_v7_z5" }
+                ]
+            },
+            {
+                category: "Terror",
+                items: [
+                    { title: "Pasillo", img: "https://images.unsplash.com/photo-1509248961158-e54f6934749c?w=500", url: "https://media.istockphoto.com/id/1271639148/video/scary-corridor.mp4?s=mp4-640x640-is&k=20&c=x-r1_t8-x6_q5_v7_z5-x4-r1_t8-x6_q5_v7_z5" },
+                    { title: "Sombras", img: "https://images.unsplash.com/photo-1478720568477-152d9b164e63?w=500", url: "" }
+                ]
+            },
+            {
+                category: "Sci-Fi",
+                items: [
+                    { title: "Cyber City", img: "https://images.unsplash.com/photo-1535295972055-1c762f4483e5?w=500", url: "" },
+                    { title: "Neon", img: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=500", url: "" }
+                ]
+            }
+        ];
+
+        // --- GENERADOR DE CONTENIDO ---
+        // Genera HTML para un contenedor dado (2D o VR)
+        function renderContent(targetId, isVR) {
+            const container = document.getElementById(targetId);
+            container.innerHTML = '';
+
+            database.forEach(cat => {
+                const section = document.createElement('div');
+                section.className = 'category-section';
+                
+                const title = document.createElement('h3');
+                title.className = 'category-title';
+                title.innerText = cat.category;
+
+                const list = document.createElement('div');
+                list.className = 'carousel'; // En CSS, si es VR, esto se convierte en Grid
+
+                cat.items.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    const videoUrl = item.url || "https://media.istockphoto.com/id/1364376361/video/abstract-space-background.mp4?s=mp4-640x640-is&k=20&c=i-qT57l8kK9rS9X6iJ6kLz8kM-4qP8_r1_x8qX9-5_o=";
+                    
+                    // Al hacer click, inicia el video
+                    card.onclick = () => startVR(videoUrl);
+
+                    card.innerHTML = `
+                        <img src="${item.img}" alt="${item.title}" loading="lazy">
+                        <div class="card-overlay">
+                            <div class="card-title">${item.title}</div>
+                        </div>
+                    `;
+                    list.appendChild(card);
+                });
+
+                section.appendChild(title);
+                section.appendChild(list);
+                container.appendChild(section);
+            });
+        }
+
+        // Renderizar en los 3 lugares (2D, Ojo Izquierdo, Ojo Derecho)
+        renderContent('content-container-2d', false);
+        renderContent('vr-content-left', true);
+        renderContent('vr-content-right', true);
+
+        // --- GESTIÓN DE MODO INTERFAZ VR ---
+        const ui2d = document.getElementById('ui-2d');
+        const uiVR = document.getElementById('ui-vr');
+        const navbar2d = document.getElementById('navbar-2d');
+
+        function toggleVRInterface() {
+            if (uiVR.classList.contains('active')) {
+                // Salir de VR UI
+                uiVR.classList.remove('active');
+                ui2d.style.display = 'block';
+                navbar2d.style.display = 'flex';
+                if (document.exitFullscreen) document.exitFullscreen();
+            } else {
+                // Entrar a VR UI
+                uiVR.classList.add('active');
+                ui2d.style.display = 'none';
+                navbar2d.style.display = 'none';
+                enterFullscreen();
+            }
+        }
+
+        // Sincronización de Scroll (Ojo Izquierdo controla Ojo Derecho)
+        const leftMenu = document.getElementById('vr-menu-left');
+        const rightMenu = document.getElementById('vr-menu-right');
+        
+        // Bandera para evitar bucle infinito de eventos scroll
+        let isSyncingLeft = false;
+        let isSyncingRight = false;
+
+        leftMenu.onscroll = function() {
+            if (!isSyncingLeft) {
+                isSyncingRight = true;
+                rightMenu.scrollTop = this.scrollTop;
+                rightMenu.scrollLeft = this.scrollLeft;
+            }
+            isSyncingLeft = false;
+        };
+
+        rightMenu.onscroll = function() {
+            if (!isSyncingRight) {
+                isSyncingLeft = true;
+                leftMenu.scrollTop = this.scrollTop;
+                leftMenu.scrollLeft = this.scrollLeft;
+            }
+            isSyncingRight = false;
+        };
+
+        // --- REPRODUCTOR DE VIDEO VR ---
+        const playerContainer = document.getElementById('vr-player-container');
+        const vLeft = document.getElementById('video-left');
+        const vRight = document.getElementById('video-right');
+
+        function startVR(url) {
+            vLeft.src = url;
+            vRight.src = url;
+            
+            playerContainer.classList.add('active');
+            
+            // Si no estamos ya en fullscreen (ej: viniendo de 2D), entrar
+            if (!document.fullscreenElement) enterFullscreen();
+
+            vLeft.play();
+            vRight.play();
+            syncVideos();
+        }
+
+        function exitVideoVR() {
+            playerContainer.classList.remove('active');
+            vLeft.pause();
+            vRight.pause();
+            // Si estábamos en Modo Interfaz VR, no salimos de fullscreen, solo ocultamos el video
+            // Si estábamos en 2D, salimos de fullscreen
+            if (!uiVR.classList.contains('active')) {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        function enterFullscreen() {
+            const doc = document.documentElement;
+            if (doc.requestFullscreen) doc.requestFullscreen();
+            else if (doc.webkitRequestFullscreen) doc.webkitRequestFullscreen();
+        }
+
+        function togglePlay() {
+            if (vLeft.paused) { vLeft.play(); vRight.play(); } 
+            else { vLeft.pause(); vRight.pause(); }
+        }
+
+        function syncVideos() {
+            setInterval(() => {
+                if (Math.abs(vLeft.currentTime - vRight.currentTime) > 0.1) {
+                    vRight.currentTime = vLeft.currentTime;
+                }
+            }, 1000);
+        }
+
+    </script>
+</body>
+</html>
