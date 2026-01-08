@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IngenieroCAD - P&ID Pro</title>
+    <title>IngenieroCAD - P&ID Pro (V2.1)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -57,18 +57,12 @@
             Download: <React.Fragment><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></React.Fragment>,
             Spline: <React.Fragment><path d="M19 22v-3a3 3 0 0 0-3-3H8a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h3" /><path d="M22 19a3 3 0 0 0-3-3" /><path d="M5 5a3 3 0 0 1 3-3" /></React.Fragment>,
             Settings2: <React.Fragment><path d="M20 7h-9" /><path d="M14 17H5" /><circle cx="17" cy="17" r="3" /><circle cx="7" cy="7" r="3" /></React.Fragment>,
-            Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
-            Droplet: <path d="M12 22a7 7 0 0 0 7-7c0-2-2-5-7-13-5 8-7 11-7 13a7 7 0 0 0 7 7z" />,
-            Cylinder: <React.Fragment><path d="M5 6v12" /><path d="M19 6v12" /><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M19 18c0 1.7-3.1 3-7 3s-7-1.3-7-3" /></React.Fragment>,
-            Thermometer: <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />,
             Move: <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M19 9l3 3-3 3M9 19l3 3 3-3M2 12h20M12 2v20" />,
             PlusSquare: <React.Fragment><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M8 12h8" /><path d="M12 8v8" /></React.Fragment>,
-            Anchor: <path d="M12 22a9 9 0 0 0 9-9H12V2z" />,
             Layers: <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />,
             Eye: <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />,
             EyeOff: <React.Fragment><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" /><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.9 3.23" /><path d="M1.73 1.73l20.54 20.54" /><path d="m17.5 17.5c-1.55 1.26-3.37 2.5-5.5 2.5-7 0-10-7-10-7a13.16 13.16 0 0 1 3.12-4.19" /></React.Fragment>,
             Plus: <path d="M5 12h14M12 5v14"/>,
-            Palette: <React.Fragment><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.093 0-.679.637-1.203 1.25-1.203H17c2.75 0 5-2.25 5-5 0-3.875-4.5-8-10-8Z"/></React.Fragment>,
             HelpCircle: <React.Fragment><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></React.Fragment>,
             Mouse: <React.Fragment><rect x="5" y="2" width="14" height="20" rx="7" /><path d="M12 6v4" /></React.Fragment>,
             Tag: <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />,
@@ -83,18 +77,20 @@
             TeeIcon: <path d="M12 2v20M2 12h20" />, 
             ReducerIcon: <path d="M4 20l16-8L4 4z" />,
             TermIcon: <circle cx="12" cy="12" r="8" />,
-            RotateCw: <React.Fragment><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></React.Fragment>,
             Save: <React.Fragment><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></React.Fragment>,
-            FolderOpen: <React.Fragment><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></React.Fragment>
+            FolderOpen: <React.Fragment><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></React.Fragment>,
+            ElevatorIcon: <path d="M12 2v20M8 18l4 4 4-4" />, // Icono simplificado
+            TankIcon: <rect x="4" y="8" width="16" height="8" rx="4" />
         };
 
         const GRID_SIZE = 40; 
 
         const TOOLS = {
             SELECT: 'select', PAN: 'pan', LINE: 'line', RECTANGLE: 'rectangle', CIRCLE: 'circle', BEZIER: 'bezier', TEXT: 'text',
-            VALVE: 'valve', PUMP: 'pump', TANK: 'tank', HEAT_EXCHANGER: 'heat_exchanger', INSTRUMENT: 'instrument',
+            VALVE: 'valve', 
             TAG: 'tag_tool', DIMENSION: 'dimension_tool', TRAMO_DATA: 'tramo_data_tool',
-            REGULATOR: 'regulator', REDUCER: 'reducer', TERMINAL: 'terminal', TEE: 'tee'
+            REGULATOR: 'regulator', REDUCER: 'reducer', TERMINAL: 'terminal', TEE: 'tee',
+            ELEVADOR: 'elevador', TANK: 'tank'
         };
 
         const UNITS = { M: { label: 'Metros (m)', factor: 1 }, CM: { label: 'Centímetros (cm)', factor: 100 }, MM: { label: 'Milímetros (mm)', factor: 1000 } };
@@ -153,57 +149,30 @@
         const calculateDespiece = (elements) => {
             const bom = [];
             const pipes = elements.filter(e => e.type === TOOLS.TRAMO_DATA && e.tagMetadata);
-            
-            // Helper para convertir longitud a metros
-            const toMeters = (val, unit) => {
-                const n = parseFloat(val) || 0;
-                if (unit === 'cm') return n / 100;
-                if (unit === 'mm') return n / 1000;
-                return n;
-            };
+            const toMeters = (val, unit) => { const n = parseFloat(val) || 0; return unit === 'cm' ? n/100 : unit === 'mm' ? n/1000 : n; };
 
-            // 1. Tuberías (Sumar longitud)
+            // 1. Tuberías
             const pipeMap = {};
             pipes.forEach(p => {
                 const m = p.tagMetadata;
                 const key = `Tubería ${m.material} Ø${m.diameter}`;
                 if (!pipeMap[key]) pipeMap[key] = { desc: `Tubería ${m.material}`, spec: `Ø${m.diameter}`, qty: 0, unit: 'm' };
-                // Usamos la función de conversión para asegurar que sumamos metros
                 pipeMap[key].qty += toMeters(m.length, m.lengthUnit);
             });
             Object.values(pipeMap).forEach(i => bom.push(i));
 
-            // 2. Codos (Heurística de conexión)
+            // 2. Codos
             const elbowMat = ['Ag', 'Ac', 'Cu Rig'];
             const points = {};
-            
-            const addPt = (x, y, el) => {
-                // Mayor tolerancia de snap para el despiece (5px)
-                const k = `${Math.round(x/5)*5},${Math.round(y/5)*5}`; 
-                if (!points[k]) points[k] = [];
-                points[k].push(el);
-            };
-
-            pipes.forEach(p => {
-                if (elbowMat.includes(p.tagMetadata.material)) {
-                    addPt(p.x1, p.y1, p);
-                    addPt(p.x2, p.y2, p);
-                }
-            });
-
+            const addPt = (x, y, el) => { const k = `${Math.round(x/5)*5},${Math.round(y/5)*5}`; if (!points[k]) points[k] = []; points[k].push(el); };
+            pipes.forEach(p => { if (elbowMat.includes(p.tagMetadata.material)) { addPt(p.x1, p.y1, p); addPt(p.x2, p.y2, p); } });
             const elbows = {};
             Object.values(points).forEach(conns => {
                 if (conns.length === 2) {
-                    const [p1, p2] = conns;
-                    const m1 = p1.tagMetadata;
-                    const m2 = p2.tagMetadata;
+                    const [p1, p2] = conns; const m1 = p1.tagMetadata; const m2 = p2.tagMetadata;
                     if (m1.material === m2.material && m1.diameter === m2.diameter) {
-                        const angle1 = Math.atan2(p1.y2 - p1.y1, p1.x2 - p1.x1);
-                        const angle2 = Math.atan2(p2.y2 - p2.y1, p2.x2 - p2.x1);
-                        let diff = Math.abs(angle1 - angle2);
-                        if (diff > Math.PI) diff = 2*Math.PI - diff;
-                        
-                        // Detectar giro (no es 0 ni 180)
+                        const angle1 = Math.atan2(p1.y2 - p1.y1, p1.x2 - p1.x1); const angle2 = Math.atan2(p2.y2 - p2.y1, p2.x2 - p2.x1);
+                        let diff = Math.abs(angle1 - angle2); if (diff > Math.PI) diff = 2*Math.PI - diff;
                         if (Math.abs(diff) > 0.1 && Math.abs(diff - Math.PI) > 0.1) {
                             const key = `Codo 90° ${m1.material} Ø${m1.diameter}`; 
                             if (!elbows[key]) elbows[key] = { desc: `Codo`, spec: `${m1.material} Ø${m1.diameter}`, qty: 0, unit: 'und' };
@@ -214,10 +183,10 @@
             });
             Object.values(elbows).forEach(i => bom.push(i));
 
-            // 3. Accesorios
+            // 3. Accesorios (Incluyendo Elevadores y Tanques)
             const accMap = {};
             elements.forEach(el => {
-                if ([TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE].includes(el.type)) {
+                if ([TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE, TOOLS.ELEVADOR, TOOLS.TANK].includes(el.type)) {
                     let desc = '', spec = '';
                     const c = el.customData || {};
                     if (el.type === TOOLS.VALVE) { desc = 'Válvula de Paso'; spec = 'Universal'; }
@@ -226,33 +195,22 @@
                     if (el.type === TOOLS.REDUCER) { desc = `Reducción (${c.reductionType || 'Copa'})`; spec = `${c.diaMajor || '?'} x ${c.diaMinor || '?'}`; }
                     if (el.type === TOOLS.TERMINAL) { desc = `Terminal ${c.terminalType || ''}`; spec = `${c.dimension || ''}`; }
                     
+                    // --- NUEVOS COMPONENTES EN BOM ---
+                    if (el.type === TOOLS.ELEVADOR) {
+                        desc = `Elevador de Transición (${c.elevatorType || 'Macho'})`;
+                        spec = `Ø${c.diameter || '1/2"'} - ${c.std || 'IPS'} ${c.hasValve ? 'c/Válvula' : ''}`;
+                    }
+                    if (el.type === TOOLS.TANK) {
+                        desc = `Tanque GLP (${c.tankType || 'ASME'}) - ${c.installType || 'Estacionario'}`;
+                        spec = `Cap: ${c.capacityGal || 0} gal / ${c.capacityKg || 0} kg`;
+                    }
+
                     const key = `${desc}-${spec}`;
                     if (!accMap[key]) accMap[key] = { desc, spec, qty: 0, unit: 'und' };
                     accMap[key].qty++;
                 }
             });
             Object.values(accMap).forEach(i => bom.push(i));
-
-            // 4. Uniones por Longitud (> 6m)
-            const unionMat = ['Ag', 'Ac', 'Cu Rig'];
-            const unionsMap = {};
-            pipes.forEach(p => {
-                const m = p.tagMetadata;
-                if (unionMat.includes(m.material)) {
-                    const lenM = toMeters(m.length, m.lengthUnit);
-                    // Si longitud > 6m, se requieren uniones.
-                    // Fórmula: Techo(Longitud / 6) - 1.
-                    if (lenM > 6) {
-                        const count = Math.ceil(lenM / 6) - 1;
-                        if (count > 0) {
-                            const key = `Unión ${m.material} Ø${m.diameter}`;
-                            if (!unionsMap[key]) unionsMap[key] = { desc: `Unión`, spec: `${m.material} Ø${m.diameter}`, qty: 0, unit: 'und' };
-                            unionsMap[key].qty += count;
-                        }
-                    }
-                }
-            });
-            Object.values(unionsMap).forEach(i => bom.push(i));
 
             return bom;
         };
@@ -430,7 +388,7 @@
                         if (currentElement && tool === TOOLS.LINE && drawingLength.length > 0) { e.preventDefault(); setDrawingLength(prev => prev.slice(0, -1)); return; }
                         if (selectedIds.length > 0) { setElements(prev => prev.filter(el => !selectedIds.includes(el.id))); setSelectedIds([]); }
                     }
-                    if ((e.key === 'r' || e.key === 'R') && !currentElement && [TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE].includes(tool)) {
+                    if ((e.key === 'r' || e.key === 'R') && !currentElement && [TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE, TOOLS.ELEVADOR, TOOLS.TANK].includes(tool)) {
                         setFlipRotation(prev => (prev + 1) % 4);
                     }
                     if (currentElement && tool === TOOLS.LINE) {
@@ -479,7 +437,7 @@
                         ctx.restore();
                     }
                 }
-                else if ([TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE].includes(tool)) {
+                else if ([TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE, TOOLS.ELEVADOR, TOOLS.TANK].includes(tool)) {
                     // Preview with default scale 1
                     drawElement(ctx, { type: tool, x1: mouseWorldPos.x, y1: mouseWorldPos.y, color: color + '80', lineWidth, rotation: snapRotation, extraData: { flipIndex: flipRotation }, anchor, elementScale: 1 }, false);
                     ctx.save(); ctx.fillStyle = '#9ca3af'; ctx.font = `${10/scale}px sans-serif`; ctx.fillText("[R] Rotar", mouseWorldPos.x + 20/scale, mouseWorldPos.y + 20/scale); ctx.restore();
@@ -519,7 +477,7 @@
                 const localScale = element.elementScale || 1; 
                 const baseSize = GRID_SIZE * 0.6 * localScale; 
                 
-                const isSymbol = [TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE].includes(type);
+                const isSymbol = [TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE, TOOLS.ELEVADOR, TOOLS.TANK].includes(type);
                 
                 if (isSymbol && type !== TOOLS.TEE && type !== TOOLS.VALVE && type !== TOOLS.REGULATOR) {
                     ctx.translate(x1, y1); ctx.rotate(rotation);
@@ -549,6 +507,44 @@
                         ctx.strokeStyle = '#374151'; ctx.lineWidth = 1 / scale; ctx.fillStyle = 'rgba(31, 41, 55, 0.4)'; ctx.fillRect(x1 - 5, y1 - lh, 130, lh * 3.5); ctx.strokeRect(x1 - 5, y1 - lh, 130, lh * 3.5);
                         break;
                     
+                    // --- NUEVO: ELEVADOR DE TRANSICIÓN ---
+                    case TOOLS.ELEVADOR:
+                        // Visualización: Un tubo vertical con una "camisa" o base rectangular
+                        const elW = baseSize * 0.4;
+                        const elH = baseSize * 1.5;
+                        // Cuerpo principal
+                        ctx.rect(-elW/2, -elH/2, elW, elH);
+                        ctx.fill(); ctx.stroke();
+                        // Base de transición
+                        ctx.beginPath();
+                        ctx.rect(-elW, elH/2 - (elH*0.3), elW*2, elH*0.3);
+                        ctx.fill(); ctx.stroke();
+                        // Línea de conexión superior e inferior
+                        ctx.beginPath();
+                        ctx.moveTo(0, -elH/2); ctx.lineTo(0, -elH/2 - 10);
+                        ctx.moveTo(0, elH/2); ctx.lineTo(0, elH/2 + 10);
+                        ctx.stroke();
+                        break;
+
+                    // --- NUEVO: TANQUE GLP ---
+                    case TOOLS.TANK:
+                        // Visualización: Cápsula (Cilindro horizontal con cabezas redondas)
+                        const tkR = baseSize * 0.6; // Radio
+                        const tkL = baseSize * 2.5; // Longitud cuerpo
+                        // Dibujar cuerpo
+                        ctx.moveTo(-tkL/2, -tkR);
+                        ctx.lineTo(tkL/2, -tkR);
+                        ctx.arc(tkL/2, 0, tkR, -Math.PI/2, Math.PI/2); // Cabeza derecha
+                        ctx.lineTo(-tkL/2, tkR);
+                        ctx.arc(-tkL/2, 0, tkR, Math.PI/2, -Math.PI/2); // Cabeza izquierda
+                        ctx.fill(); ctx.stroke();
+                        // Detalles (Soportes/Patas)
+                        ctx.beginPath();
+                        ctx.rect(-tkL*0.4, tkR, tkL*0.1, tkR*0.3); // Pata izq
+                        ctx.rect(tkL*0.3, tkR, tkL*0.1, tkR*0.3); // Pata der
+                        ctx.fill(); ctx.stroke();
+                        break;
+
                     case TOOLS.VALVE: 
                         const vS = baseSize * 0.8;
                         const vBranches = getValidBranchAngles(rotation);
@@ -617,6 +613,11 @@
                  const baseSize = GRID_SIZE * 0.6 * localScale; // Use scale
                  const points = [];
                  
+                 // Lógica genérica de rotación
+                 const angle = el.rotation || 0;
+                 const cos = Math.cos(angle); const sin = Math.sin(angle);
+                 const trans = (lx, ly) => ({ x: lx * cos - ly * sin + el.x1, y: lx * sin + ly * cos + el.y1 });
+
                  if (el.type === TOOLS.TEE) {
                     const s = baseSize * 0.8;
                     const rotation = el.rotation || 0;
@@ -639,18 +640,25 @@
                      points.push({x: el.x1 - rx, y: el.y1 - ry});
                      points.push({x: el.x1 + rx, y: el.y1 + ry});
                      points.push({x: el.x1, y: el.y1});
-                 } else {
-                     const angle = el.rotation || 0;
-                     const cos = Math.cos(angle); const sin = Math.sin(angle);
-                     const trans = (lx, ly) => ({ x: lx * cos - ly * sin + el.x1, y: lx * sin + ly * cos + el.y1 });
-                     if (el.type === TOOLS.REGULATOR) {
+                 } else if (el.type === TOOLS.REGULATOR) {
                          const s = baseSize * 0.8; points.push(trans(-s, 0)); points.push(trans(s, 0));
-                     } else if (el.type === TOOLS.REDUCER) {
+                 } else if (el.type === TOOLS.REDUCER) {
                          const l = baseSize * 1.2; points.push(trans(-l/2, 0)); points.push(trans(l/2, 0));
-                     } else if (el.type === TOOLS.TERMINAL) {
+                 } else if (el.type === TOOLS.ELEVADOR) {
+                         // Puntos arriba y abajo
+                         const elH = baseSize * 1.5;
+                         points.push(trans(0, -elH/2 - 10)); // Top
+                         points.push(trans(0, elH/2 + 10)); // Bottom
+                 } else if (el.type === TOOLS.TANK) {
+                        // Puntos izquierda y derecha
+                        const tkR = baseSize * 0.6;
+                        const tkL = baseSize * 2.5; 
+                        points.push(trans(-tkL/2 - tkR, 0)); 
+                        points.push(trans(tkL/2 + tkR, 0));
+                 } else if (el.type === TOOLS.TERMINAL) {
                          points.push({x: el.x1, y: el.y1});
-                     }
                  }
+                 
                  return points;
             };
 
@@ -663,7 +671,7 @@
                         const d1 = Math.sqrt((pos.x - el.x1)**2 + (pos.y - el.y1)**2); if (d1 < minDist) { minDist = d1; nearest = { x: el.x1, y: el.y1 }; }
                         const d2 = Math.sqrt((pos.x - el.x2)**2 + (pos.y - el.y2)**2); if (d2 < minDist) { minDist = d2; nearest = { x: el.x2, y: el.y2 }; }
                     }
-                    if ([TOOLS.TEE, TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL].includes(el.type)) {
+                    if ([TOOLS.TEE, TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.ELEVADOR, TOOLS.TANK].includes(el.type)) {
                         const snaps = getSymbolSnapPoints(el);
                         snaps.forEach(pt => {
                             const d = Math.sqrt((pos.x - pt.x)**2 + (pos.y - pt.y)**2);
@@ -696,8 +704,10 @@
                     return Math.sqrt((pos.x - xx)**2 + (pos.y - yy)**2) < tol;
                 } else if (el.type === TOOLS.RECTANGLE) {
                     return (Math.abs(pos.x - el.x1) < tol || Math.abs(pos.x - el.x2) < tol) && (pos.y > Math.min(el.y1, el.y2) && pos.y < Math.max(el.y1, el.y2)) || (Math.abs(pos.y - el.y1) < tol || Math.abs(pos.y - el.y2) < tol) && (pos.x > Math.min(el.x1, el.x2) && pos.x < Math.max(el.x1, el.x2));
-                } else if (el.type === TOOLS.CIRCLE || [TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE].includes(el.type)) {
-                    const d = Math.sqrt((pos.x - el.x1)**2 + (pos.y - el.y1)**2); return d < (GRID_SIZE); 
+                } else if (el.type === TOOLS.CIRCLE || [TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE, TOOLS.ELEVADOR, TOOLS.TANK].includes(el.type)) {
+                    // Radio de hit mayor para tanques
+                    const hitR = el.type === TOOLS.TANK ? GRID_SIZE * 2 : GRID_SIZE;
+                    const d = Math.sqrt((pos.x - el.x1)**2 + (pos.y - el.y1)**2); return d < hitR; 
                 } else if (el.type === TOOLS.TEXT || el.type === TOOLS.TRAMO_DATA) {
                     return Math.abs(pos.x - el.x1) < 100 && Math.abs(pos.y - el.y1) < 20;
                 }
@@ -732,12 +742,15 @@
                 if (tool === TOOLS.BEZIER) { if (bezierStep === 0) { setCurrentElement({ id: Date.now(), type: TOOLS.BEZIER, x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y, cx: worldPos.x, cy: worldPos.y, color, lineWidth, layerId: activeLayer }); setBezierStep(1); } else { setElements(prev => [...prev, currentElement]); setCurrentElement(null); setBezierStep(0); } return; }
                 
                 // Insert Symbol with Technical Defaults
-                if ([TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE].includes(tool)) { 
+                if ([TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE, TOOLS.ELEVADOR, TOOLS.TANK].includes(tool)) { 
                     const defaultCustomData = {};
                     if (tool === TOOLS.REGULATOR) { defaultCustomData.pIn = '2'; defaultCustomData.pOut = '1'; defaultCustomData.flow = '5'; defaultCustomData.length = '0.2'; }
                     if (tool === TOOLS.REDUCER) { defaultCustomData.reductionType = 'Copa Reducción'; defaultCustomData.diaMajor = DIAMETERS[4]; defaultCustomData.diaMinor = DIAMETERS[2]; }
                     if (tool === TOOLS.TERMINAL) { defaultCustomData.terminalType = 'Macho'; defaultCustomData.dimension = DIAMETERS[2]; }
-                    
+                    // --- NUEVOS DEFAULTS ---
+                    if (tool === TOOLS.ELEVADOR) { defaultCustomData.diameter = DIAMETERS[2]; defaultCustomData.elevatorType = 'Macho'; defaultCustomData.hasValve = false; defaultCustomData.std = 'IPS'; }
+                    if (tool === TOOLS.TANK) { defaultCustomData.capacityGal = '120'; defaultCustomData.capacityKg = '0'; defaultCustomData.tankType = 'ASME'; defaultCustomData.installType = 'Estacionario'; }
+
                     setElements(prev => [...prev, { id: Date.now(), type: tool, x1: mouseWorldPos.x, y1: mouseWorldPos.y, x2: mouseWorldPos.x, y2: mouseWorldPos.y, color, lineWidth, rotation: snapRotation, extraData: { flipIndex: flipRotation }, customData: defaultCustomData, anchor, layerId: activeLayer, elementScale: 1 }]); 
                     return; 
                 }
@@ -790,7 +803,7 @@
                     }
                 }
                 setSnapPoint(foundSnap); setGuideLine(foundGuide); setMouseWorldPos(finalPos);
-                if ([TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE].includes(tool)) {
+                if ([TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE, TOOLS.ELEVADOR, TOOLS.TANK].includes(tool)) {
                     const snapInfo = getNearestLine(worldPos);
                     if (snapInfo) { setMouseWorldPos({ x: snapInfo.x, y: snapInfo.y }); setSnapRotation(snapInfo.angle); } else { setMouseWorldPos(worldPos); setSnapRotation(0); }
                 } 
@@ -918,8 +931,20 @@
             const updateSelectedCoord = (prop, val) => { const num = parseFloat(val); if (isNaN(num)) return; setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, [prop]: num } : el)); };
             const updateSelectedScale = (val) => { const num = parseFloat(val); if (isNaN(num) || num <= 0) return; setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, elementScale: num } : el)); };
             const updateSelectedText = (val) => { setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, text: val } : el)); };
+            
+            // --- NUEVOS UPDATES PARA PROPIEDADES ESPECÍFICAS ---
+            const updateCustomData = (key, val) => {
+                 setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, customData: { ...el.customData, [key]: val } } : el));
+            };
+            const updateTramoMeta = (key, val) => {
+                setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, tagMetadata: { ...el.tagMetadata, [key]: val } } : el));
+            };
+            const updateSelectedLength = (val) => { /* Logic integrated above in resizing */ };
+            const updateSelectedAngle = (val) => { /* Logic integrated above in resizing */ };
+            const updateSelectedRotationDeg = (deg) => { const rad = deg * Math.PI / 180; setElements(prev => prev.map(el => selectedIds.includes(el.id) ? { ...el, rotation: rad } : el)); };
+
+
             const deleteSelection = () => { setElements(prev => prev.filter(el => !selectedIds.includes(el.id))); setSelectedIds([]); };
-            const handleEditTramo = () => { const el = elements.find(e => e.id === selectedIds[0]); if (el && el.tagMetadata) { setTagModal({ visible: true, type: el.tagMetadata.type === 'Punto' ? TAG_TYPES.PUNTO : TAG_TYPES.TRAMO_COMPLETO, x: el.x1, y: el.y1, editData: el, initialData: el }); } };
 
             return (
                 <div className="flex flex-col h-screen bg-gray-900 text-gray-200 overflow-hidden font-sans" onContextMenu={(e) => e.preventDefault()}>
@@ -933,7 +958,7 @@
                                 <div className="w-px h-5 bg-gray-600 mx-1"></div>
                                 <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-none" title="Color personalizado" />
                             </div>
-                            {[TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE].includes(tool) && (
+                            {[TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE, TOOLS.ELEVADOR, TOOLS.TANK].includes(tool) && (
                                 <div className="flex items-center gap-2 ml-4 bg-gray-700 px-2 py-1 rounded-lg border border-blue-500/30">
                                     <span className="text-xs text-blue-300 font-bold uppercase">Acople:</span>
                                     <select value={anchor} onChange={(e) => setAnchor(e.target.value)} className="bg-gray-800 text-xs border border-gray-600 rounded px-1 py-1 text-white outline-none">
@@ -1018,7 +1043,7 @@
 
                                         {selectedIds.length === 1 && (() => {
                                             const el = elements.find(e => e.id === selectedIds[0]);
-                                            const isSymbol = [TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE].includes(el.type);
+                                            const isSymbol = [TOOLS.VALVE, TOOLS.REGULATOR, TOOLS.REDUCER, TOOLS.TERMINAL, TOOLS.TEE, TOOLS.ELEVADOR, TOOLS.TANK].includes(el.type);
                                             const custom = el.customData || {};
                                             const meta = el.tagMetadata || {};
 
@@ -1039,6 +1064,34 @@
                                                             <div className="grid grid-cols-2 gap-2">
                                                                 <div><span className="prop-label">Carga</span><input type="number" className="prop-input" value={meta.load} onChange={(e) => updateTramoMeta('load', e.target.value)} /></div>
                                                                 <div><span className="prop-label">Unidad</span><select className="prop-input" value={meta.loadUnit} onChange={(e) => updateTramoMeta('loadUnit', e.target.value)}>{LOAD_UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                                                            </div>
+                                                        </React.Fragment>
+                                                    )}
+
+                                                    {/* --- NUEVOS INPUTS ELEVADOR --- */}
+                                                    {el.type === TOOLS.ELEVADOR && (
+                                                        <React.Fragment>
+                                                            <div className="section-title text-green-400">Datos Elevador</div>
+                                                            <div><span className="prop-label">Diámetro</span><select className="prop-input" value={custom.diameter || ''} onChange={(e) => updateCustomData('diameter', e.target.value)}>{DIAMETERS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <div><span className="prop-label">Tipo</span><select className="prop-input" value={custom.elevatorType || ''} onChange={(e) => updateCustomData('elevatorType', e.target.value)}><option value="Macho">Macho</option><option value="Hembra">Hembra</option></select></div>
+                                                                <div><span className="prop-label">Norma</span><select className="prop-input" value={custom.std || ''} onChange={(e) => updateCustomData('std', e.target.value)}><option value="IPS">IPS</option><option value="CTS">CTS</option></select></div>
+                                                            </div>
+                                                            <div><span className="prop-label">Válvula Incorp.</span><select className="prop-input" value={custom.hasValve ? 'Si' : 'No'} onChange={(e) => updateCustomData('hasValve', e.target.value === 'Si')}><option value="Si">Sí</option><option value="No">No</option></select></div>
+                                                        </React.Fragment>
+                                                    )}
+
+                                                    {/* --- NUEVOS INPUTS TANQUE --- */}
+                                                    {el.type === TOOLS.TANK && (
+                                                        <React.Fragment>
+                                                            <div className="section-title text-green-400">Datos Tanque GLP</div>
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <div><span className="prop-label">Cap. Agua (Gal)</span><input type="number" className="prop-input" value={custom.capacityGal || 0} onChange={(e) => updateCustomData('capacityGal', e.target.value)} /></div>
+                                                                <div><span className="prop-label">Cap. Gas (Kg)</span><input type="number" className="prop-input" value={custom.capacityKg || 0} onChange={(e) => updateCustomData('capacityKg', e.target.value)} /></div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <div><span className="prop-label">Norma</span><select className="prop-input" value={custom.tankType || ''} onChange={(e) => updateCustomData('tankType', e.target.value)}><option value="ASME">ASME</option><option value="DOT">DOT</option></select></div>
+                                                                <div><span className="prop-label">Tipo Inst.</span><select className="prop-input" value={custom.installType || ''} onChange={(e) => updateCustomData('installType', e.target.value)}><option value="Estacionario">Estacionario</option><option value="Fijo">Fijo</option></select></div>
                                                             </div>
                                                         </React.Fragment>
                                                     )}
@@ -1175,6 +1228,9 @@
                                     <LibItem label="Reducción" icon={ICONS.ReducerIcon} onClick={() => { setTool(TOOLS.REDUCER); setShowLibrary(false); }} />
                                     <LibItem label="Tee" icon={ICONS.TeeIcon} onClick={() => { setTool(TOOLS.TEE); setShowLibrary(false); }} />
                                     <LibItem label="Terminal" icon={ICONS.TermIcon} onClick={() => { setTool(TOOLS.TERMINAL); setShowLibrary(false); }} />
+                                    {/* NUEVOS BOTONES */}
+                                    <LibItem label="Elevador" icon={ICONS.ElevatorIcon} onClick={() => { setTool(TOOLS.ELEVADOR); setShowLibrary(false); }} />
+                                    <LibItem label="Tanque" icon={ICONS.TankIcon} onClick={() => { setTool(TOOLS.TANK); setShowLibrary(false); }} />
                                 </div>
                             </div>
                         </div>
