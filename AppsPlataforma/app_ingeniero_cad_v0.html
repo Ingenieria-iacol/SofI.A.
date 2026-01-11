@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v10.5 - Final</title>
+<title>CAD Gas v10.6 - Alturas Precisas</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ff00; }
@@ -145,7 +145,7 @@
 <body>
 
 <header>
-    <div class="brand"><span>CAD</span> GAS v10.5</div>
+    <div class="brand"><span>CAD</span> GAS v10.6</div>
     <button class="btn" onclick="guardarProyecto()">💾 Guardar</button>
     <button class="btn" onclick="document.getElementById('file-input').click()">📂 Abrir</button>
     <button class="btn danger" onclick="limpiarTodo()">🗑️ Nuevo</button>
@@ -286,6 +286,11 @@
                     <select id="p-capa" class="btn" onchange="updateStyleProp('layerId', this.value)"></select>
                 </div>
                 
+                <div class="prop-row">
+                    <label>Elevación Inicial (Z) (<span id="lbl-unit-z">m</span>)</label>
+                    <input type="text" id="p-altura" inputmode="decimal" onchange="updateAltura(this.value)" placeholder="0.00">
+                </div>
+                
                 <div class="prop-row" id="row-longitud">
                       <label>Longitud (<span id="lbl-unit">m</span>)</label>
                       <input type="text" inputmode="decimal" id="p-longitud" onchange="updateLongitud(this.value)">
@@ -364,25 +369,21 @@ const DIAMETROS_DISPONIBLES = {
     'cobre': ['3/8"', '1/2"', '5/8"', '3/4"', '1"']
 };
 
-// --- CONFIGURACIÓN CON CORRECCIÓN DE ESCALA ---
+// --- CONFIGURACIÓN ---
 let CONFIG = { 
-    // tileW cambiado de 40 a 100. Ahora 1 metro = 100 pixeles.
     tileW: 100, 
-    tileH: 50, // Ajustado para mantener proporción isométrica 2:1
+    tileH: 50, 
     zStep: 1, 
-    // AJUSTE CLAVE: Reducido de 20 a 8 para permitir selección precisa en objetos pequeños (ej. 10cm)
     snapRadius: 8, 
     showGrid: true, enableSnap: true, unit: 'm',
     showTags: true 
 };
-const UNITS = { 'm': { factor: 1, label: 'm', precision: 2 }, 'dm': { factor: 10, label: 'dm', precision: 1 }, 'cm': { factor: 100, label: 'cm', precision: 1 }, 'mm': { factor: 1000, label: 'mm', precision: 0 } };
+const UNITS = { 'm': { factor: 1, label: 'm', precision: 2 }, 'dm': { factor: 10, label: 'cm', precision: 1 }, 'cm': { factor: 100, label: 'cm', precision: 1 }, 'mm': { factor: 1000, label: 'mm', precision: 0 } };
 
-// --- NUEVA LÓGICA DE ESCALA REALISTA ---
 function parseDiameterToScale(valStr) {
     if(!valStr) return 2; 
 
     let meters = 0;
-    // 1. Limpieza y Parseo a Metros
     if(valStr.toLowerCase().includes('mm')) {
         meters = parseFloat(valStr) / 1000;
     } else {
@@ -401,15 +402,11 @@ function parseDiameterToScale(valStr) {
     }
 
     if(isNaN(meters) || meters === 0) return 2;
-
-    // 2. Convertir Metros a Píxeles de Pantalla (World Units)
     let pixelWidth = meters * CONFIG.tileW;
-
-    // 3. Forzar un mínimo visible mejorado. Si es muy fino, se dibuja al menos de 2px
     return Math.max(1.5, pixelWidth);
 }
 
-// --- CATALOGO ACTUALIZADO ---
+// --- CATALOGO ---
 const CATALOGO = {
     mat: [
         { id: 't_acero', name: 'Acero Sch40', color: '#FFD700', type: 'tuberia', props: { material: 'acero', diametroNominal: '1"' } },
@@ -450,7 +447,6 @@ function isoToScreen(x, y, z) {
     const ang = estado.view.angle;
     const nx = x * Math.cos(ang) - y * Math.sin(ang);
     const ny = x * Math.sin(ang) + y * Math.cos(ang);
-    // Usamos CONFIG.tileW para la escala base
     return { x: nx * CONFIG.tileW, y: ny * CONFIG.tileH - (z * CONFIG.tileW * 0.7) };
 }
 function screenToIso(sx, sy) {
@@ -507,11 +503,11 @@ function analizarRed() {
     return accesorios;
 }
 
-// --- RENDERIZADO MEJORADO ---
+// --- RENDERIZADO ---
 function renderGrid() {
     const pMaj = document.getElementById('grid-path'); const pMin = document.getElementById('grid-minor'); const a = document.getElementById('grid-axis');
     if(!CONFIG.showGrid) { pMaj.setAttribute('d', ''); pMin.setAttribute('d', ''); a.setAttribute('d', ''); return; }
-    let dMaj="", dMin="", da=""; const sz=20; const step = 1; // Grid de 1 metro
+    let dMaj="", dMin="", da=""; const sz=20; const step = 1; 
     for(let i=-sz; i<=sz; i+=step) {
         let p1=isoToScreen(-sz,i,0), p2=isoToScreen(sz,i,0); let seg = `M${p1.x},${p1.y} L${p2.x},${p2.y} `;
         if(i===0) da+=seg; else if(i%5 === 0) dMaj+=seg; else dMin+=seg; 
@@ -560,7 +556,16 @@ function renderScene() {
                 const matDisplay = matRaw.charAt(0).toUpperCase() + matRaw.slice(1);
                 const diamDisplay = el.props.diametroNominal ? `Ø${el.props.diametroNominal}` : '';
                 const lenDisplay = `L=${formatLength(lenRaw)}`;
-                const labelText = `${matDisplay} ${diamDisplay} ${lenDisplay}`.trim();
+                
+                // MEJORA: INCLUIR ALTURA EN LA ETIQUETA
+                let hDisplay = `H=${formatLength(el.z)}`;
+                // Si la tubería tiene pendiente (diferencia de altura), mostrar rango
+                if (Math.abs(el.dz) > 0.05) {
+                    hDisplay = `H=${formatLength(el.z)}⮕${formatLength(el.z + el.dz)}`;
+                }
+
+                const labelText = `${matDisplay} ${diamDisplay} ${lenDisplay} ${hDisplay}`.trim();
+                
                 const tTech = document.createElementNS("http://www.w3.org/2000/svg", "text");
                 tTech.setAttribute("x", midX); tTech.setAttribute("y", midY - 6); 
                 tTech.setAttribute("class", "label-tech");
@@ -650,14 +655,11 @@ function renderScene() {
     autoFittings.forEach(fit => {
         const s = isoToScreen(fit.x, fit.y, fit.z);
         const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        
-        // --- MEJORA VISUAL DE CODOS PROPORCIONALES ---
         const scaleW = fit.width / CONFIG.tileW; 
         const elbowRadius = Math.max(scaleW * 2.5, 0.02); 
 
         if (fit.tipo === 'codo_auto') {
             const v1 = fit.dirs[0]; const v2 = fit.dirs[1];
-            
             const p1 = isoToScreen(fit.x + v1.x * elbowRadius, fit.y + v1.y * elbowRadius, fit.z + v1.z * elbowRadius);
             const p2 = isoToScreen(fit.x + v2.x * elbowRadius, fit.y + v2.y * elbowRadius, fit.z + v2.z * elbowRadius);
             
@@ -668,7 +670,7 @@ function renderScene() {
             
             const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
             c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); 
-            c.setAttribute("r", fit.width * 0.6); // Puntito proporcional
+            c.setAttribute("r", fit.width * 0.6); 
             c.setAttribute("fill", fit.color);
             g.appendChild(c);
         } else {
@@ -696,7 +698,7 @@ function renderEffects() {
             l.setAttribute("class", cls); root.appendChild(l);
         } else {
             const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
-            c.setAttribute("cx",s.x); c.setAttribute("cy",s.y); c.setAttribute("r",10); // Halo de selección fijo
+            c.setAttribute("cx",s.x); c.setAttribute("cy",s.y); c.setAttribute("r",10); 
             c.setAttribute("class", cls); root.appendChild(c);
         }
     };
@@ -713,13 +715,10 @@ function getSnapPoints(el) {
     return pts;
 }
 
-// 1. NUEVO: Prevenir que salga el menú del navegador al dar Clic Derecho
 svg.addEventListener('contextmenu', e => e.preventDefault());
 
 svg.addEventListener('mousedown', e => {
-    // RESTAURADO: Clic Derecho (2) es PAN
     if(e.button === 2) { estado.action = 'pan'; estado.startAction = {x: e.clientX, y: e.clientY}; svg.style.cursor = 'grabbing'; return; }
-    // RESTAURADO: Clic Izquierdo (0) es ACCIÓN
     if(e.button === 0) { estado.startAction = {x: e.clientX, y: e.clientY}; if (estado.tool === 'select' && estado.hoverID) { estado.action = 'potential_drag'; } else { estado.action = 'rotate'; } }
 });
 
@@ -728,13 +727,11 @@ svg.addEventListener('mousemove', e => {
     if(estado.action === 'rotate') { estado.view.angle += (e.clientX - estado.startAction.x) * 0.01; estado.startAction = {x: e.clientX, y: e.clientY}; renderGrid(); renderScene(); renderEffects(); updateTransform(); return; }
     if(estado.action === 'pan') { estado.view.x += e.clientX - estado.startAction.x; estado.view.y += e.clientY - estado.startAction.y; estado.startAction = {x: e.clientX, y: e.clientY}; updateTransform(); return; }
     svg.style.cursor = 'crosshair';
-    // Round to 0.1 for better precision
     const isoRaw = screenToIso(p.x, p.y); 
     estado.mouseIso = {x: Math.round(isoRaw.x*10)/10, y: Math.round(isoRaw.y*10)/10 };
     
     let sn = null; let snID = null;
     if (CONFIG.enableSnap) {
-        // Tolerancia corregida basada en la nueva escala
         const tol = CONFIG.snapRadius / estado.view.scale;
         elementos.forEach(el => {
             const pts = getSnapPoints(el); 
@@ -764,7 +761,6 @@ svg.addEventListener('mousemove', e => {
             if(distDrag > 5) { estado.action = 'dragging'; if(!estado.selID) { estado.selID = estado.hoverID; updatePropsPanel(); } }
     }
     if(estado.tool === 'select' && !estado.action && !estado.snapped) {
-        // AJUSTE: Tolerancia de selección reducida de 20 a 8 para coincidir con el Snap
         const tol = 8 / estado.view.scale; let h = null; let minD = tol; 
         elementos.forEach(el => {
             const s = isoToScreen(el.x, el.y, el.z); let d = 10000;
@@ -795,7 +791,6 @@ function mostrarInputDinámico(xScreen, yScreen, distActual, vectorData) {
 }
 function confirmarInput() {
     const box = document.getElementById('dynamic-input-container'); const input = document.getElementById('dynamic-len');
-    // Uso del nuevo helper
     const val = parseInputFloat(input.value);
     
     if (estado.tempVector && !isNaN(val) && val > 0) {
@@ -912,7 +907,7 @@ function renderInterface(pSVG) {
     let tz = estado.snapped ? estado.snapped.z : estado.currentZ;
     if (estado.drawing && !estado.snapped) {
         const dx = estado.mouseIso.x - estado.inicio.x; const dy = estado.mouseIso.y - estado.inicio.y; const dz = estado.currentZ - estado.inicio.z;
-        const th = 0.5; // Tolerancia en metros más estricta por el zoom
+        const th = 0.5; 
         if (Math.abs(dy) < th && Math.abs(dz) < th) { ty = estado.inicio.y; tz = estado.inicio.z; } 
         else if (Math.abs(dx) < th && Math.abs(dz) < th) { tx = estado.inicio.x; tz = estado.inicio.z; } 
         else if (Math.abs(dx) < th && Math.abs(dy) < th) { tx = estado.inicio.x; ty = estado.inicio.y; }
@@ -932,11 +927,9 @@ function renderInterface(pSVG) {
     g.appendChild(lblTxt);
     if(estado.snapped) {
         const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
-        // Ajuste de snap marker más pequeño
         r.setAttribute("x", sc.x-5); r.setAttribute("y",sc.y-5); r.setAttribute("width",10); r.setAttribute("height",10);
         r.setAttribute("class","snap-marker"); g.appendChild(r);
     } else {
-        // CORRECCIÓN: Puntero reducido de 10px a 6px para mejor visibilidad en objetos pequeños
         const path = document.createElementNS("http://www.w3.org/2000/svg","path");
         path.setAttribute("d", `M${sc.x-6},${sc.y} L${sc.x+6},${sc.y} M${sc.x},${sc.y-6} L${sc.x},${sc.y+6}`);
         path.setAttribute("class","cursor-crosshair"); g.appendChild(path);
@@ -965,8 +958,6 @@ function toggleTags() {
 function resetView() { 
     const rect = svg.getBoundingClientRect(); 
     const centerX = rect.width/2; const centerY = rect.height/2;
-    
-    // --- FORZAR ÁNGULO A 45° ---
     estado.view.angle = Math.PI / 4; 
     
     if (estado.selID) {
@@ -1099,6 +1090,13 @@ window.updatePropsPanel = function() {
     document.getElementById('p-tag').value = el.props.tag || '';
     document.getElementById('p-linestyle').value = el.props.tipoLinea || 'solid';
     document.getElementById('p-capa').value = el.layerId;
+    
+    // --- NUEVO: ACTUALIZAR CAMPO Z ---
+    const u = UNITS[CONFIG.unit];
+    document.getElementById('lbl-unit-z').innerText = u.label;
+    // Multiplicamos el valor interno (siempre metros) por el factor (ej: 100 para cm)
+    document.getElementById('p-altura').value = (el.z * u.factor).toFixed(u.precision);
+    
     const divGrosor = document.getElementById('row-grosor');
     if(el.tipo === 'tuberia' && el.props.material) { divGrosor.style.display = 'none'; } 
     else { divGrosor.style.display = 'flex'; document.getElementById('p-grosor').value = el.props.grosor || 2; }
@@ -1106,7 +1104,7 @@ window.updatePropsPanel = function() {
     if(el.tipo === 'tuberia') {
         divLen.style.display = 'flex';
         const rawLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
-        const u = UNITS[CONFIG.unit];
+        
         document.getElementById('lbl-unit').innerText = u.label;
         document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
     } else {
@@ -1167,15 +1165,30 @@ window.updateLongitud = function(valUser) {
     if(!el || el.tipo !== 'tuberia') return;
     const currentLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
     if(currentLen < 0.0001) return;
-    
-    // Uso del helper para permitir comas
     const newValMeters = parseToMeters(parseInputFloat(valUser));
-    
     if(isNaN(newValMeters) || newValMeters <= 0) return;
     const ratio = newValMeters / currentLen;
     el.dx *= ratio; el.dy *= ratio; el.dz *= ratio;
     renderScene();
 }
+
+// --- NUEVA FUNCIÓN PARA ACTUALIZAR ALTURA ---
+window.updateAltura = function(valUser) {
+    const el = elementos.find(x=>x.id===estado.selID);
+    if(!el) return;
+    
+    // Parseamos permitiendo coma o punto
+    const num = parseInputFloat(valUser);
+    if(isNaN(num)) return;
+
+    // Convertimos la unidad del usuario (cm/mm) a metros internos
+    const u = UNITS[CONFIG.unit];
+    el.z = num / u.factor;
+    
+    renderScene();
+    renderEffects(); // Actualizar halo de selección
+}
+
 function ensureHex(c){ if(c.startsWith('#') && c.length===7) return c; return '#cccccc'; }
 // --- GUARDADO/CARGA ---
 function guardarProyecto() { document.getElementById('modal-guardar').style.display = 'flex'; document.getElementById('input-filename').focus(); }
