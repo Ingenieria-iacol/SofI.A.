@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v12.1 - Smart Hover & Vertical Fix</title>
+<title>CAD Gas v12.1 - Smart Hover & Vertical Fix (Integrado)</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ff00; }
@@ -1316,7 +1316,7 @@ function renderGizmo() {
     });
 }
 
-// --- INTERFAZ & CURSOR (CORREGIDO PARA EVITAR MAREOS) ---
+// --- INTERFAZ & CURSOR (CORREGIDO CON LINEAS GUIA) ---
 function renderInterface(pSVG) {
     const g = document.getElementById('capa-interfaz'); 
     g.innerHTML='';
@@ -1326,8 +1326,11 @@ function renderInterface(pSVG) {
     let tx = estado.snapped ? estado.snapped.x : estado.mouseIso.x;
     let ty = estado.snapped ? estado.snapped.y : estado.mouseIso.y;
     let tz = estado.snapped ? estado.snapped.z : estado.currentZ;
+    
+    // Variable para detectar si estamos alineados a un eje
+    let lockedAxis = null; 
 
-    // Drawing constraints
+    // Drawing constraints (Ajuste Ortogonal)
     if (estado.drawing && !estado.snapped) {
         // Redondeamos para visualización limpia
         const gridX = Math.round(estado.mouseIso.x * 10) / 10;
@@ -1336,10 +1339,20 @@ function renderInterface(pSVG) {
         const dx = gridX - estado.inicio.x; 
         const dy = gridY - estado.inicio.y; 
         const dz = estado.currentZ - estado.inicio.z;
-        const th = 0.5; 
-        if (Math.abs(dy) < th && Math.abs(dz) < th) { ty = estado.inicio.y; tz = estado.inicio.z; tx = gridX; } 
-        else if (Math.abs(dx) < th && Math.abs(dz) < th) { tx = estado.inicio.x; tz = estado.inicio.z; ty = gridY; } 
-        else if (Math.abs(dx) < th && Math.abs(dy) < th) { tx = estado.inicio.x; ty = estado.inicio.y; tz = estado.inicio.z; }
+        const th = 0.5; // Umbral de sensibilidad
+        
+        if (Math.abs(dy) < th && Math.abs(dz) < th) { 
+            ty = estado.inicio.y; tz = estado.inicio.z; tx = gridX; 
+            lockedAxis = 'x'; // Bloqueado en Eje X
+        } 
+        else if (Math.abs(dx) < th && Math.abs(dz) < th) { 
+            tx = estado.inicio.x; tz = estado.inicio.z; ty = gridY; 
+            lockedAxis = 'y'; // Bloqueado en Eje Y
+        } 
+        else if (Math.abs(dx) < th && Math.abs(dy) < th) { 
+            tx = estado.inicio.x; ty = estado.inicio.y; tz = estado.inicio.z; 
+            lockedAxis = 'z'; // Bloqueado en Eje Z (Vertical)
+        }
         else { tx = gridX; ty = gridY; }
     }
 
@@ -1377,6 +1390,33 @@ function renderInterface(pSVG) {
     
     if(estado.drawing) {
         const start = isoToScreen(estado.inicio.x, estado.inicio.y, estado.inicio.z);
+
+        // --- RECUPERADO: LÍNEAS GUÍA (Guide Lines) ---
+        // Esto dibuja la linea infinita de color cuando detecta el ángulo
+        if(lockedAxis) {
+            let vec = {x:0, y:0, z:0};
+            let col = '#fff';
+            // Colores tipo CAD: X=Rojo, Y=Verde, Z=Azul
+            if(lockedAxis === 'x') { vec.x = 1; col = '#ff4444'; } 
+            if(lockedAxis === 'y') { vec.y = 1; col = '#44ff44'; }
+            if(lockedAxis === 'z') { vec.z = 1; col = '#4444ff'; }
+
+            // Calculamos puntos lejanos para simular linea infinita
+            const distGuia = 200; // Longitud visual de la guia
+            const p1 = isoToScreen(estado.inicio.x - vec.x*distGuia, estado.inicio.y - vec.y*distGuia, estado.inicio.z - vec.z*distGuia);
+            const p2 = isoToScreen(estado.inicio.x + vec.x*distGuia, estado.inicio.y + vec.y*distGuia, estado.inicio.z + vec.z*distGuia);
+
+            const guideLine = document.createElementNS("http://www.w3.org/2000/svg","line");
+            guideLine.setAttribute("x1", p1.x); guideLine.setAttribute("y1", p1.y);
+            guideLine.setAttribute("x2", p2.x); guideLine.setAttribute("y2", p2.y);
+            guideLine.setAttribute("stroke", col);
+            guideLine.setAttribute("stroke-width", "1");
+            guideLine.setAttribute("stroke-dasharray", "5,3"); // Punteada para diferenciar
+            guideLine.setAttribute("opacity", "0.8");
+            g.appendChild(guideLine);
+        }
+        // ------------------------------------------------
+
         const l = document.createElementNS("http://www.w3.org/2000/svg","line");
         l.setAttribute("x1",start.x); l.setAttribute("y1",start.y); l.setAttribute("x2",worldPoint.x); l.setAttribute("y2",worldPoint.y);
         l.setAttribute("stroke", "#fff"); l.setAttribute("stroke-dasharray", "4,4"); l.setAttribute("opacity", "0.5");
@@ -1536,7 +1576,10 @@ window.addLayer = () => { layers.push({id:'l'+Date.now(), name:'Nueva', color:'#
 // --- PROPIEDADES ---
 window.updatePropsPanel = function() {
     const el = elementos.find(x=>x.id===estado.selID);
-    const f = document.getElementById('prop-form'); const v = document.getElementById('prop-vacio');
+    const f = document.getElementById('prop-form'); 
+    const v = document.getElementById('prop-vacio');
+    const divAdjust = document.getElementById('obj-adjust-controls'); // Contenedor de escala/acople
+
     if(!el) { f.style.display='none'; v.style.display='block'; return; }
     
     f.style.display='block'; v.style.display='none';
@@ -1564,14 +1607,21 @@ window.updatePropsPanel = function() {
         const finalZ = el.z + el.dz;
         document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
         rowFinal.style.display = 'flex';
+        // Ocultar ajuste visual para tuberías
+        divAdjust.style.display = 'none';
     } else {
         rowFinal.style.display = 'none';
         
+        // --- RECUPERADO: Si no es texto, mostrar controles de ajuste ---
         if(el.tipo !== 'texto') {
+             divAdjust.style.display = 'block'; 
+             
              const scaleVal = el.props.scaleFactor || 1.0;
              document.getElementById('p-scale').value = scaleVal;
              document.getElementById('p-scale-val').textContent = scaleVal;
              document.getElementById('p-anchor').value = el.props.anchor || 'center';
+        } else {
+             divAdjust.style.display = 'none';
         }
     }
 
@@ -1589,6 +1639,7 @@ window.updatePropsPanel = function() {
         divLen.style.display = 'none';
     }
     if(el.props.rotacion !== undefined) document.getElementById('p-rot').value = el.props.rotacion;
+    
     const contDatos = document.getElementById('prop-datos-tecnicos'); contDatos.innerHTML = ''; 
     if (el.tipo === 'tuberia' && el.props.material) {
         const title = document.createElement('div'); title.className = 'prop-section-title'; title.innerText = 'Datos Técnicos'; contDatos.appendChild(title);
@@ -1646,18 +1697,26 @@ window.changeMaterial = function(newMat) {
     }
 }
 window.updateDiametro = function(val) { const el = elementos.find(x=>x.id===estado.selID); if(el){ el.props.diametroNominal = val; saveState(); renderScene(); } }
+
 window.updateStyleProp = function(k,v) { 
     const el=elementos.find(x=>x.id===estado.selID); 
     if(el){ 
-        if(k==='color') el.props.customColor = v; 
-        else el.props[k]=v; 
+        if(k==='color') {
+            el.props.customColor = v; 
+        } else if (k === 'scaleFactor') {
+            // Convertir a float para evitar bugs
+            el.props[k] = parseFloat(v);
+            document.getElementById('p-scale-val').textContent = v;
+        } else {
+            el.props[k]=v; 
+        }
         
-        if(k === 'scaleFactor') document.getElementById('p-scale-val').textContent = v;
         saveState();
         renderScene(); 
         if(k==='anchor' || k==='scaleFactor') renderEffects(); 
     } 
 }
+
 window.updateBooleanProp = function(k, val) {
     const el = elementos.find(x=>x.id===estado.selID);
     if(el){ el.props[k] = val; saveState(); renderScene(); }
