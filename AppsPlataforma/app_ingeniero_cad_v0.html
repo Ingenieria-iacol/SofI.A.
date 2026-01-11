@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v10.7 - Control de Etiquetas</title>
+<title>CAD Gas v10.7 - Control de Alturas</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ff00; }
@@ -298,6 +298,10 @@
                     <input type="text" id="p-altura" inputmode="decimal" onchange="updateAltura(this.value)" placeholder="0.00">
                 </div>
                 
+                <div class="prop-row" id="row-altura-final" style="display:none;">
+                    <label>Elevación Final (Z) (<span id="lbl-unit-z-final">m</span>)</label>
+                    <input type="text" id="p-altura-final" inputmode="decimal" onchange="updateAlturaFinal(this.value)" placeholder="0.00">
+                </div>
                 <div class="prop-row" id="row-longitud">
                       <label>Longitud (<span id="lbl-unit">m</span>)</label>
                       <input type="text" inputmode="decimal" id="p-longitud" onchange="updateLongitud(this.value)">
@@ -1089,7 +1093,7 @@ function renderLayersUI() {
 window.togLay = (id) => { const l=layers.find(x=>x.id===id); l.visible=!l.visible; renderLayersUI(); renderScene(); }
 window.addLayer = () => { layers.push({id:'l'+Date.now(), name:'Nueva', color:'#fff', visible:true}); renderLayersUI(); }
 
-// --- PROPIEDADES ---
+// --- PROPIEDADES ACTUALIZADAS ---
 window.updatePropsPanel = function() {
     const el = elementos.find(x=>x.id===estado.selID);
     const f = document.getElementById('prop-form'); const v = document.getElementById('prop-vacio');
@@ -1102,18 +1106,32 @@ window.updatePropsPanel = function() {
     document.getElementById('p-linestyle').value = el.props.tipoLinea || 'solid';
     document.getElementById('p-capa').value = el.layerId;
     
-    // --- ACTUALIZAR CHECKBOX DE ETIQUETA ---
+    // Checkbox Etiqueta
     const cbLabel = document.getElementById('p-show-label');
     cbLabel.checked = el.props.mostrarEtiqueta === true;
 
-    // --- NUEVO: ACTUALIZAR CAMPO Z ---
+    // --- UNIDADES Y ALTURA INICIAL ---
     const u = UNITS[CONFIG.unit];
     document.getElementById('lbl-unit-z').innerText = u.label;
     document.getElementById('p-altura').value = (el.z * u.factor).toFixed(u.precision);
     
+    // --- NUEVO: LÓGICA ALTURA FINAL ---
+    const rowFinal = document.getElementById('row-altura-final');
+    const lblFinal = document.getElementById('lbl-unit-z-final');
+    if (lblFinal) lblFinal.innerText = u.label;
+
+    if (el.tipo === 'tuberia' || el.tipo === 'cota') {
+        const finalZ = el.z + el.dz;
+        document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
+        rowFinal.style.display = 'flex';
+    } else {
+        rowFinal.style.display = 'none';
+    }
+
     const divGrosor = document.getElementById('row-grosor');
     if(el.tipo === 'tuberia' && el.props.material) { divGrosor.style.display = 'none'; } 
     else { divGrosor.style.display = 'flex'; document.getElementById('p-grosor').value = el.props.grosor || 2; }
+    
     const divLen = document.getElementById('row-longitud');
     if(el.tipo === 'tuberia') {
         divLen.style.display = 'flex';
@@ -1153,6 +1171,22 @@ window.updatePropsPanel = function() {
         }
     }
 }
+
+// --- NUEVA FUNCION ALTURA FINAL ---
+window.updateAlturaFinal = function(valUser) {
+    const el = elementos.find(x => x.id === estado.selID);
+    if (!el || (el.tipo !== 'tuberia' && el.tipo !== 'cota')) return;
+    const num = parseInputFloat(valUser);
+    if (isNaN(num)) return;
+    const u = UNITS[CONFIG.unit];
+    const newFinalZ = num / u.factor; 
+    // Ajusta el vector DZ
+    el.dz = newFinalZ - el.z;
+    renderScene();
+    renderEffects();
+    updatePropsPanel(); 
+}
+
 window.changeMaterial = function(newMat) {
     const el = elementos.find(x=>x.id===estado.selID);
     if(!el) return;
@@ -1199,6 +1233,7 @@ window.updateAltura = function(valUser) {
     el.z = num / u.factor;
     renderScene();
     renderEffects(); 
+    updatePropsPanel(); // Actualizar para recalcular la altura final mostrada
 }
 
 function ensureHex(c){ if(c.startsWith('#') && c.length===7) return c; return '#cccccc'; }
