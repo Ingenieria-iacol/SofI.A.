@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v10.8 - Smart Z-Tracker</title>
+<title>CAD Gas v10.9 - Z-Tracker Fixed</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ff00; }
@@ -111,7 +111,7 @@
     .dim-text { fill: #aaa; font-size: 12px; text-anchor: middle; font-family: monospace; pointer-events: none; }
     
     .label-tech { fill: #777; font-size: 9px; font-family: 'Segoe UI', sans-serif; pointer-events: none; text-anchor: middle; text-shadow: 1px 1px 2px #000; font-weight: 500; }
-    .z-ref-line { stroke: #666; stroke-dasharray: 3,3; vector-effect: non-scaling-stroke; }
+    .z-ref-line { stroke: #666; stroke-dasharray: 2,2; vector-effect: non-scaling-stroke; opacity: 0.5; }
     .cursor-crosshair { stroke: #fff; stroke-width: 1; vector-effect: non-scaling-stroke; opacity: 0.9; }
     .snap-marker { fill: none; stroke: var(--snap); stroke-width: 2; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 2px var(--snap)); }
     .hover-halo { stroke: #fff; stroke-width: 6; opacity: 0.3; fill: none; pointer-events: none; stroke-linecap: round; }
@@ -146,53 +146,61 @@
     #ins-select optgroup { background: #333; color: var(--accent); font-style: normal; font-weight: bold; }
     #ins-select option { background: var(--panel); color: #eee; padding: 5px; }
 
-    /* --- Z-TRACKER (Nueva Etiqueta Flotante) --- */
+    /* --- Z-TRACKER (Etiqueta Flotante Corregida) --- */
     #z-tracker {
         position: absolute;
-        top: 0; left: 0;
-        display: none; /* Se activa con JS */
+        /* Quitamos transforms complicados, usaremos top/left directos */
+        display: none; 
         flex-direction: row;
         align-items: center;
-        background: rgba(30, 30, 30, 0.95);
-        border: 1px solid var(--accent);
+        background: rgba(20, 20, 20, 0.9);
+        border: 1px solid #444; /* Borde sutil por defecto */
         border-radius: 4px;
-        padding: 2px 6px;
-        z-index: 1000;
-        pointer-events: auto; /* Permite hacer clic */
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        backdrop-filter: blur(4px);
-        transform: translate(15px, -20px); /* Posición relativa al cursor */
-        transition: opacity 0.1s;
+        padding: 1px 5px;
+        z-index: 1500; /* Encima de todo */
+        pointer-events: auto;
+        box-shadow: 2px 2px 8px rgba(0,0,0,0.6);
+        backdrop-filter: blur(2px);
+        transition: border-color 0.1s;
+    }
+    #z-tracker.snapped {
+        border-color: #00ff00; /* Verde brillante al hacer Snap */
+        background: rgba(0, 30, 0, 0.9);
     }
     .z-label-title {
-        color: var(--accent);
+        color: #888;
         font-weight: bold;
-        font-size: 0.8rem;
-        margin-right: 4px;
+        font-size: 0.75rem;
+        margin-right: 3px;
         cursor: pointer;
     }
     #z-input-val {
         background: transparent;
         border: none;
-        color: #fff;
+        color: #ccc;
         font-family: monospace;
-        font-size: 0.9rem;
-        width: 50px;
+        font-weight: bold;
+        font-size: 0.85rem;
+        width: 45px;
         outline: none;
         border-bottom: 1px solid transparent;
+        text-align: right;
     }
+    #z-tracker.snapped #z-input-val { color: #00ff00; } /* Texto verde al snap */
+    
     #z-input-val:focus {
         border-bottom: 1px solid var(--accent);
         background: rgba(255,255,255,0.1);
+        color: #fff;
     }
-    .z-unit { color: #888; font-size: 0.75rem; margin-left: 2px; }
+    .z-unit { color: #666; font-size: 0.7rem; margin-left: 2px; margin-right: 2px;}
 
 </style>
 </head>
 <body>
 
 <header>
-    <div class="brand"><span>CAD</span> GAS v10.8</div>
+    <div class="brand"><span>CAD</span> GAS v10.9</div>
     <button class="btn" onclick="guardarProyecto()">💾 Guardar</button>
     <button class="btn" onclick="document.getElementById('file-input').click()">📂 Abrir</button>
     <button class="btn danger" onclick="limpiarTodo()">🗑️ Nuevo</button>
@@ -314,7 +322,7 @@
         </div>
 
         <div id="z-tracker">
-            <span class="z-label-title" onclick="focusZInput()" title="Clic o tecla 'Z' para editar">Z:</span>
+            <span class="z-label-title" onclick="focusZInput()">Z:</span>
             <input type="text" id="z-input-val" onchange="setZFromTracker(this.value)" onkeydown="checkZKey(event)">
             <span class="z-unit" id="z-tracker-unit">m</span>
         </div>
@@ -530,7 +538,7 @@ let estado = {
     action: null, startAction: {x:0, y:0}, snapDir: null, tempVector: null 
 };
 
-// --- NUEVAS VARIABLES DE ESTADO PARA EL TRACKER ---
+// --- ESTADO PARA Z-TRACKER ---
 let isEditingZ = false; 
 
 const svg = document.getElementById('lienzo-cad');
@@ -1023,7 +1031,7 @@ function renderGizmo() {
     });
 }
 
-// --- FUNCIÓN renderInterface REEMPLAZADA (SMART Z-TRACKER) ---
+// --- FUNCIÓN renderInterface CORREGIDA (FIX COORDENADAS) ---
 function renderInterface(pSVG) {
     const g = document.getElementById('capa-interfaz'); 
     g.innerHTML='';
@@ -1041,6 +1049,7 @@ function renderInterface(pSVG) {
     let ty = estado.snapped ? estado.snapped.y : estado.mouseIso.y;
     let tz = estado.snapped ? estado.snapped.z : estado.currentZ;
 
+    // Drawing constraints
     if (estado.drawing && !estado.snapped) {
         const dx = estado.mouseIso.x - estado.inicio.x; 
         const dy = estado.mouseIso.y - estado.inicio.y; 
@@ -1052,18 +1061,19 @@ function renderInterface(pSVG) {
         estado.mouseIso = {x: tx, y: ty}; 
     }
 
-    const sc = isoToScreen(tx, ty, tz);
+    // Coordenadas "Mundo" (sin zoom/pan)
+    const worldPoint = isoToScreen(tx, ty, tz);
     
     // --- LÍNEA DE REFERENCIA AL SUELO (PUNTEADA) ---
     if(Math.abs(tz) > 0.01) {
         const floor = isoToScreen(tx, ty, 0);
         const l = document.createElementNS("http://www.w3.org/2000/svg","line");
-        l.setAttribute("x1",floor.x); l.setAttribute("y1",floor.y); l.setAttribute("x2",sc.x); l.setAttribute("y2",sc.y);
+        l.setAttribute("x1",floor.x); l.setAttribute("y1",floor.y); l.setAttribute("x2",worldPoint.x); l.setAttribute("y2",worldPoint.y);
         l.setAttribute("stroke", "#666"); l.setAttribute("stroke-dasharray", "3,3"); 
         l.setAttribute("class","z-ref-line"); 
         g.appendChild(l);
         
-        // Pequeña marca en el suelo (X)
+        // Marca en suelo
         const markSize = 3;
         const pathFloor = document.createElementNS("http://www.w3.org/2000/svg","path");
         pathFloor.setAttribute("d", `M${floor.x-markSize},${floor.y-markSize} L${floor.x+markSize},${floor.y+markSize} M${floor.x-markSize},${floor.y+markSize} L${floor.x+markSize},${floor.y-markSize}`);
@@ -1071,33 +1081,35 @@ function renderInterface(pSVG) {
         g.appendChild(pathFloor);
     }
 
-    // --- POSICIONAR Z-TRACKER HTML ---
+    // --- POSICIONAR Z-TRACKER HTML (CORREGIDO) ---
+    // Calculamos la posición en pantalla aplicando el Zoom y Pan actuales
+    const screenX = estado.view.x + (worldPoint.x * estado.view.scale);
+    const screenY = estado.view.y + (worldPoint.y * estado.view.scale);
+
     zTracker.style.display = 'flex';
-    const rectSVG = svg.getBoundingClientRect();
-    zTracker.style.left = (rectSVG.left + sc.x) + 'px';
-    zTracker.style.top = (rectSVG.top + sc.y) + 'px';
+    // Offset para que no tape el cursor (20px a la derecha, 20px arriba)
+    zTracker.style.left = (screenX + 20) + 'px';
+    zTracker.style.top = (screenY - 25) + 'px';
 
     if(!isEditingZ) {
         zUnit.innerText = UNITS[CONFIG.unit].label;
         zInput.value = formatLength(tz).split(' ')[0];
         
         if(estado.snapped) {
-            zTracker.style.borderColor = "#00ff00"; 
-            zInput.style.color = "#00ff00";
+            zTracker.classList.add('snapped'); // Activa borde verde
         } else {
-            zTracker.style.borderColor = "var(--accent)";
-            zInput.style.color = "#fff";
+            zTracker.classList.remove('snapped');
         }
     }
 
     // --- CURSOR / SNAP ---
     if(estado.snapped) {
         const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
-        r.setAttribute("x", sc.x-5); r.setAttribute("y",sc.y-5); r.setAttribute("width",10); r.setAttribute("height",10);
+        r.setAttribute("x", worldPoint.x-5); r.setAttribute("y",worldPoint.y-5); r.setAttribute("width",10); r.setAttribute("height",10);
         r.setAttribute("class","snap-marker"); g.appendChild(r);
     } else {
         const path = document.createElementNS("http://www.w3.org/2000/svg","path");
-        path.setAttribute("d", `M${sc.x-8},${sc.y} L${sc.x+8},${sc.y} M${sc.x},${sc.y-8} L${sc.x},${sc.y+8}`);
+        path.setAttribute("d", `M${worldPoint.x-8},${worldPoint.y} L${worldPoint.x+8},${worldPoint.y} M${worldPoint.x},${worldPoint.y-8} L${worldPoint.x},${worldPoint.y+8}`);
         path.setAttribute("class","cursor-crosshair"); 
         if(isEditingZ) path.setAttribute("stroke", "#f0f");
         g.appendChild(path);
@@ -1106,7 +1118,7 @@ function renderInterface(pSVG) {
     if(estado.drawing) {
         const start = isoToScreen(estado.inicio.x, estado.inicio.y, estado.inicio.z);
         const l = document.createElementNS("http://www.w3.org/2000/svg","line");
-        l.setAttribute("x1",start.x); l.setAttribute("y1",start.y); l.setAttribute("x2",sc.x); l.setAttribute("y2",sc.y);
+        l.setAttribute("x1",start.x); l.setAttribute("y1",start.y); l.setAttribute("x2",worldPoint.x); l.setAttribute("y2",worldPoint.y);
         l.setAttribute("stroke", "#fff"); l.setAttribute("stroke-dasharray", "4,4"); l.setAttribute("opacity", "0.5");
         g.appendChild(l);
     }
