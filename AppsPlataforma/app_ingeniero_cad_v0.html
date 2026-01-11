@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v10.8 - Inserción por Panel</title>
+<title>CAD Gas v10.8 - Smart Z-Tracker</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ff00; }
@@ -111,7 +111,7 @@
     .dim-text { fill: #aaa; font-size: 12px; text-anchor: middle; font-family: monospace; pointer-events: none; }
     
     .label-tech { fill: #777; font-size: 9px; font-family: 'Segoe UI', sans-serif; pointer-events: none; text-anchor: middle; text-shadow: 1px 1px 2px #000; font-weight: 500; }
-    .z-ref-line { stroke: #666; stroke-dasharray: 2,2; vector-effect: non-scaling-stroke; }
+    .z-ref-line { stroke: #666; stroke-dasharray: 3,3; vector-effect: non-scaling-stroke; }
     .cursor-crosshair { stroke: #fff; stroke-width: 1; vector-effect: non-scaling-stroke; opacity: 0.9; }
     .snap-marker { fill: none; stroke: var(--snap); stroke-width: 2; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 2px var(--snap)); }
     .hover-halo { stroke: #fff; stroke-width: 6; opacity: 0.3; fill: none; pointer-events: none; stroke-linecap: round; }
@@ -145,6 +145,48 @@
     /* ESTILOS PARA SELECT DE INSERCIÓN */
     #ins-select optgroup { background: #333; color: var(--accent); font-style: normal; font-weight: bold; }
     #ins-select option { background: var(--panel); color: #eee; padding: 5px; }
+
+    /* --- Z-TRACKER (Nueva Etiqueta Flotante) --- */
+    #z-tracker {
+        position: absolute;
+        top: 0; left: 0;
+        display: none; /* Se activa con JS */
+        flex-direction: row;
+        align-items: center;
+        background: rgba(30, 30, 30, 0.95);
+        border: 1px solid var(--accent);
+        border-radius: 4px;
+        padding: 2px 6px;
+        z-index: 1000;
+        pointer-events: auto; /* Permite hacer clic */
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        transform: translate(15px, -20px); /* Posición relativa al cursor */
+        transition: opacity 0.1s;
+    }
+    .z-label-title {
+        color: var(--accent);
+        font-weight: bold;
+        font-size: 0.8rem;
+        margin-right: 4px;
+        cursor: pointer;
+    }
+    #z-input-val {
+        background: transparent;
+        border: none;
+        color: #fff;
+        font-family: monospace;
+        font-size: 0.9rem;
+        width: 50px;
+        outline: none;
+        border-bottom: 1px solid transparent;
+    }
+    #z-input-val:focus {
+        border-bottom: 1px solid var(--accent);
+        background: rgba(255,255,255,0.1);
+    }
+    .z-unit { color: #888; font-size: 0.75rem; margin-left: 2px; }
+
 </style>
 </head>
 <body>
@@ -269,6 +311,12 @@
             <span>L:</span>
             <input type="text" id="dynamic-len">
             <span style="color:#0f0">✔</span>
+        </div>
+
+        <div id="z-tracker">
+            <span class="z-label-title" onclick="focusZInput()" title="Clic o tecla 'Z' para editar">Z:</span>
+            <input type="text" id="z-input-val" onchange="setZFromTracker(this.value)" onkeydown="checkZKey(event)">
+            <span class="z-unit" id="z-tracker-unit">m</span>
         </div>
     </div>
     
@@ -481,6 +529,10 @@ let estado = {
     view: { x: 0, y: 0, scale: 1, angle: Math.PI/4 },
     action: null, startAction: {x:0, y:0}, snapDir: null, tempVector: null 
 };
+
+// --- NUEVAS VARIABLES DE ESTADO PARA EL TRACKER ---
+let isEditingZ = false; 
+
 const svg = document.getElementById('lienzo-cad');
 const world = document.getElementById('world-transform');
 
@@ -931,9 +983,19 @@ svg.addEventListener('wheel', e => {
 }, { passive: false });
 // --- MANEJO DE TECLAS ---
 window.addEventListener('keydown', e=>{
+    // ATENCIÓN: Si estamos editando el Input Z, no disparamos atajos
+    if(document.activeElement && document.activeElement.id === 'z-input-val') return;
+
     if(e.key.toLowerCase()==='q') { estado.currentZ+=1; renderInterface(); } 
     if(e.key.toLowerCase()==='a') { estado.currentZ-=1; renderInterface(); }
     
+    // ATAJO PARA EDITAR ALTURA
+    if(e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        focusZInput();
+        return;
+    }
+
     if(e.key==='Escape') { 
         estado.drawing=false; 
         setTool('select'); 
@@ -960,41 +1022,87 @@ function renderGizmo() {
         c.appendChild(l); c.appendChild(t);
     });
 }
+
+// --- FUNCIÓN renderInterface REEMPLAZADA (SMART Z-TRACKER) ---
 function renderInterface(pSVG) {
-    const g = document.getElementById('capa-interfaz'); g.innerHTML='';
-    if(estado.action === 'rotate' || estado.action === 'pan') return;
+    const g = document.getElementById('capa-interfaz'); 
+    g.innerHTML='';
+    
+    const zTracker = document.getElementById('z-tracker');
+    const zInput = document.getElementById('z-input-val');
+    const zUnit = document.getElementById('z-tracker-unit');
+
+    if(estado.action === 'rotate' || estado.action === 'pan') {
+        zTracker.style.display = 'none';
+        return;
+    }
+
     let tx = estado.snapped ? estado.snapped.x : estado.mouseIso.x;
     let ty = estado.snapped ? estado.snapped.y : estado.mouseIso.y;
     let tz = estado.snapped ? estado.snapped.z : estado.currentZ;
+
     if (estado.drawing && !estado.snapped) {
-        const dx = estado.mouseIso.x - estado.inicio.x; const dy = estado.mouseIso.y - estado.inicio.y; const dz = estado.currentZ - estado.inicio.z;
+        const dx = estado.mouseIso.x - estado.inicio.x; 
+        const dy = estado.mouseIso.y - estado.inicio.y; 
+        const dz = estado.currentZ - estado.inicio.z;
         const th = 0.5; 
         if (Math.abs(dy) < th && Math.abs(dz) < th) { ty = estado.inicio.y; tz = estado.inicio.z; } 
         else if (Math.abs(dx) < th && Math.abs(dz) < th) { tx = estado.inicio.x; tz = estado.inicio.z; } 
         else if (Math.abs(dx) < th && Math.abs(dy) < th) { tx = estado.inicio.x; ty = estado.inicio.y; }
         estado.mouseIso = {x: tx, y: ty}; 
     }
+
     const sc = isoToScreen(tx, ty, tz);
-    if(tz !== 0) {
+    
+    // --- LÍNEA DE REFERENCIA AL SUELO (PUNTEADA) ---
+    if(Math.abs(tz) > 0.01) {
         const floor = isoToScreen(tx, ty, 0);
         const l = document.createElementNS("http://www.w3.org/2000/svg","line");
         l.setAttribute("x1",floor.x); l.setAttribute("y1",floor.y); l.setAttribute("x2",sc.x); l.setAttribute("y2",sc.y);
-        l.setAttribute("class","z-ref-line"); g.appendChild(l);
+        l.setAttribute("stroke", "#666"); l.setAttribute("stroke-dasharray", "3,3"); 
+        l.setAttribute("class","z-ref-line"); 
+        g.appendChild(l);
+        
+        // Pequeña marca en el suelo (X)
+        const markSize = 3;
+        const pathFloor = document.createElementNS("http://www.w3.org/2000/svg","path");
+        pathFloor.setAttribute("d", `M${floor.x-markSize},${floor.y-markSize} L${floor.x+markSize},${floor.y+markSize} M${floor.x-markSize},${floor.y+markSize} L${floor.x+markSize},${floor.y-markSize}`);
+        pathFloor.setAttribute("stroke", "#666"); pathFloor.setAttribute("opacity", "0.6");
+        g.appendChild(pathFloor);
     }
-    const lblTxt = document.createElementNS("http://www.w3.org/2000/svg","text");
-    lblTxt.textContent = `Z: ${formatLength(tz)}`; 
-    lblTxt.setAttribute("x", sc.x + 10); lblTxt.setAttribute("y", sc.y - 10);
-    lblTxt.setAttribute("fill", "#0f0"); lblTxt.setAttribute("font-size", "12px");
-    g.appendChild(lblTxt);
+
+    // --- POSICIONAR Z-TRACKER HTML ---
+    zTracker.style.display = 'flex';
+    const rectSVG = svg.getBoundingClientRect();
+    zTracker.style.left = (rectSVG.left + sc.x) + 'px';
+    zTracker.style.top = (rectSVG.top + sc.y) + 'px';
+
+    if(!isEditingZ) {
+        zUnit.innerText = UNITS[CONFIG.unit].label;
+        zInput.value = formatLength(tz).split(' ')[0];
+        
+        if(estado.snapped) {
+            zTracker.style.borderColor = "#00ff00"; 
+            zInput.style.color = "#00ff00";
+        } else {
+            zTracker.style.borderColor = "var(--accent)";
+            zInput.style.color = "#fff";
+        }
+    }
+
+    // --- CURSOR / SNAP ---
     if(estado.snapped) {
         const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
         r.setAttribute("x", sc.x-5); r.setAttribute("y",sc.y-5); r.setAttribute("width",10); r.setAttribute("height",10);
         r.setAttribute("class","snap-marker"); g.appendChild(r);
     } else {
         const path = document.createElementNS("http://www.w3.org/2000/svg","path");
-        path.setAttribute("d", `M${sc.x-6},${sc.y} L${sc.x+6},${sc.y} M${sc.x},${sc.y-6} L${sc.x},${sc.y+6}`);
-        path.setAttribute("class","cursor-crosshair"); g.appendChild(path);
+        path.setAttribute("d", `M${sc.x-8},${sc.y} L${sc.x+8},${sc.y} M${sc.x},${sc.y-8} L${sc.x},${sc.y+8}`);
+        path.setAttribute("class","cursor-crosshair"); 
+        if(isEditingZ) path.setAttribute("stroke", "#f0f");
+        g.appendChild(path);
     }
+    
     if(estado.drawing) {
         const start = isoToScreen(estado.inicio.x, estado.inicio.y, estado.inicio.z);
         const l = document.createElementNS("http://www.w3.org/2000/svg","line");
@@ -1003,6 +1111,31 @@ function renderInterface(pSVG) {
         g.appendChild(l);
     }
 }
+
+// --- HELPERS Z-TRACKER ---
+function focusZInput() {
+    isEditingZ = true;
+    const inp = document.getElementById('z-input-val');
+    inp.select(); inp.focus();
+}
+
+function setZFromTracker(val) {
+    const num = parseInputFloat(val);
+    if(!isNaN(num)) {
+        const u = UNITS[CONFIG.unit];
+        estado.currentZ = num / u.factor;
+        renderInterface();
+    }
+    isEditingZ = false;
+    document.getElementById('lienzo-cad').focus();
+}
+
+function checkZKey(e) {
+    if(e.key === 'Enter') { setZFromTracker(e.target.value); e.target.blur(); }
+    if(e.key === 'Escape') { isEditingZ = false; renderInterface(); e.target.blur(); }
+    e.stopPropagation();
+}
+
 // --- PANEL LOGIC & SMART RESET ---
 function toggleConfig(key) {
     if(key === 'grid') CONFIG.showGrid = !CONFIG.showGrid; if(key === 'snap') CONFIG.enableSnap = !CONFIG.enableSnap;
