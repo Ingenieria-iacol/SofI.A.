@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v11.0 - Pro + Fixes UX</title>
+<title>CAD Gas v11.0 - Pro + Vertical Fix</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ff00; }
@@ -124,7 +124,7 @@
     .sp-top { flex: 1; overflow-y:auto; } 
     .prop-section-title { font-size: 0.7rem; font-weight: bold; color: var(--accent); margin: 15px 15px 5px 15px; text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 2px;}
     .prop-row { margin: 8px 15px; display: flex; flex-direction: column; gap: 4px; }
-    .prop-row.row-h { flex-direction: row; align-items: center; justify-content: space-between; }
+    .prop-row.row-h { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; } /* gap added */
     .prop-row label { color: #aaa; font-size: 0.75rem; }
     .prop-row input[type="text"], .prop-row input[type="number"], .prop-row select { width: 100%; background: #181818; border: 1px solid #444; color: #eee; padding: 6px; border-radius: 3px; font-size: 0.85rem; box-sizing: border-box; }
     .prop-row input[type="color"] { width: 100%; height: 30px; border: 1px solid #444; background: #181818; padding: 2px; cursor: pointer; }
@@ -168,7 +168,6 @@
         box-shadow: 2px 2px 5px rgba(0,0,0,0.8);
         backdrop-filter: blur(2px);
         transition: border-color 0.1s; /* SOLO transición de borde, no de movimiento */
-        /* Eliminamos el transform fijo aquí, lo manejaremos en JS para el clamp */
     }
     #z-tracker.snapped {
         border-color: #00ff00; 
@@ -332,6 +331,17 @@
             </div>
             
             <div id="prop-form" class="sp-top" style="display:none;">
+                <div id="tools-vertical-panel" style="background:#2d2d2d; padding-bottom:10px; margin-bottom:5px; border-bottom:1px solid #444;">
+                     <div class="prop-section-title" style="margin-top:10px; color:#0f0;">EXTENSIÓN VERTICAL (Z)</div>
+                     <div class="prop-row row-h">
+                        <input type="number" id="v-tool-len" value="0.10" step="0.05" style="width:60px; text-align:center;">
+                        <span id="v-tool-unit" style="font-size:0.7rem; color:#888;">m</span>
+                        <div style="display:flex; gap:2px; flex:1;">
+                            <button class="btn" style="flex:1; justify-content:center;" onclick="addVerticalFromSelection(1)" title="Crear tubería hacia Arriba">⬆ Subir</button>
+                            <button class="btn" style="flex:1; justify-content:center;" onclick="addVerticalFromSelection(-1)" title="Crear tubería hacia Abajo">⬇ Bajar</button>
+                        </div>
+                     </div>
+                </div>
                 <div class="prop-section-title">Información</div>
                 
                 <div class="prop-row row-h" style="border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:10px;">
@@ -1489,7 +1499,19 @@ window.updatePropsPanel = function() {
     if (lblFinal) lblFinal.innerText = u.label;
 
     const divAdjControls = document.getElementById('obj-adjust-controls');
-    
+
+    // --- LOGICA PANEL VERTICAL (MEJORA SOLICITADA) ---
+    const toolVertical = document.getElementById('tools-vertical-panel');
+    const vUnit = document.getElementById('v-tool-unit');
+    if (vUnit) vUnit.innerText = u.label;
+    // Mostrar solo si es un nodo (válvula/equipo) o una tubería existente
+    if (el) {
+         toolVertical.style.display = 'block';
+    } else {
+         toolVertical.style.display = 'none';
+    }
+    // ------------------------------------------------
+
     if (el.tipo === 'tuberia' || el.tipo === 'cota') {
         const finalZ = el.z + el.dz;
         document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
@@ -1552,6 +1574,56 @@ window.updatePropsPanel = function() {
         }
     }
 }
+
+// --- NUEVO LOGICA VERTICAL ---
+window.addVerticalFromSelection = function(direction) {
+    const el = elementos.find(x => x.id === estado.selID);
+    if (!el) return;
+
+    const val = parseInputFloat(document.getElementById('v-tool-len').value);
+    if (isNaN(val) || val <= 0) return;
+
+    const u = UNITS[CONFIG.unit];
+    const lenMeters = val / u.factor; // Convertir a metros internos
+    const dz = lenMeters * direction; // + para arriba, - para abajo
+
+    // Determinar propiedades de la nueva tubería
+    let props = {};
+    let customColor = null;
+
+    if (el.tipo === 'tuberia') {
+        // Heredar propiedades de la tubería seleccionada
+        props = JSON.parse(JSON.stringify(el.props));
+        customColor = el.props.customColor;
+        // La nueva tubería empieza al final de la actual? 
+        // No, asumimos que el usuario seleccionó un objeto y quiere salir desde su origen X,Y,Z
+        // Si fuera tuberia, esto es ambiguo (inicio o fin).
+        // Por simplicidad en V1, sale desde el punto X,Y,Z del objeto seleccionado.
+    } else {
+        // Es una válvula o equipo, intentar heredar propiedades del material activo o por defecto
+        if (estado.activeItem && estado.activeItem.type === 'tuberia') {
+            props = JSON.parse(JSON.stringify(estado.activeItem.props));
+            customColor = estado.activeItem.color;
+        } else {
+            // Default acero
+            props = { material: 'acero', diametroNominal: '1"' };
+            customColor = '#FFD700';
+        }
+    }
+
+    addEl({
+        tipo: 'tuberia',
+        x: el.x, y: el.y, z: el.z,
+        dx: 0, dy: 0, dz: dz,
+        props: props,
+        layerId: activeLayerId,
+        customColor: customColor
+    });
+
+    // Actualizar vista
+    renderScene();
+}
+// ----------------------------
 
 window.updateAlturaFinal = function(valUser) {
     const el = elementos.find(x => x.id === estado.selID);
