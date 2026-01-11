@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>CAD Gas v10.3 - Decimales Habilitados</title>
+<style>
+    /* --- ESTILOS CORE --- */
+    :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ff00; }
+    body { 
+        font-family: 'Segoe UI', Consolas, sans-serif; background-color: var(--bg); color: var(--text);
+        margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none;
+    }
+    
+    /* HEADER */
+    header { background-color: #2d2d2d; height: 45px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; padding: 0 15px; z-index: 100; }
+    .brand { font-weight:700; color:#fff; margin-right:10px; font-size:1rem; letter-spacing:1px; }
+    .brand span { color: var(--accent); }
+    
+    /* Botones Generales */
+    button.btn, select.btn, input.btn-input { background: #3c3c3c; color: #eee; border: 1px solid #555; padding: 4px 12px; border-radius: 3px; cursor: pointer; font-size: 0.85rem; display:flex; align-items:center; gap:6px; transition:0.2s; outline:none; }
+    button.btn:hover, select.btn:hover { background: #505050; border-color: #777; }
+    button.primary { background: var(--accent); border-color: #005a9e; font-weight:600; }
+    button.primary:hover { background: #1084e3; }
+    button.danger { background: #822; border-color: #600; }
+    
+    /* Botones Activos (Header y Herramientas) */
+    button.active, .tool-item.active { background: #444; border-color: var(--accent); color: #fff; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
+    button.active { border: 1px solid var(--accent); }
+    /* Separador Toolbar */
+    .toolbar-sep { width: 1px; height: 24px; background: #555; margin: 0 5px; }
+    
+    /* DROPDOWN CAPAS */
+    .layer-dropdown { position: relative; display: inline-block; }
+    .layer-content { display: none; position: absolute; top: 35px; left: 0; background-color: var(--panel); min-width: 160px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); border: 1px solid var(--border); z-index: 200; border-radius: 4px; padding: 5px; }
+    .layer-content.show { display: block; }
+    .layer-row-header { display: flex; align-items: center; padding: 5px 10px; gap: 8px; border-bottom: 1px solid #333; cursor: pointer; transition: 0.2s; }
+    .layer-row-header:hover { background: #333; }
+    .layer-row-header.active { background: #37373d; border-left: 3px solid var(--accent); }
+    
+    /* WORKSPACE & PANELES */
+    #workspace { flex-grow: 1; display: flex; position: relative; overflow: hidden; }
+    
+    #left-panel, #right-panel { 
+        background-color: var(--panel); display: flex; flex-direction: column; z-index: 90; 
+        transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+        overflow: hidden; white-space: nowrap; flex-shrink: 0; 
+        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+    
+    #left-panel { width: 240px; border-right: 1px solid var(--border); }
+    #right-panel { width: 280px; border-left: 1px solid var(--border); }
+    
+    .closed { 
+        width: 0 !important; min-width: 0 !important; border: none !important; opacity: 0;
+        pointer-events: none;
+    }
+    /* PESTAÑAS LATERALES */
+    .panel-handle {
+        position: absolute; top: 50%; transform: translateY(-50%);
+        width: 20px; height: 60px;
+        background: #2d2d2d; border: 1px solid #444; color: var(--accent);
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; z-index: 92; border-radius: 0 8px 8px 0;
+        transition: 0.2s; font-size: 12px; box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+    }
+    .panel-handle:hover { background: #444; width: 25px; color: #fff; }
+    .handle-left { left: 0; }
+    .handle-right { right: 0; border-radius: 8px 0 0 8px; border-left: 1px solid #444; border-right: none; }
+    
+    #left-panel:not(.closed) + .handle-left { left: 240px; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; margin-left: -10px; }
+    #right-panel:not(.closed) ~ .handle-right { right: 280px; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; margin-right: -10px; }
+    .panel-header { padding: 10px; background: #2d2d2d; font-weight:600; color:#fff; border-bottom:1px solid var(--border); display:flex; justify-content: space-between; align-items: center; }
+    .lib-group { border-bottom: 1px solid var(--border); }
+    .lib-group-title { padding: 8px 12px; cursor: pointer; font-size:0.8rem; font-weight:bold; color:#888; text-transform:uppercase; display:flex; justify-content:space-between; transition: 0.2s;}
+    .lib-group-title:hover { color: #fff; background: #333; }
+    .lib-items { display: none; padding: 5px; background: #1e1e1e; } 
+    .lib-items.open { display: block; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    
+    .tool-item { display: flex; align-items: center; gap: 10px; padding: 6px 10px; margin: 2px 0; cursor: pointer; border-radius: 4px; transition: 0.1s; border: 1px solid transparent; }
+    .tool-item:hover { background: #383838; } 
+    .tool-item.active { background: #37373d; border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+    .tool-icon { width: 20px; text-align: center; font-size: 1.1rem; } .tool-name { font-size: 0.85rem; }
+    
+    #main-area { flex-grow: 1; position: relative; background: #111; cursor: crosshair; }
+    svg { display: block; width: 100%; height: 100%; }
+    
+    #cmd-panel { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(40, 40, 40, 0.9); border: 1px solid #555; padding: 5px; border-radius: 6px; display: flex; gap: 5px; backdrop-filter: blur(5px); z-index: 95; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+    .cmd-divider { width: 1px; background: #555; margin: 0 5px; }
+    
+    /* GUIZMO & GRID */
+    #gizmo-container { position: absolute; bottom: 20px; left: 20px; width: 80px; height: 80px; pointer-events: none; z-index: 95; }
+    .axis-line { stroke-width: 2; marker-end: url(#arrow); stroke-linecap: round; } .axis-text { font-family: monospace; font-weight: bold; font-size: 10px; }
+    .grid-path, .grid-axis, .grid-minor { fill: none; pointer-events: none; }
+    .grid-path { stroke: #2a2a2a; stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .grid-minor { stroke: #222; stroke-width: 0.5; vector-effect: non-scaling-stroke; opacity: 0.6; } 
+    .grid-axis { stroke: #333; stroke-width: 2; vector-effect: non-scaling-stroke; }
+    #capa-interfaz, #capa-referencias, #capa-hover { pointer-events: none; }
+    
+    /* ELEMENTOS */
+    .tuberia { 
+        fill: none; 
+        stroke-linecap: round; 
+        stroke-linejoin: round; 
+        shape-rendering: geometricPrecision;
+        transition: stroke 0.1s;
+    } 
+    .fitting-auto { fill: none; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+    
+    .dim-line { stroke: #aaa; stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; }
+    .dim-text { fill: #aaa; font-size: 12px; text-anchor: middle; font-family: monospace; pointer-events: none; }
+    
+    .label-tech { fill: #777; font-size: 9px; font-family: 'Segoe UI', sans-serif; pointer-events: none; text-anchor: middle; text-shadow: 1px 1px 2px #000; font-weight: 500; }
+    .z-ref-line { stroke: #666; stroke-dasharray: 2,2; vector-effect: non-scaling-stroke; }
+    .cursor-crosshair { stroke: #fff; stroke-width: 1; vector-effect: non-scaling-stroke; opacity: 0.9; }
+    .snap-marker { fill: none; stroke: var(--snap); stroke-width: 2; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 2px var(--snap)); }
+    .hover-halo { stroke: #fff; stroke-width: 6; opacity: 0.3; fill: none; pointer-events: none; stroke-linecap: round; }
+    .sel-halo { stroke: var(--accent); stroke-width: 4; opacity: 0.8; fill: none; pointer-events: none; stroke-linecap: round; }
+    
+    /* PROPIEDADES */
+    .sub-panel { display: flex; flex-direction: column; height: 100%;}
+    .sp-top { flex: 1; overflow-y:auto; } 
+    .prop-section-title { font-size: 0.7rem; font-weight: bold; color: var(--accent); margin: 15px 15px 5px 15px; text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 2px;}
+    .prop-row { margin: 8px 15px; display: flex; flex-direction: column; gap: 4px; }
+    .prop-row label { color: #aaa; font-size: 0.75rem; }
+    .prop-row input[type="text"], .prop-row input[type="number"], .prop-row select { width: 100%; background: #181818; border: 1px solid #444; color: #eee; padding: 6px; border-radius: 3px; font-size: 0.85rem; box-sizing: border-box; }
+    .prop-row input[type="color"] { width: 100%; height: 30px; border: 1px solid #444; background: #181818; padding: 2px; cursor: pointer; }
+    
+    /* HUD EDITABLE */
+    .hud-overlay { 
+        position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); 
+        padding: 5px 10px; border-radius: 4px; color: #0ff; font-family: monospace; 
+        display: flex; align-items: center; gap: 8px; backdrop-filter: blur(2px);
+    }
+    .hud-input { width: 40px; background: transparent; border: none; border-bottom: 1px solid #555; color: #0ff; font-family: monospace; font-size: 1em; text-align: center; outline: none; }
+    .hud-input:focus { border-bottom-color: var(--accent); background: rgba(255,255,255,0.1); }
+    .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:200; justify-content:center; align-items:center; }
+    .modal-box { background: var(--panel); padding:20px; border:1px solid #555; width:500px; border-radius:5px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    /* INPUT DINÁMICO */
+    #dynamic-input-container { position: absolute; background: rgba(37, 37, 38, 0.95); border: 1px solid var(--accent); padding: 5px 8px; border-radius: 4px; display: none; align-items: center; gap: 5px; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    #dynamic-len { width: 70px; background: #111; border: 1px solid #444; color: #fff; padding: 2px 5px; border-radius: 2px; outline: none; font-family: monospace; }
+    #dynamic-len:focus { border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+    <div class="brand"><span>CAD</span> GAS v10.3</div>
+    <button class="btn" onclick="guardarProyecto()">💾 Guardar</button>
+    <button class="btn" onclick="document.getElementById('file-input').click()">📂 Abrir</button>
+    <button class="btn danger" onclick="limpiarTodo()">🗑️ Nuevo</button>
+    <input type="file" id="file-input" style="display:none" onchange="cargarProyecto(this)">
+    
+    <div class="toolbar-sep"></div>
+    <button id="btn-select" class="btn active" onclick="setTool('select')">👆 Seleccionar</button>
+    <button id="btn-cota" class="btn" onclick="setTool('cota')">📏 Cota</button>
+    <button id="btn-texto" class="btn" onclick="setTool('texto')">T Texto</button>
+    <div class="toolbar-sep"></div>
+    
+    <div class="layer-dropdown">
+        <button class="btn" onclick="toggleLayerMenu()">📚 Capas ▼</button>
+        <div id="layer-menu-content" class="layer-content">
+            <div id="lista-capas-header"></div>
+            <div style="padding:5px; border-top:1px solid #444;">
+                <button class="btn" style="width:100%" onclick="addLayer()">+ Nueva Capa</button>
+            </div>
+        </div>
+    </div>
+
+    <button id="btn-toggle-tags" class="btn active" onclick="toggleTags()">🏷️ Etiquetas</button>
+
+    <div class="toolbar-sep"></div>
+    
+    <select class="btn" onchange="setUnit(this.value)">
+        <option value="m">Metros (m)</option>
+        <option value="dm">Centímetros (cm)</option> <option value="mm">Milímetros (mm)</option>
+    </select>
+    
+    <div class="toolbar-sep"></div>
+    <button class="btn" onclick="mostrarReporte()">📋 Reporte</button>
+    <div id="msg-guardado" style="display:none; color:#0f0; font-size:0.8rem; margin-left:10px;">Guardado OK</div>
+</header>
+
+<div id="workspace">
+    <div id="left-panel">
+        <div class="panel-header">
+            <span>Biblioteca</span>
+            <span style="font-size:0.8rem; cursor:pointer;" onclick="togglePanel('left-panel')">✕</span>
+        </div>
+        
+        <div class="lib-group">
+            <div class="lib-group-title" onclick="toggleGroup('grp-mat')">
+                Materiales <span>▼</span>
+            </div>
+            <div class="lib-items open" id="grp-mat"></div> 
+        </div>
+        
+        <div class="lib-group">
+            <div class="lib-group-title" onclick="toggleGroup('grp-eq')">
+                Equipos <span>▼</span>
+            </div>
+            <div class="lib-items" id="grp-eq"></div>
+        </div>
+        
+        <div class="lib-group">
+            <div class="lib-group-title" onclick="toggleGroup('grp-inst')">
+                Instrumentos <span>▼</span>
+            </div>
+            <div class="lib-items" id="grp-inst"></div>
+        </div>
+        
+        <div class="lib-group">
+            <div class="lib-group-title" onclick="toggleGroup('grp-perif')">
+                Periféricos <span>▼</span>
+            </div>
+            <div class="lib-items" id="grp-perif"></div>
+        </div>
+    </div>
+    <div class="panel-handle handle-left" onclick="togglePanel('left-panel')">🛠️</div>
+    
+    <div id="main-area">
+        <div id="cmd-panel">
+            <button id="cmd-grid" class="btn active" onclick="toggleConfig('grid')" style="padding:4px 8px;">Grid ▦</button>
+            <button id="cmd-snap" class="btn active" onclick="toggleConfig('snap')" style="padding:4px 8px;">Snap 🧲</button>
+            <div class="cmd-divider"></div>
+            <button class="btn" onclick="resetView()" style="padding:4px 8px;">Centrar 🎯</button>
+        </div>
+        
+        <svg id="lienzo-cad">
+            <defs>
+                <marker id="arrow" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#f00" />
+                </marker>
+            </defs>
+            <g id="world-transform">
+                <g id="grid-layer">
+                    <path id="grid-minor" class="grid-minor"></path>
+                    <path id="grid-path" class="grid-path"></path>
+                    <path id="grid-axis" class="grid-axis"></path>
+                </g>
+                <g id="capa-referencias"></g>
+                <g id="contenedor-elementos"></g>
+                <g id="capa-fittings"></g>
+                <g id="capa-seleccion"></g>
+                <g id="capa-hover"></g>
+                <g id="capa-interfaz"></g>
+            </g>
+        </svg>
+        
+        <div id="gizmo-container">
+            <svg id="gizmo-svg" viewBox="0 0 100 100">
+                <g id="gizmo-axes" transform="translate(50,50)"></g>
+            </svg>
+        </div>
+
+        <div class="hud-overlay">
+            <span>Zoom: <input type="number" id="hud-scale-input" class="hud-input" value="100" onchange="updateZoomInput(this.value)">%</span>
+            <span>| Rot: <input type="number" id="hud-rot-input" class="hud-input" value="45" onchange="updateRotInput(this.value)">°</span>
+        </div>
+        
+        <div id="dynamic-input-container">
+            <span>L:</span>
+            <input type="text" id="dynamic-len">
+            <span style="color:#0f0">✔</span>
+        </div>
+    </div>
+    
+    <div id="right-panel" class="closed">
+        <div class="panel-header">
+            <span>Propiedades</span>
+            <span style="font-size:0.8rem; cursor:pointer;" onclick="togglePanel('right-panel')">✕</span>
+        </div>
+        <div class="sub-panel">
+            <div id="prop-vacio" style="padding:20px; color:#666; text-align:center; font-size:0.85rem;">
+                Seleccione un objeto para ver sus propiedades
+            </div>
+            
+            <div id="prop-form" class="sp-top" style="display:none;">
+                <div class="prop-section-title">Información</div>
+                <div class="prop-row">
+                    <label>Tag (Etiqueta)</label>
+                    <input type="text" id="p-tag" onchange="updateStyleProp('tag', this.value)">
+                </div>
+                <div class="prop-row">
+                    <label>Capa Actual</label>
+                    <select id="p-capa" class="btn" onchange="updateStyleProp('layerId', this.value)"></select>
+                </div>
+                
+                <div class="prop-row" id="row-longitud">
+                     <label>Longitud (<span id="lbl-unit">m</span>)</label>
+                     <input type="text" inputmode="decimal" id="p-longitud" onchange="updateLongitud(this.value)">
+                </div>
+                
+                <div id="prop-datos-tecnicos"></div>
+                
+                <div class="prop-section-title">Apariencia</div>
+                <div class="prop-row">
+                    <label>Color</label>
+                    <input type="color" id="p-color" onchange="updateStyleProp('color', this.value)">
+                </div>
+                
+                <div class="prop-row">
+                    <label>Tipo de Línea</label>
+                    <select id="p-linestyle" class="btn" onchange="updateStyleProp('tipoLinea', this.value)">
+                        <option value="solid">Sólida (⎯⎯⎯)</option>
+                        <option value="dashed">Guiones (- - -)</option>
+                        <option value="dotted">Punteada (· · ·)</option>
+                    </select>
+                </div>
+                
+                <div class="prop-row" id="row-grosor">
+                    <label>Grosor Visual</label>
+                    <input type="number" id="p-grosor" value="2" onchange="updateStyleProp('grosor', this.value)">
+                </div>
+                
+                <div class="prop-row">
+                     <label>Rotación Objeto (°)</label>
+                     <input type="number" id="p-rot" onchange="updateStyleProp('rotacion', this.value)">
+                </div>
+                <div class="prop-row" style="margin-top:15px;">
+                    <button class="btn danger" onclick="borrarSeleccion()" style="justify-content:center;">Eliminar Objeto</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="panel-handle handle-right" onclick="togglePanel('right-panel')">⚙️</div>
+
+<div id="modal-reporte" class="modal" onclick="this.style.display='none'">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <h3>Listado de Materiales</h3>
+        <table id="tabla-res" style="width:100%; font-size:0.9rem; border-collapse: collapse; color:#ccc;"></table>
+        <br>
+        <button class="btn" onclick="document.getElementById('modal-reporte').style.display='none'" style="float:right;">Cerrar</button>
+    </div>
+</div>
+
+<div id="modal-guardar" class="modal">
+    <div class="modal-box">
+        <h3>Guardar Proyecto</h3>
+        <div style="margin-bottom:15px;">Nombre:</div>
+        <input type="text" id="input-filename" class="btn-input" value="proyecto_gas" style="width:100%; margin-bottom:15px;">
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button class="btn" onclick="guardarEnNavegador()">⚡ Navegador</button>
+            <button class="btn primary" onclick="confirmarDescarga()">💾 Descargar JSON</button>
+            <button class="btn" onclick="document.getElementById('modal-guardar').style.display='none'">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- HELPER PARA INPUTS CON COMA ---
+function parseInputFloat(val) {
+    if (typeof val === 'number') return val;
+    if (!val) return 0;
+    // Reemplaza coma por punto y parsea
+    return parseFloat(val.toString().replace(',', '.'));
+}
+
+// --- LISTAS DE DIAMETROS DISPONIBLES ---
+const DIAMETROS_DISPONIBLES = {
+    'acero': ['1/4"', '1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '2-1/2"', '3"', '4"'],
+    'pe': ['20mm', '25mm', '32mm', '40mm', '50mm', '63mm', '90mm'],
+    'cobre': ['3/8"', '1/2"', '5/8"', '3/4"', '1"']
+};
+
+// --- CONFIGURACIÓN CON CORRECCIÓN DE ESCALA ---
+let CONFIG = { 
+    // tileW cambiado de 40 a 100. Ahora 1 metro = 100 pixeles.
+    tileW: 100, 
+    tileH: 50, // Ajustado para mantener proporción isométrica 2:1
+    zStep: 1, 
+    snapRadius: 20, // Radio de snap en píxeles de pantalla
+    showGrid: true, enableSnap: true, unit: 'm',
+    showTags: true 
+};
+const UNITS = { 'm': { factor: 1, label: 'm', precision: 2 }, 'dm': { factor: 10, label: 'dm', precision: 1 }, 'cm': { factor: 100, label: 'cm', precision: 1 }, 'mm': { factor: 1000, label: 'mm', precision: 0 } };
+
+// --- NUEVA LÓGICA DE ESCALA REALISTA ---
+function parseDiameterToScale(valStr) {
+    if(!valStr) return 2; 
+
+    let meters = 0;
+    // 1. Limpieza y Parseo a Metros
+    if(valStr.toLowerCase().includes('mm')) {
+        meters = parseFloat(valStr) / 1000;
+    } else {
+        let clean = valStr.replace(/"/g, '').trim();
+        let parts = clean.split(/[- ]/);
+        let inches = 0;
+        parts.forEach(p => {
+            if(p.includes('/')) {
+                const frac = p.split('/');
+                if(frac.length === 2) inches += parseFloat(frac[0]) / parseFloat(frac[1]);
+            } else {
+                inches += parseFloat(p);
+            }
+        });
+        meters = inches * 0.0254;
+    }
+
+    if(isNaN(meters) || meters === 0) return 2;
+
+    // 2. Convertir Metros a Píxeles de Pantalla (World Units)
+    let pixelWidth = meters * CONFIG.tileW;
+
+    // 3. Forzar un mínimo visible mejorado. Si es muy fino, se dibuja al menos de 2px
+    return Math.max(1.5, pixelWidth);
+}
+
+// --- CATALOGO ACTUALIZADO ---
+const CATALOGO = {
+    mat: [
+        { id: 't_acero', name: 'Acero Sch40', color: '#FFD700', type: 'tuberia', props: { material: 'acero', diametroNominal: '1"' } },
+        { id: 't_pe', name: 'Polietileno (PE)', color: '#E6E600', type: 'tuberia', props: { material: 'pe', diametroNominal: '32mm' } },
+        { id: 't_cobre', name: 'Cobre Tipo L', color: '#ff8c00', type: 'tuberia', props: { material: 'cobre', diametroNominal: '1/2"' } }
+    ],
+    eq: [
+        { id: 'eq_medidor', name: 'Medidor G4', icon: '⏱️', type: 'equipo', props: { modelo: 'G4' } },
+        { id: 'eq_reg', name: 'Regulador', icon: '⚙️', type: 'equipo', props: { cap: '5 m3/h' } }
+    ],
+    inst: [
+         { id: 'i_mano', name: 'Manómetro', icon: '⌚', type: 'equipo', props: { rango: '0-60 psi' } }
+    ],
+    perif: [
+        { id: 'v_bola', name: 'Válvula Bola', icon: '⧓', type: 'valvula', props: { tipo: 'bola', rotacion: 0 } },
+        { id: 'v_check', name: 'Válvula Check', icon: '▶', type: 'valvula', props: { tipo: 'retencion', rotacion: 0 } }
+    ]
+};
+let layers = [{ id: 'l_gas', name: 'Gas', color: '#FFD700', visible: true }];
+let activeLayerId = 'l_gas';
+let elementos = [];
+
+let estado = {
+    tool: 'select', activeItem: null, mouseIso: {x:0, y:0}, snapped: null, currentZ: 0,
+    drawing: false, startPt: null, selID: null, hoverID: null,
+    view: { x: 0, y: 0, scale: 1, angle: Math.PI/4 },
+    action: null, startAction: {x:0, y:0}, snapDir: null, tempVector: null 
+};
+const svg = document.getElementById('lienzo-cad');
+const world = document.getElementById('world-transform');
+
+function setUnit(u) { CONFIG.unit = u; renderScene(); renderInterface(); updatePropsPanel(); }
+function formatLength(valMeters) { const u = UNITS[CONFIG.unit]; const val = valMeters * u.factor; return parseFloat(val.toFixed(u.precision)) + " " + u.label; }
+function parseToMeters(valUser) { const u = UNITS[CONFIG.unit]; return valUser / u.factor; }
+
+// --- MATH 3D ---
+function isoToScreen(x, y, z) {
+    const ang = estado.view.angle;
+    const nx = x * Math.cos(ang) - y * Math.sin(ang);
+    const ny = x * Math.sin(ang) + y * Math.cos(ang);
+    // Usamos CONFIG.tileW para la escala base
+    return { x: nx * CONFIG.tileW, y: ny * CONFIG.tileH - (z * CONFIG.tileW * 0.7) };
+}
+function screenToIso(sx, sy) {
+    const ang = estado.view.angle;
+    const nx = sx / CONFIG.tileW;
+    const ny = sy / CONFIG.tileH;
+    const x = nx * Math.cos(-ang) - ny * Math.sin(-ang);
+    const y = nx * Math.sin(-ang) + ny * Math.cos(-ang);
+    return { x: x, y: y }; 
+}
+function getSVGPoint(ex, ey) { const pt = svg.createSVGPoint(); pt.x = ex; pt.y = ey; return pt.matrixTransform(world.getScreenCTM().inverse()); }
+
+function updateTransform() {
+    world.setAttribute('transform', `translate(${estado.view.x}, ${estado.view.y}) scale(${estado.view.scale})`);
+    document.getElementById('hud-scale-input').value = Math.round(estado.view.scale*100);
+    document.getElementById('hud-rot-input').value = Math.round(estado.view.angle * 180/Math.PI);
+    renderGizmo();
+}
+function updateZoomInput(val) {
+    let v = parseInputFloat(val); if(isNaN(v) || v < 10) v = 10; if(v > 2000) v = 2000;
+    estado.view.scale = v / 100; updateTransform(); renderEffects();
+}
+function updateRotInput(val) {
+    let v = parseInputFloat(val); if(!isNaN(v)) { estado.view.angle = v * Math.PI / 180; updateTransform(); renderGrid(); renderScene(); renderEffects(); }
+}
+// --- ANALIZADOR DE RED ---
+function analizarRed() {
+    const nodos = {}; 
+    elementos.forEach(el => {
+        if (el.tipo === 'tuberia') {
+            const k1 = `${el.x.toFixed(3)},${el.y.toFixed(3)},${el.z.toFixed(3)}`; 
+            const k2 = `${(el.x + el.dx).toFixed(3)},${(el.y + el.dy).toFixed(3)},${(el.z + el.dz).toFixed(3)}`;
+            const len = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+            if(len < 0.001) return;
+            const dir = { x: el.dx/len, y: el.dy/len, z: el.dz/len }; const dirInv = { x: -dir.x, y: -dir.y, z: -dir.z };
+            let width = 2; if(el.props.diametroNominal) width = parseDiameterToScale(el.props.diametroNominal);
+            const data = { id: el.id, color: el.props.customColor || el.props.color || '#ccc', width: width };
+            if(!nodos[k1]) nodos[k1] = []; nodos[k1].push({ dir: dir, ...data });
+            if(!nodos[k2]) nodos[k2] = []; nodos[k2].push({ dir: dirInv, ...data });
+        }
+    });
+    const accesorios = [];
+    Object.keys(nodos).forEach(k => {
+        const conns = nodos[k]; const coords = k.split(',').map(Number);
+        const x=coords[0], y=coords[1], z=coords[2];
+        const color = conns[0].color; const width = conns[0].width;
+        if (conns.length === 2) {
+            const v1 = conns[0].dir; const v2 = conns[1].dir;
+            if (Math.abs(v1.x*v2.x + v1.y*v2.y + v1.z*v2.z) < 0.1) accesorios.push({ tipo: 'codo_auto', x, y, z, dirs: [v1, v2], color, width });
+        }
+        else if (conns.length === 3) accesorios.push({ tipo: 'tee_auto', x, y, z, dirs: conns.map(c=>c.dir), color, width });
+        else if (conns.length === 4) accesorios.push({ tipo: 'cruz_auto', x, y, z, dirs: conns.map(c=>c.dir), color, width });
+    });
+    return accesorios;
+}
+
+// --- RENDERIZADO ---
+function renderGrid() {
+    const pMaj = document.getElementById('grid-path'); const pMin = document.getElementById('grid-minor'); const a = document.getElementById('grid-axis');
+    if(!CONFIG.showGrid) { pMaj.setAttribute('d', ''); pMin.setAttribute('d', ''); a.setAttribute('d', ''); return; }
+    let dMaj="", dMin="", da=""; const sz=20; const step = 1; // Grid de 1 metro
+    for(let i=-sz; i<=sz; i+=step) {
+        let p1=isoToScreen(-sz,i,0), p2=isoToScreen(sz,i,0); let seg = `M${p1.x},${p1.y} L${p2.x},${p2.y} `;
+        if(i===0) da+=seg; else if(i%5 === 0) dMaj+=seg; else dMin+=seg; 
+    }
+    for(let i=-sz; i<=sz; i+=step) {
+        let p1=isoToScreen(i,-sz,0), p2=isoToScreen(i,sz,0); let seg = `M${p1.x},${p1.y} L${p2.x},${p2.y} `;
+        if(i===0) da+=seg; else if(i%5 === 0) dMaj+=seg; else dMin+=seg;
+    }
+    pMaj.setAttribute('d', dMaj); pMin.setAttribute('d', dMin); a.setAttribute('d', da);
+}
+function renderScene() {
+    const cont = document.getElementById('contenedor-elementos'); const capFit = document.getElementById('capa-fittings');
+    cont.innerHTML = ''; capFit.innerHTML = ''; 
+    
+    elementos.forEach(el => {
+        const lay = layers.find(l=>l.id===el.layerId); if(!lay || !lay.visible) return;
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        const s = isoToScreen(el.x, el.y, el.z);
+        let col = el.props.customColor || el.props.color || lay.color; 
+        let width = 2;
+        if(el.tipo === 'tuberia' && el.props.diametroNominal) width = parseDiameterToScale(el.props.diametroNominal);
+        else width = el.props.grosor || 2; 
+        
+        if(el.tipo === 'tuberia') {
+            const e = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz);
+            const body = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            body.setAttribute("x1",s.x); body.setAttribute("y1",s.y); body.setAttribute("x2",e.x); body.setAttribute("y2",e.y);
+            body.setAttribute("class","tuberia"); body.setAttribute("stroke", col); body.setAttribute("stroke-width", width);
+            
+            if(el.props.tipoLinea === 'dashed') body.setAttribute("stroke-dasharray", "6,4");
+            else if(el.props.tipoLinea === 'dotted') body.setAttribute("stroke-dasharray", "2,2");
+            g.appendChild(body);
+            
+            const midX = (s.x + e.x)/2; const midY = (s.y + e.y)/2;
+            let angDeg = Math.atan2(e.y - s.y, e.x - s.x) * (180 / Math.PI);
+            if (angDeg > 90 || angDeg < -90) { angDeg += 180; }
+            let hasTechLabel = false;
+            const lenRaw = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+            
+            if(CONFIG.showTags && (el.props.diametroNominal || el.props.material)) {
+                hasTechLabel = true;
+                const matRaw = el.props.material || '';
+                const matDisplay = matRaw.charAt(0).toUpperCase() + matRaw.slice(1);
+                const diamDisplay = el.props.diametroNominal ? `Ø${el.props.diametroNominal}` : '';
+                const lenDisplay = `L=${formatLength(lenRaw)}`;
+                const labelText = `${matDisplay} ${diamDisplay} ${lenDisplay}`.trim();
+                const tTech = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                tTech.setAttribute("x", midX); tTech.setAttribute("y", midY - 6); 
+                tTech.setAttribute("class", "label-tech");
+                tTech.setAttribute("transform", `rotate(${angDeg}, ${midX}, ${midY})`);
+                tTech.textContent = labelText;
+                g.appendChild(tTech);
+            }
+            if(CONFIG.showTags && el.props.tag) {
+                const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                const offset = hasTechLabel ? 14 : -5;
+                tt.setAttribute("x", midX); tt.setAttribute("y", midY + offset); 
+                tt.setAttribute("font-size", "10px"); tt.setAttribute("fill", "#fff"); 
+                tt.setAttribute("text-anchor", "middle");
+                tt.setAttribute("transform", `rotate(${angDeg}, ${midX}, ${midY})`);
+                tt.textContent = el.props.tag;
+                g.appendChild(tt);
+            }
+        } else if(el.tipo === 'cota') {
+            const e = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz);
+            const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            l.setAttribute("x1",s.x); l.setAttribute("y1",s.y); l.setAttribute("x2",e.x); l.setAttribute("y2",e.y);
+            l.setAttribute("class","dim-line"); l.setAttribute("stroke", "#aaa");
+            
+            const rawLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+            const txtLen = formatLength(rawLen);
+            const midX = (s.x + e.x) / 2; const midY = (s.y + e.y) / 2;
+            let angDeg = Math.atan2(e.y - s.y, e.x - s.x) * (180 / Math.PI);
+            if (angDeg > 90 || angDeg < -90) { angDeg += 180; }
+            
+            if(CONFIG.showTags) {
+                const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                t.setAttribute("x", midX); t.setAttribute("y", midY); t.setAttribute("class","dim-text");
+                t.setAttribute("transform", `rotate(${angDeg}, ${midX}, ${midY}) translate(0, -5)`);
+                t.textContent = txtLen;
+                g.appendChild(l); g.appendChild(t);
+            } else {
+                g.appendChild(l);
+            }
+        } else if (el.tipo === 'texto') {
+            const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            t.setAttribute("x",s.x); t.setAttribute("y",s.y); t.setAttribute("class","dim-text");
+            t.setAttribute("fill", col); t.setAttribute("font-size", "14px"); t.textContent = el.props.text;
+            g.appendChild(t);
+        } else {
+            // --- CORRECCIÓN: OBJETOS (VÁLVULAS/EQUIPOS) ESCALADOS ---
+            let rot = 0;
+            if (el.props.dirVector) {
+                const p1 = isoToScreen(0, 0, 0); const p2 = isoToScreen(el.props.dirVector.dx, el.props.dirVector.dy, el.props.dirVector.dz);
+                rot = Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180 / Math.PI);
+            } else {
+                rot = parseFloat(el.props.rotacion || 0);
+            }
+            g.setAttribute("transform", `translate(${s.x},${s.y}) rotate(${rot}) translate(${-s.x},${-s.y})`);
+            
+            const baseSize = CONFIG.tileW * 0.25; 
+            const halfS = baseSize / 2;
+            
+            if(el.tipo === 'valvula') {
+                    const p = document.createElementNS("http://www.w3.org/2000/svg","path");
+                    p.setAttribute("d", `M${s.x-halfS},${s.y-halfS/2} L${s.x+halfS},${s.y+halfS/2} L${s.x+halfS},${s.y-halfS/2} L${s.x-halfS},${s.y+halfS/2} Z`);
+                    p.setAttribute("fill", "#222"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", width);
+                    g.appendChild(p);
+            } else {
+                const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
+                r.setAttribute("x", s.x - halfS); 
+                r.setAttribute("y", s.y - halfS); 
+                r.setAttribute("width", baseSize); 
+                r.setAttribute("height", baseSize);
+                r.setAttribute("fill", "#222"); r.setAttribute("stroke", col);
+                const tx = document.createElementNS("http://www.w3.org/2000/svg","text");
+                tx.setAttribute("x",s.x); tx.setAttribute("y",s.y+4); tx.setAttribute("text-anchor","middle");
+                tx.setAttribute("fill",col); tx.setAttribute("font-size", (baseSize*0.6)+"px"); // Icono escala texto
+                tx.textContent = el.icon;
+                g.appendChild(r); g.appendChild(tx);
+            }
+            
+            if(CONFIG.showTags && el.props.tag) {
+                 const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                 tt.setAttribute("x",s.x); tt.setAttribute("y",s.y - halfS - 5); tt.setAttribute("text-anchor","middle");
+                 tt.setAttribute("fill","#fff"); tt.setAttribute("font-size","10px"); tt.textContent = el.props.tag;
+                 g.appendChild(tt);
+            }
+        }
+        cont.appendChild(g);
+    });
+    const autoFittings = analizarRed();
+    autoFittings.forEach(fit => {
+        const s = isoToScreen(fit.x, fit.y, fit.z);
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        if (fit.tipo === 'codo_auto') {
+            const v1 = fit.dirs[0]; const v2 = fit.dirs[1];
+            const p1 = isoToScreen(fit.x + v1.x*0.5, fit.y + v1.y*0.5, fit.z + v1.z*0.5);
+            const p2 = isoToScreen(fit.x + v2.x*0.5, fit.y + v2.y*0.5, fit.z + v2.z*0.5);
+            const d = `M${p1.x},${p1.y} Q${s.x},${s.y} ${p2.x},${p2.y}`;
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("d", d); path.setAttribute("stroke", fit.color); path.setAttribute("stroke-width", fit.width); path.setAttribute("class", "fitting-auto");
+            g.appendChild(path);
+            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.8); c.setAttribute("fill", fit.color);
+            g.appendChild(c);
+        } else {
+            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 1.5);
+            c.setAttribute("fill", "#222"); c.setAttribute("stroke", fit.color); c.setAttribute("stroke-width", fit.width);
+            g.appendChild(c);
+        }
+        capFit.appendChild(g);
+    });
+    renderEffects();
+}
+function renderEffects() {
+    const ch = document.getElementById('capa-hover'); ch.innerHTML='';
+    const cs = document.getElementById('capa-seleccion'); cs.innerHTML='';
+    const draw = (id, root, cls) => {
+        const el = elementos.find(x=>x.id===id); if(!el) return;
+        const s = isoToScreen(el.x, el.y, el.z);
+        if(el.tipo === 'tuberia' || el.tipo === 'cota') {
+            const e = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz);
+            const l = document.createElementNS("http://www.w3.org/2000/svg","line");
+            l.setAttribute("x1",s.x); l.setAttribute("y1",s.y); l.setAttribute("x2",e.x); l.setAttribute("y2",e.y);
+            l.setAttribute("class", cls); root.appendChild(l);
+        } else {
+            const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+            c.setAttribute("cx",s.x); c.setAttribute("cy",s.y); c.setAttribute("r",10); // Halo de selección fijo
+            c.setAttribute("class", cls); root.appendChild(c);
+        }
+    };
+    if(estado.hoverID && estado.tool==='select') draw(estado.hoverID, ch, 'hover-halo');
+    if(estado.selID) draw(estado.selID, cs, 'sel-halo');
+}
+// --- SNAP & EVENTS ---
+function getSnapPoints(el) {
+    const pts = [{x: el.x, y: el.y, z: el.z}]; 
+    if(el.tipo === 'tuberia' || el.tipo === 'cota') {
+        pts.push({x: el.x + el.dx, y: el.y + el.dy, z: el.z + el.dz});
+        pts.push({x: el.x + el.dx*0.5, y: el.y + el.dy*0.5, z: el.z + el.dz*0.5});
+    }
+    return pts;
+}
+svg.addEventListener('mousedown', e => {
+    if(e.button === 2) { estado.action = 'pan'; estado.startAction = {x: e.clientX, y: e.clientY}; svg.style.cursor = 'grabbing'; return; }
+    if(e.button === 0) { estado.startAction = {x: e.clientX, y: e.clientY}; if (estado.tool === 'select' && estado.hoverID) { estado.action = 'potential_drag'; } else { estado.action = 'rotate'; } }
+});
+
+svg.addEventListener('mousemove', e => {
+    const p = getSVGPoint(e.clientX, e.clientY);
+    if(estado.action === 'rotate') { estado.view.angle += (e.clientX - estado.startAction.x) * 0.01; estado.startAction = {x: e.clientX, y: e.clientY}; renderGrid(); renderScene(); renderEffects(); updateTransform(); return; }
+    if(estado.action === 'pan') { estado.view.x += e.clientX - estado.startAction.x; estado.view.y += e.clientY - estado.startAction.y; estado.startAction = {x: e.clientX, y: e.clientY}; updateTransform(); return; }
+    svg.style.cursor = 'crosshair';
+    // Round to 0.1 for better precision
+    const isoRaw = screenToIso(p.x, p.y); 
+    estado.mouseIso = {x: Math.round(isoRaw.x*10)/10, y: Math.round(isoRaw.y*10)/10 };
+    
+    let sn = null; let snID = null;
+    if (CONFIG.enableSnap) {
+        // Tolerancia corregida basada en la nueva escala
+        const tol = CONFIG.snapRadius / estado.view.scale;
+        elementos.forEach(el => {
+            const pts = getSnapPoints(el); 
+            pts.forEach(pt => { 
+                const s = isoToScreen(pt.x, pt.y, pt.z); 
+                if(Math.sqrt((p.x-s.x)**2+(p.y-s.y)**2) < tol) { sn = pt; snID = el.id; }
+            });
+        });
+    }
+    estado.snapped = sn;
+    if (snID) estado.hoverID = snID; 
+    if (snID && (estado.activeItem?.type === 'valvula' || estado.activeItem?.type === 'equipo')) {
+            const targetEl = elementos.find(x => x.id === snID);
+            if (targetEl && targetEl.tipo === 'tuberia') { estado.snapDir = { dx: targetEl.dx, dy: targetEl.dy, dz: targetEl.dz }; }
+    } else { estado.snapDir = null; }
+    
+    if (estado.action === 'dragging' && estado.selID) {
+        const el = elementos.find(x => x.id === estado.selID);
+        if (el) {
+            const destino = estado.snapped || { x: estado.mouseIso.x, y: estado.mouseIso.y };
+            el.x = destino.x; el.y = destino.y;
+            if (estado.snapped && estado.snapped.z !== undefined) el.z = estado.snapped.z;
+            renderScene(); renderEffects();
+        }
+    } else if (estado.action === 'potential_drag') {
+            const distDrag = Math.hypot(e.clientX - estado.startAction.x, e.clientY - estado.startAction.y);
+            if(distDrag > 5) { estado.action = 'dragging'; if(!estado.selID) { estado.selID = estado.hoverID; updatePropsPanel(); } }
+    }
+    if(estado.tool === 'select' && !estado.action && !estado.snapped) {
+        const tol = 20 / estado.view.scale; let h = null; let minD = tol; 
+        elementos.forEach(el => {
+            const s = isoToScreen(el.x, el.y, el.z); let d = 10000;
+            if(el.tipo==='tuberia') {
+                const en = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz); const L2 = (en.x-s.x)**2 + (en.y-s.y)**2;
+                if(L2>0) { let t = ((p.x-s.x)*(en.x-s.x)+(p.y-s.y)*(en.y-s.y))/L2; t = Math.max(0, Math.min(1, t)); d = Math.sqrt((p.x - (s.x+t*(en.x-s.x)))**2 + (p.y - (s.y+t*(en.y-s.y)))**2); }
+            } else { d = Math.sqrt((p.x-s.x)**2+(p.y-s.y)**2); }
+            if(d < minD) { minD=d; h=el.id; }
+        });
+        if(h !== estado.hoverID) { estado.hoverID = h; renderEffects(); }
+    }
+    renderInterface(p);
+});
+window.addEventListener('mouseup', (e) => {
+    const dist = Math.abs(e.clientX - estado.startAction.x) + Math.abs(e.clientY - estado.startAction.y);
+    const isClick = dist < 5;
+    if (isClick && (estado.action === 'rotate' || estado.action === 'potential_drag')) { handleCanvasClick(e); }
+    estado.action = null; svg.style.cursor = 'crosshair';
+});
+// --- INPUT DINAMICO ---
+function mostrarInputDinámico(xScreen, yScreen, distActual, vectorData) {
+    const box = document.getElementById('dynamic-input-container');
+    const input = document.getElementById('dynamic-len');
+    estado.tempVector = { ...vectorData, distOriginal: distActual };
+    box.style.left = (xScreen + 15) + 'px'; box.style.top = (yScreen + 15) + 'px'; box.style.display = 'flex';
+    const u = UNITS[CONFIG.unit]; const valDisplay = distActual * u.factor;
+    input.value = valDisplay.toFixed(u.precision); input.focus(); input.select();
+}
+function confirmarInput() {
+    const box = document.getElementById('dynamic-input-container'); const input = document.getElementById('dynamic-len');
+    // Uso del nuevo helper
+    const val = parseInputFloat(input.value);
+    
+    if (estado.tempVector && !isNaN(val) && val > 0) {
+        let { dx, dy, dz, distOriginal } = estado.tempVector;
+        if (distOriginal < 0.001) distOriginal = 1; 
+        const valInMeters = parseToMeters(val); const ratio = valInMeters / distOriginal;
+        dx *= ratio; dy *= ratio; dz *= ratio;
+        const tipo = estado.tool === 'cota' ? 'cota' : 'tuberia';
+        const props = estado.tool === 'cota' ? {} : JSON.parse(JSON.stringify(estado.activeItem.props));
+        if(estado.activeItem?.props?.diametroNominal && !props.diametroNominal) { props.diametroNominal = estado.activeItem.props.diametroNominal; }
+        addEl({ tipo, x: estado.inicio.x, y: estado.inicio.y, z: estado.inicio.z, dx, dy, dz, props });
+        if (estado.tool !== 'cota') { estado.inicio = { x: estado.inicio.x + dx, y: estado.inicio.y + dy, z: estado.inicio.z + dz }; estado.drawing = true; } else { estado.drawing = false; }
+    }
+    box.style.display = 'none'; estado.tempVector = null; renderScene(); 
+}
+document.getElementById('dynamic-len').addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmarInput(); if (e.key === 'Escape') { document.getElementById('dynamic-input-container').style.display = 'none'; estado.tempVector = null; } e.stopPropagation(); });
+// --- LOGICA CLICK ---
+function handleCanvasClick(e) {
+    if(document.getElementById('dynamic-input-container').style.display === 'flex') return;
+    if(estado.tool === 'select') { 
+        estado.selID = estado.hoverID; 
+        updatePropsPanel(); 
+        renderEffects();
+        
+        const rp = document.getElementById('right-panel');
+        if(estado.selID) { rp.classList.remove('closed'); } else { rp.classList.add('closed'); }
+        return; 
+    }
+    
+    const tx = estado.snapped ? estado.snapped.x : estado.mouseIso.x;
+    const ty = estado.snapped ? estado.snapped.y : estado.mouseIso.y;
+    const tz = estado.snapped ? estado.snapped.z : estado.currentZ;
+    if(estado.tool === 'texto') { const txt = prompt("Texto:", "Etiqueta"); if(txt) addEl({tipo:'texto', x:tx, y:ty, z:tz, props:{text:txt}}); return; }
+    
+    if(estado.activeItem?.type === 'tuberia' || estado.tool === 'cota') {
+        if(!estado.drawing) { estado.drawing = true; estado.inicio = {x:tx, y:ty, z:tz}; } 
+        else {
+            let dx=tx-estado.inicio.x, dy=ty-estado.inicio.y, dz=tz-estado.inicio.z;
+            const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            if(dist > 0.01) { mostrarInputDinámico(e.clientX, e.clientY, dist, {dx, dy, dz}); } else { estado.drawing = false; }
+        }
+    } else if (estado.activeItem) {
+        const props = JSON.parse(JSON.stringify(estado.activeItem.props)); 
+        if (estado.snapDir && (estado.activeItem.type === 'valvula' || estado.activeItem.type === 'equipo')) { props.dirVector = estado.snapDir; delete props.rotacion; }
+        addEl({tipo: estado.activeItem.type, x:tx, y:ty, z:tz, props});
+    }
+    renderInterface();
+}
+svg.addEventListener('wheel', e => { 
+    e.preventDefault(); 
+    let newScale = estado.view.scale * (e.deltaY > 0 ? 0.9 : 1.1); 
+    if (newScale < 0.1) newScale = 0.1; 
+    if (newScale > 20) newScale = 20; 
+    if(estado.selID) {
+        const el = elementos.find(x => x.id === estado.selID);
+        if(el) {
+            let objX = el.x, objY = el.y, objZ = el.z;
+            if(el.tipo === 'tuberia' || el.tipo === 'cota') { objX += el.dx/2; objY += el.dy/2; objZ += el.dz/2; }
+            const ptLocal = isoToScreen(objX, objY, objZ); 
+            const rect = svg.getBoundingClientRect();
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            estado.view.scale = newScale;
+            estado.view.x = centerX - (ptLocal.x * newScale); 
+            estado.view.y = centerY - (ptLocal.y * newScale);
+        }
+    } else {
+            const rect = svg.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const oldScale = estado.view.scale;
+            estado.view.x = mouseX - (mouseX - estado.view.x) * (newScale / oldScale);
+            estado.view.y = mouseY - (mouseY - estado.view.y) * (newScale / oldScale);
+            estado.view.scale = newScale;
+    }
+    updateTransform(); renderEffects(); 
+}, { passive: false });
+// --- MANEJO DE TECLAS ---
+window.addEventListener('keydown', e=>{
+    if(e.key.toLowerCase()==='q') { estado.currentZ+=1; renderInterface(); } 
+    if(e.key.toLowerCase()==='a') { estado.currentZ-=1; renderInterface(); }
+    
+    if(e.key==='Escape') { 
+        estado.drawing=false; 
+        setTool('select'); 
+        document.getElementById('dynamic-input-container').style.display = 'none';
+    } 
+    
+    if(e.key==='Delete') borrarSeleccion(); 
+    renderInterface();
+});
+// --- GUIZMO & INTERFAZ ---
+function renderGizmo() {
+    const c = document.getElementById('gizmo-axes'); c.innerHTML = '';
+    const ang = estado.view.angle;
+    const axesData = [ { id:'X', x:1, y:0, z:0, col:'#f44' }, { id:'Y', x:0, y:1, z:0, col:'#4f4' }, { id:'Z', x:0, y:0, z:1, col:'#44f' } ];
+    axesData.forEach(ax => {
+        const nx = ax.x * Math.cos(ang) - ax.y * Math.sin(ang);
+        const ny = ax.x * Math.sin(ang) + ax.y * Math.cos(ang);
+        const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        l.setAttribute("x1",0); l.setAttribute("y1",0); l.setAttribute("x2",nx*35); l.setAttribute("y2",ny*17.5 - ax.z*24.5);
+        l.setAttribute("stroke", ax.col); l.setAttribute("class", "axis-line");
+        const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        t.setAttribute("x", nx*45); t.setAttribute("y", ny*23 - ax.z*30); 
+        t.setAttribute("fill", ax.col); t.setAttribute("class", "axis-text"); t.textContent = ax.id;
+        c.appendChild(l); c.appendChild(t);
+    });
+}
+function renderInterface(pSVG) {
+    const g = document.getElementById('capa-interfaz'); g.innerHTML='';
+    if(estado.action === 'rotate' || estado.action === 'pan') return;
+    let tx = estado.snapped ? estado.snapped.x : estado.mouseIso.x;
+    let ty = estado.snapped ? estado.snapped.y : estado.mouseIso.y;
+    let tz = estado.snapped ? estado.snapped.z : estado.currentZ;
+    if (estado.drawing && !estado.snapped) {
+        const dx = estado.mouseIso.x - estado.inicio.x; const dy = estado.mouseIso.y - estado.inicio.y; const dz = estado.currentZ - estado.inicio.z;
+        const th = 0.5; // Tolerancia en metros más estricta por el zoom
+        if (Math.abs(dy) < th && Math.abs(dz) < th) { ty = estado.inicio.y; tz = estado.inicio.z; } 
+        else if (Math.abs(dx) < th && Math.abs(dz) < th) { tx = estado.inicio.x; tz = estado.inicio.z; } 
+        else if (Math.abs(dx) < th && Math.abs(dy) < th) { tx = estado.inicio.x; ty = estado.inicio.y; }
+        estado.mouseIso = {x: tx, y: ty}; 
+    }
+    const sc = isoToScreen(tx, ty, tz);
+    if(tz !== 0) {
+        const floor = isoToScreen(tx, ty, 0);
+        const l = document.createElementNS("http://www.w3.org/2000/svg","line");
+        l.setAttribute("x1",floor.x); l.setAttribute("y1",floor.y); l.setAttribute("x2",sc.x); l.setAttribute("y2",sc.y);
+        l.setAttribute("class","z-ref-line"); g.appendChild(l);
+    }
+    const lblTxt = document.createElementNS("http://www.w3.org/2000/svg","text");
+    lblTxt.textContent = `Z: ${formatLength(tz)}`; 
+    lblTxt.setAttribute("x", sc.x + 10); lblTxt.setAttribute("y", sc.y - 10);
+    lblTxt.setAttribute("fill", "#0f0"); lblTxt.setAttribute("font-size", "12px");
+    g.appendChild(lblTxt);
+    if(estado.snapped) {
+        const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        // Ajuste de snap marker más pequeño
+        r.setAttribute("x", sc.x-5); r.setAttribute("y",sc.y-5); r.setAttribute("width",10); r.setAttribute("height",10);
+        r.setAttribute("class","snap-marker"); g.appendChild(r);
+    } else {
+        // CORRECCIÓN: Puntero más fino y preciso
+        const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+        path.setAttribute("d", `M${sc.x-10},${sc.y} L${sc.x+10},${sc.y} M${sc.x},${sc.y-10} L${sc.x},${sc.y+10}`);
+        path.setAttribute("class","cursor-crosshair"); g.appendChild(path);
+    }
+    if(estado.drawing) {
+        const start = isoToScreen(estado.inicio.x, estado.inicio.y, estado.inicio.z);
+        const l = document.createElementNS("http://www.w3.org/2000/svg","line");
+        l.setAttribute("x1",start.x); l.setAttribute("y1",start.y); l.setAttribute("x2",sc.x); l.setAttribute("y2",sc.y);
+        l.setAttribute("stroke", "#fff"); l.setAttribute("stroke-dasharray", "4,4"); l.setAttribute("opacity", "0.5");
+        g.appendChild(l);
+    }
+}
+// --- PANEL LOGIC & SMART RESET ---
+function toggleConfig(key) {
+    if(key === 'grid') CONFIG.showGrid = !CONFIG.showGrid; if(key === 'snap') CONFIG.enableSnap = !CONFIG.enableSnap;
+    const btn = document.getElementById('cmd-'+key); if(btn) btn.classList.toggle('active'); renderGrid(); renderScene();
+}
+
+function toggleTags() {
+    CONFIG.showTags = !CONFIG.showTags;
+    const btn = document.getElementById('btn-toggle-tags');
+    if(CONFIG.showTags) btn.classList.add('active'); else btn.classList.remove('active');
+    renderScene();
+}
+
+function resetView() { 
+    const rect = svg.getBoundingClientRect(); 
+    const centerX = rect.width/2; const centerY = rect.height/2;
+    
+    // --- FORZAR ÁNGULO A 45° ---
+    estado.view.angle = Math.PI / 4; 
+    
+    if (estado.selID) {
+        const el = elementos.find(e => e.id === estado.selID);
+        if(el) {
+            let ox = el.x, oy = el.y, oz = el.z;
+            if(el.tipo === 'tuberia' || el.tipo === 'cota') { ox += el.dx/2; oy += el.dy/2; oz += el.dz/2; }
+            const ptLocal = isoToScreen(ox, oy, oz);
+            estado.view.x = centerX - (ptLocal.x * estado.view.scale);
+            estado.view.y = centerY - (ptLocal.y * estado.view.scale);
+        }
+    } else {
+        if(elementos.length === 0) {
+             estado.view.scale = 1; estado.view.x = centerX; estado.view.y = centerY; 
+        } else {
+             let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+             elementos.forEach(el => {
+                 let pts = [{x:el.x, y:el.y, z:el.z}];
+                 if(el.tipo === 'tuberia' || el.tipo === 'cota'){ pts.push({x:el.x+el.dx, y:el.y+el.dy, z:el.z+el.dz}); }
+                 pts.forEach(p => {
+                     const s = isoToScreen(p.x, p.y, p.z);
+                     if(s.x < minX) minX = s.x; if(s.x > maxX) maxX = s.x;
+                     if(s.y < minY) minY = s.y; if(s.y > maxY) maxY = s.y;
+                 });
+             });
+             const w = maxX - minX; const h = maxY - minY;
+             if(w===0 && h===0) {
+                 estado.view.scale = 1; estado.view.x = centerX - (minX); estado.view.y = centerY - (minY);
+             } else {
+                 const padding = 50;
+                 const scaleX = (rect.width - padding*2) / w; const scaleY = (rect.height - padding*2) / h;
+                 let newScale = Math.min(scaleX, scaleY); if(newScale > 2) newScale = 2; 
+                 estado.view.scale = newScale;
+                 const midX = (minX + maxX) / 2; const midY = (minY + maxY) / 2;
+                 estado.view.x = centerX - (midX * newScale); estado.view.y = centerY - (midY * newScale);
+             }
+        }
+    }
+    updateTransform(); renderGrid(); renderScene(); renderEffects(); 
+}
+
+function togglePanel(id) { 
+    document.getElementById(id).classList.toggle('closed'); 
+    setTimeout(() => { updateTransform(); }, 410); 
+}
+
+function toggleGroup(id) { 
+    document.querySelectorAll('.lib-items').forEach(el => { if(el.id !== id) el.classList.remove('open'); });
+    document.getElementById(id).classList.toggle('open'); 
+}
+
+// --- INICIALIZACIÓN BIBLIOTECA MEJORADA ---
+function initLibrary() {
+    const fillGroup = (id, items) => {
+        const c = document.getElementById(id); c.innerHTML='';
+        items.forEach(it => {
+            const div = document.createElement('div'); div.className='tool-item';
+            div.innerHTML = `<div class="tool-icon" style="color:${it.color||'#aaa'}">${it.icon||'▪'}</div><div class="tool-name">${it.name}</div>`;
+            div.onclick = () => { 
+                document.querySelectorAll('.tool-item').forEach(x=>x.classList.remove('active')); div.classList.add('active'); 
+                estado.activeItem = it; setTool(it.id); 
+                document.getElementById('right-panel').classList.add('closed');
+            };
+            c.appendChild(div);
+        });
+    };
+    fillGroup('grp-mat', CATALOGO.mat);
+    fillGroup('grp-eq', CATALOGO.eq);
+    fillGroup('grp-inst', CATALOGO.inst);
+    fillGroup('grp-perif', CATALOGO.perif);
+    renderLayersUI();
+}
+function setTool(t) { 
+    estado.tool = (t==='cota'||t==='texto'||t==='select') ? t : 'draw'; 
+    estado.drawing=false; estado.selID=null; renderEffects(); 
+    if(t==='select' || t==='cota' || t==='texto') {
+          document.querySelectorAll('.tool-item').forEach(x=>x.classList.remove('active'));
+          ['btn-select','btn-cota','btn-texto'].forEach(id => document.getElementById(id).classList.remove('active'));
+          document.getElementById('btn-'+t).classList.add('active');
+    } else {
+          ['btn-select','btn-cota','btn-texto'].forEach(id => document.getElementById(id).classList.remove('active'));
+    }
+}
+function addEl(data) { 
+    if(!data.props.diametroNominal && estado.activeItem?.props?.diametroNominal) { data.props.diametroNominal = estado.activeItem.props.diametroNominal; }
+    elementos.push({id:Date.now(), layerId:activeLayerId, ...data}); renderScene(); 
+}
+function borrarSeleccion() { elementos=elementos.filter(x=>x.id!==estado.selID); estado.selID=null; updatePropsPanel(); renderScene(); document.getElementById('right-panel').classList.add('closed'); }
+
+// --- GESTIÓN DE CAPAS ---
+function toggleLayerMenu() { document.getElementById('layer-menu-content').classList.toggle('show'); }
+window.onclick = function(event) {
+    if (!event.target.matches('.btn') && !event.target.closest('.layer-dropdown')) {
+        var dropdowns = document.getElementsByClassName("layer-content");
+        for (var i = 0; i < dropdowns.length; i++) {
+            var openDropdown = dropdowns[i];
+            if (openDropdown.classList.contains('show')) { openDropdown.classList.remove('show'); }
+        }
+    }
+}
+function renderLayersUI() {
+    const c = document.getElementById('lista-capas-header'); c.innerHTML='';
+    layers.forEach(l => {
+        const r = document.createElement('div'); r.className = `layer-row-header ${l.id===activeLayerId?'active':''}`;
+        r.innerHTML = `<div class="layer-vis" onclick="togLay('${l.id}')">${l.visible?'👁️':'🙈'}</div><div style="flex:1; font-size:0.8rem; color:${l.color}">${l.name}</div>`;
+        r.onclick = (e) => { 
+            if(e.target.className!=='layer-vis') { activeLayerId=l.id; renderLayersUI(); updatePropsPanel(); } 
+            e.stopPropagation();
+        };
+        c.appendChild(r);
+    });
+    const sel = document.getElementById('p-capa'); sel.innerHTML = '';
+    layers.forEach(l => {
+        const opt = document.createElement('option'); opt.value=l.id; opt.innerText=l.name;
+        sel.appendChild(opt);
+    });
+}
+window.togLay = (id) => { const l=layers.find(x=>x.id===id); l.visible=!l.visible; renderLayersUI(); renderScene(); }
+window.addLayer = () => { layers.push({id:'l'+Date.now(), name:'Nueva', color:'#fff', visible:true}); renderLayersUI(); }
+
+// --- PROPIEDADES ---
+window.updatePropsPanel = function() {
+    const el = elementos.find(x=>x.id===estado.selID);
+    const f = document.getElementById('prop-form'); const v = document.getElementById('prop-vacio');
+    if(!el) { f.style.display='none'; v.style.display='block'; return; }
+    
+    f.style.display='block'; v.style.display='none';
+    
+    document.getElementById('p-color').value = ensureHex(el.props.customColor || el.props.color || '#cccccc');
+    document.getElementById('p-tag').value = el.props.tag || '';
+    document.getElementById('p-linestyle').value = el.props.tipoLinea || 'solid';
+    document.getElementById('p-capa').value = el.layerId;
+    const divGrosor = document.getElementById('row-grosor');
+    if(el.tipo === 'tuberia' && el.props.material) { divGrosor.style.display = 'none'; } 
+    else { divGrosor.style.display = 'flex'; document.getElementById('p-grosor').value = el.props.grosor || 2; }
+    const divLen = document.getElementById('row-longitud');
+    if(el.tipo === 'tuberia') {
+        divLen.style.display = 'flex';
+        const rawLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+        const u = UNITS[CONFIG.unit];
+        document.getElementById('lbl-unit').innerText = u.label;
+        document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
+    } else {
+        divLen.style.display = 'none';
+    }
+    if(el.props.rotacion !== undefined) document.getElementById('p-rot').value = el.props.rotacion;
+    const contDatos = document.getElementById('prop-datos-tecnicos'); contDatos.innerHTML = ''; 
+    if (el.tipo === 'tuberia' && el.props.material) {
+        const title = document.createElement('div'); title.className = 'prop-section-title'; title.innerText = 'Datos Técnicos'; contDatos.appendChild(title);
+        const rowMat = document.createElement('div'); rowMat.className = 'prop-row';
+        const lblMat = document.createElement('label'); lblMat.innerText = "Material Tubería";
+        const selMat = document.createElement('select'); selMat.className = 'btn';
+        CATALOGO.mat.forEach(mItem => {
+            const opt = document.createElement('option'); opt.value = mItem.props.material; opt.innerText = mItem.name;
+            if(el.props.material === mItem.props.material) opt.selected = true;
+            selMat.appendChild(opt);
+        });
+        selMat.onchange = (e) => changeMaterial(e.target.value);
+        rowMat.appendChild(lblMat); rowMat.appendChild(selMat); contDatos.appendChild(rowMat);
+        if (DIAMETROS_DISPONIBLES[el.props.material]) {
+            const list = DIAMETROS_DISPONIBLES[el.props.material];
+            const row = document.createElement('div'); row.className = 'prop-row';
+            const label = document.createElement('label'); label.innerText = "Diámetro Nominal";
+            const select = document.createElement('select'); select.className = 'btn'; select.style.width = '100%';
+            select.onchange = (e) => updateDiametro(e.target.value);
+            list.forEach(nominal => {
+                const opt = document.createElement('option'); opt.value = nominal; opt.innerText = nominal; 
+                if(el.props.diametroNominal === nominal) opt.selected = true;
+                select.appendChild(opt);
+            });
+            row.appendChild(label); row.appendChild(select); contDatos.appendChild(row);
+        }
+    }
+}
+window.changeMaterial = function(newMat) {
+    const el = elementos.find(x=>x.id===estado.selID);
+    if(!el) return;
+    const catItem = CATALOGO.mat.find(m => m.props.material === newMat);
+    if(catItem) {
+        el.props.material = newMat;
+        el.props.customColor = null; 
+        el.props.color = catItem.color;
+        el.props.diametroNominal = catItem.props.diametroNominal; 
+        updatePropsPanel(); renderScene();
+    }
+}
+window.updateDiametro = function(val) { const el = elementos.find(x=>x.id===estado.selID); if(el){ el.props.diametroNominal = val; renderScene(); } }
+window.updateStyleProp = function(k,v) { 
+    const el=elementos.find(x=>x.id===estado.selID); 
+    if(el){ 
+        if(k==='color') el.props.customColor = v; 
+        else el.props[k]=v; 
+        renderScene(); 
+    } 
+}
+window.updateLongitud = function(valUser) {
+    const el = elementos.find(x=>x.id===estado.selID);
+    if(!el || el.tipo !== 'tuberia') return;
+    const currentLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+    if(currentLen < 0.0001) return;
+    
+    // Uso del helper para permitir comas
+    const newValMeters = parseToMeters(parseInputFloat(valUser));
+    
+    if(isNaN(newValMeters) || newValMeters <= 0) return;
+    const ratio = newValMeters / currentLen;
+    el.dx *= ratio; el.dy *= ratio; el.dz *= ratio;
+    renderScene();
+}
+function ensureHex(c){ if(c.startsWith('#') && c.length===7) return c; return '#cccccc'; }
+// --- GUARDADO/CARGA ---
+function guardarProyecto() { document.getElementById('modal-guardar').style.display = 'flex'; document.getElementById('input-filename').focus(); }
+function confirmarDescarga() {
+    let nombre = document.getElementById('input-filename').value || 'proyecto_gas'; if (!nombre.endsWith('.json')) { nombre += '.json'; }
+    const datos = JSON.stringify({ layers, elementos });
+    const blob = new Blob([datos], { type: "application/json" }); const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = nombre; a.click();
+    URL.revokeObjectURL(url); document.getElementById('modal-guardar').style.display = 'none';
+}
+function guardarEnNavegador() {
+    try { const datos = JSON.stringify({ layers, elementos }); localStorage.setItem('backup_cad_gas', datos); const msg = document.getElementById('msg-guardado'); msg.style.display = 'block'; setTimeout(() => { msg.style.display = 'none'; document.getElementById('modal-guardar').style.display = 'none'; }, 1500); } catch (e) { alert("Error: Almacenamiento lleno."); }
+}
+function comprobarAutoguardado() { const backup = localStorage.getItem('backup_cad_gas'); if (backup) { if(confirm("Existe un proyecto guardado en memoria. ¿Deseas recuperarlo?")) { try { const d = JSON.parse(backup); layers = d.layers; elementos = d.elementos; renderScene(); renderLayersUI(); } catch(e) { console.error(e); } } } }
+function cargarProyecto(i){ const r=new FileReader(); r.onload=e=>{const d=JSON.parse(e.target.result); layers=d.layers; elementos=d.elementos; renderScene(); renderLayersUI();}; r.readAsText(i.files[0]); }
+function limpiarTodo(){ if(confirm("Borrar?")){elementos=[]; renderScene();} }
+function mostrarReporte(){
+    let html=""; let counts={};
+    elementos.forEach(el=>{
+        let n = el.props?.material ? (el.name || "Tuberia") : el.tipo;
+        if(el.tipo==='tuberia'){ 
+            let dn = el.props.diametroNominal || "S/D"; let matName = el.props.material ? el.props.material.charAt(0).toUpperCase() + el.props.material.slice(1) : "Genérico";
+            let key = `${matName} Ø${dn}`; let l=Math.sqrt(el.dx**2+el.dy**2+el.dz**2); counts[key]=(counts[key]||0)+l; 
+        } else if (el.tipo !== 'cota' && el.tipo !== 'texto') { let key = el.name || el.tipo; counts[key]=(counts[key]||0)+1; }
+    });
+    const autoFittings = analizarRed();
+    autoFittings.forEach(fit => {
+        let key = ""; if (fit.tipo === 'codo_auto') key = "Codo 90° (Auto)"; else if (fit.tipo === 'tee_auto') key = "Tee (Auto)"; else if (fit.tipo === 'cruz_auto') key = "Cruz (Auto)";
+        if(key) counts[key] = (counts[key]||0) + 1;
+    });
+    for(let k in counts) { let valStr = ""; if(k.includes("Ø") || k.includes("Tuberia")) { valStr = formatLength(counts[k]); } else { valStr = counts[k] + " und"; } html+=`<tr><td>${k}</td><td align='right'>${valStr}</td></tr>`; }
+    document.getElementById('tabla-res').innerHTML=html+`<tr><td colspan='2' style='border-top:1px solid #555; font-size:0.8rem; color:#666'>Item<span style='float:right'>Cant/Long</span></td></tr>`; document.getElementById('modal-reporte').style.display='flex';    }
+// --- INICIALIZACIÓN ---
+renderGrid(); renderGizmo(); initLibrary();
+const rectInit = svg.getBoundingClientRect(); estado.view.x=rectInit.width/2; estado.view.y=rectInit.height/2; 
+updateTransform(); setTimeout(comprobarAutoguardado, 500);
+</script>
+</body>
+</html>
