@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v10.11 - Z-Tracker 2 Decimales</title>
+<title>CAD Gas v10.12 - Objetos Ajustables</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ff00; }
@@ -127,6 +127,11 @@
     .prop-row input[type="text"], .prop-row input[type="number"], .prop-row select { width: 100%; background: #181818; border: 1px solid #444; color: #eee; padding: 6px; border-radius: 3px; font-size: 0.85rem; box-sizing: border-box; }
     .prop-row input[type="color"] { width: 100%; height: 30px; border: 1px solid #444; background: #181818; padding: 2px; cursor: pointer; }
     
+    /* SLIDER CUSTOM */
+    input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: var(--accent); margin-top: -5px; cursor: pointer; }
+    input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #444; border-radius: 2px; }
+
     /* HUD EDITABLE */
     .hud-overlay { 
         position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); 
@@ -200,7 +205,7 @@
 <body>
 
 <header>
-    <div class="brand"><span>CAD</span> GAS v10.11</div>
+    <div class="brand"><span>CAD</span> GAS v10.12</div>
     <button class="btn" onclick="guardarProyecto()">💾 Guardar</button>
     <button class="btn" onclick="document.getElementById('file-input').click()">📂 Abrir</button>
     <button class="btn danger" onclick="limpiarTodo()">🗑️ Nuevo</button>
@@ -341,6 +346,11 @@
             <div id="prop-form" class="sp-top" style="display:none;">
                 <div class="prop-section-title">Información</div>
                 
+                <div class="prop-row row-h" style="border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:10px;">
+                    <label style="color:#fff; font-weight:bold;">Visibilidad Objeto</label>
+                    <input type="checkbox" id="p-visible" onchange="updateRootProp('visible', this.checked)" style="width:auto; cursor:pointer;">
+                </div>
+
                 <div class="prop-row row-h">
                     <label style="color:#fff;">Mostrar Etiqueta Siempre</label>
                     <input type="checkbox" id="p-show-label" onchange="updateBooleanProp('mostrarEtiqueta', this.checked)" style="width:auto; cursor:pointer;">
@@ -371,13 +381,32 @@
                 
                 <div id="prop-datos-tecnicos"></div>
                 
-                <div class="prop-section-title">Apariencia</div>
+                <div class="prop-section-title">Apariencia y Ajuste</div>
+                
+                <div id="obj-adjust-controls" style="display:none;">
+                    <div class="prop-row">
+                        <label>Tamaño Visual (Escala)</label>
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <input type="range" id="p-scale" min="0.5" max="3" step="0.1" oninput="updateStyleProp('scaleFactor', this.value)" style="flex-grow:1;">
+                            <span id="p-scale-val" style="font-size:0.7rem; color:#888; width:25px;">1.0</span>
+                        </div>
+                    </div>
+                    <div class="prop-row">
+                        <label>Punto de Acople</label>
+                        <select id="p-anchor" class="btn" onchange="updateStyleProp('anchor', this.value)">
+                            <option value="start">Extremo Inicio (Izq)</option>
+                            <option value="center">Extremo Centro</option>
+                            <option value="end">Extremo Fin (Der)</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="prop-row">
                     <label>Color</label>
                     <input type="color" id="p-color" onchange="updateStyleProp('color', this.value)">
                 </div>
                 
-                <div class="prop-row">
+                <div class="prop-row" id="row-tipo-linea">
                     <label>Tipo de Línea</label>
                     <select id="p-linestyle" class="btn" onchange="updateStyleProp('tipoLinea', this.value)">
                         <option value="solid">Sólida (⎯⎯⎯)</option>
@@ -582,7 +611,7 @@ function updateRotInput(val) {
 function analizarRed() {
     const nodos = {}; 
     elementos.forEach(el => {
-        if (el.tipo === 'tuberia') {
+        if (el.tipo === 'tuberia' && (el.visible !== false)) { // Considerar visibilidad
             const k1 = `${el.x.toFixed(3)},${el.y.toFixed(3)},${el.z.toFixed(3)}`; 
             const k2 = `${(el.x + el.dx).toFixed(3)},${(el.y + el.dy).toFixed(3)},${(el.z + el.dz).toFixed(3)}`;
             const len = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
@@ -632,7 +661,11 @@ function renderScene() {
     capFit.innerHTML = ''; 
     
     elementos.forEach(el => {
-        const lay = layers.find(l=>l.id===el.layerId); if(!lay || !lay.visible) return;
+        // --- VISIBILIDAD DE CAPA Y OBJETO INDIVIDUAL ---
+        const lay = layers.find(l=>l.id===el.layerId); 
+        if(!lay || !lay.visible) return;
+        if(el.visible === false) return; // Si el objeto está oculto manualmente
+
         const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
         const s = isoToScreen(el.x, el.y, el.z);
         let col = el.props.customColor || el.props.color || lay.color; 
@@ -719,6 +752,7 @@ function renderScene() {
             t.setAttribute("fill", col); t.setAttribute("font-size", "14px"); t.textContent = el.props.text;
             g.appendChild(t);
         } else {
+            // --- OBJETOS (VÁLVULAS, EQUIPOS) ---
             let rot = 0;
             if (el.props.dirVector) {
                 const p1 = isoToScreen(0, 0, 0); const p2 = isoToScreen(el.props.dirVector.dx, el.props.dirVector.dy, el.props.dirVector.dz);
@@ -728,23 +762,52 @@ function renderScene() {
             }
             g.setAttribute("transform", `translate(${s.x},${s.y}) rotate(${rot}) translate(${-s.x},${-s.y})`);
             
-            const baseSize = CONFIG.tileW * 0.25; 
+            // --- CÁLCULO DE TAMAÑO Y ACOPLE ---
+            // 1. Tamaño automático modificable
+            const scaleFactor = el.props.scaleFactor || 1.0; 
+            const baseSize = (CONFIG.tileW * 0.25) * scaleFactor; 
             const halfS = baseSize / 2;
+            
+            // 2. Lógica de Punto de Acople (Anchor)
+            // Calculamos el offset de dibujo relativo al punto central s.x, s.y
+            let drawOffsetX = 0;
+            const anchor = el.props.anchor || 'center';
+            
+            // En SVG 2D transformado, ajustamos la posición del dibujo (rectángulo)
+            // Por defecto, dibujamos en x-halfS.
+            if (anchor === 'start') {
+                // Si el punto es el Inicio (Izquierda), el dibujo empieza en 0 y va hacia derecha
+                // Offset visual: mover dibujo a la derecha +halfS para que el borde izq quede en el centro
+                drawOffsetX = halfS;
+            } else if (anchor === 'end') {
+                // Si el punto es el Fin (Derecha), el dibujo termina en 0
+                // Offset visual: mover dibujo a la izquierda -halfS
+                drawOffsetX = -halfS;
+            }
+            // Center es 0 (default)
+
+            const drawX = s.x - halfS + drawOffsetX;
+            const drawY = s.y - halfS;
             
             if(el.tipo === 'valvula') {
                     const p = document.createElementNS("http://www.w3.org/2000/svg","path");
-                    p.setAttribute("d", `M${s.x-halfS},${s.y-halfS/2} L${s.x+halfS},${s.y+halfS/2} L${s.x+halfS},${s.y-halfS/2} L${s.x-halfS},${s.y+halfS/2} Z`);
+                    // Ajustamos las coordenadas del path manualmente según el offset
+                    const cx = s.x + drawOffsetX; const cy = s.y;
+                    p.setAttribute("d", `M${cx-halfS},${cy-halfS/2} L${cx+halfS},${cy+halfS/2} L${cx+halfS},${cy-halfS/2} L${cx-halfS},${cy+halfS/2} Z`);
                     p.setAttribute("fill", "#222"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", width);
                     g.appendChild(p);
             } else {
                 const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
-                r.setAttribute("x", s.x - halfS); 
-                r.setAttribute("y", s.y - halfS); 
+                r.setAttribute("x", drawX); 
+                r.setAttribute("y", drawY); 
                 r.setAttribute("width", baseSize); 
                 r.setAttribute("height", baseSize);
                 r.setAttribute("fill", "#222"); r.setAttribute("stroke", col);
                 const tx = document.createElementNS("http://www.w3.org/2000/svg","text");
-                tx.setAttribute("x",s.x); tx.setAttribute("y",s.y+4); tx.setAttribute("text-anchor","middle");
+                // Ajustar texto al centro del nuevo dibujo
+                tx.setAttribute("x", s.x + drawOffsetX); 
+                tx.setAttribute("y", s.y + 4); 
+                tx.setAttribute("text-anchor","middle");
                 tx.setAttribute("fill",col); tx.setAttribute("font-size", (baseSize*0.6)+"px"); 
                 tx.textContent = el.icon;
                 g.appendChild(r); g.appendChild(tx);
@@ -752,7 +815,9 @@ function renderScene() {
             
             if(showLabel && el.props.tag) {
                  const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                 tt.setAttribute("x",s.x); tt.setAttribute("y",s.y - halfS - 5); tt.setAttribute("text-anchor","middle");
+                 tt.setAttribute("x", s.x + drawOffsetX); 
+                 tt.setAttribute("y", s.y - halfS - 5); 
+                 tt.setAttribute("text-anchor","middle");
                  tt.setAttribute("fill","#fff"); tt.setAttribute("font-size","10px"); tt.textContent = el.props.tag;
                  g.appendChild(tt);
             }
@@ -798,7 +863,7 @@ function renderEffects() {
     const ch = document.getElementById('capa-hover'); ch.innerHTML='';
     const cs = document.getElementById('capa-seleccion'); cs.innerHTML='';
     const draw = (id, root, cls) => {
-        const el = elementos.find(x=>x.id===id); if(!el) return;
+        const el = elementos.find(x=>x.id===id); if(!el || el.visible === false) return; // Chequeo visibilidad
         const s = isoToScreen(el.x, el.y, el.z);
         if(el.tipo === 'tuberia' || el.tipo === 'cota') {
             const e = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz);
@@ -816,6 +881,7 @@ function renderEffects() {
 }
 // --- SNAP & EVENTS ---
 function getSnapPoints(el) {
+    if(el.visible === false) return []; // No hacer snap si está oculto
     const pts = [{x: el.x, y: el.y, z: el.z}]; 
     if(el.tipo === 'tuberia' || el.tipo === 'cota') {
         pts.push({x: el.x + el.dx, y: el.y + el.dy, z: el.z + el.dz});
@@ -843,6 +909,7 @@ svg.addEventListener('mousemove', e => {
     if (CONFIG.enableSnap) {
         const tol = CONFIG.snapRadius / estado.view.scale;
         elementos.forEach(el => {
+            if(el.visible === false) return;
             const pts = getSnapPoints(el); 
             pts.forEach(pt => { 
                 const s = isoToScreen(pt.x, pt.y, pt.z); 
@@ -872,6 +939,7 @@ svg.addEventListener('mousemove', e => {
     if(estado.tool === 'select' && !estado.action && !estado.snapped) {
         const tol = 8 / estado.view.scale; let h = null; let minD = tol; 
         elementos.forEach(el => {
+            if(el.visible === false) return; // Ignorar ocultos en hover
             const s = isoToScreen(el.x, el.y, el.z); let d = 10000;
             if(el.tipo==='tuberia') {
                 const en = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz); const L2 = (en.x-s.x)**2 + (en.y-s.y)**2;
@@ -1185,6 +1253,7 @@ function resetView() {
         } else {
              let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
              elementos.forEach(el => {
+                 if(el.visible === false) return;
                  let pts = [{x:el.x, y:el.y, z:el.z}];
                  if(el.tipo === 'tuberia' || el.tipo === 'cota'){ pts.push({x:el.x+el.dx, y:el.y+el.dy, z:el.z+el.dz}); }
                  pts.forEach(p => {
@@ -1259,7 +1328,9 @@ function setTool(t) {
 }
 function addEl(data) { 
     if(!data.props.diametroNominal && estado.activeItem?.props?.diametroNominal) { data.props.diametroNominal = estado.activeItem.props.diametroNominal; }
-    elementos.push({id:Date.now(), layerId:activeLayerId, ...data}); renderScene(); 
+    // Asignar visibilidad por defecto y escala
+    elementos.push({id:Date.now(), layerId:activeLayerId, visible:true, ...data}); 
+    renderScene(); 
 }
 function borrarSeleccion() { elementos=elementos.filter(x=>x.id!==estado.selID); estado.selID=null; updatePropsPanel(); renderScene(); document.getElementById('right-panel').classList.add('closed'); }
 
@@ -1302,6 +1373,10 @@ window.updatePropsPanel = function() {
     
     f.style.display='block'; v.style.display='none';
     
+    // --- NUEVO: CARGAR VALOR VISIBILIDAD ---
+    const chkVis = document.getElementById('p-visible');
+    chkVis.checked = (el.visible !== false); // Default true
+
     document.getElementById('p-color').value = ensureHex(el.props.customColor || el.props.color || '#cccccc');
     document.getElementById('p-tag').value = el.props.tag || '';
     document.getElementById('p-linestyle').value = el.props.tipoLinea || 'solid';
@@ -1318,12 +1393,27 @@ window.updatePropsPanel = function() {
     const lblFinal = document.getElementById('lbl-unit-z-final');
     if (lblFinal) lblFinal.innerText = u.label;
 
+    // --- LÓGICA DE CONTROLES ESPECÍFICOS ---
+    const divAdjControls = document.getElementById('obj-adjust-controls');
+    
     if (el.tipo === 'tuberia' || el.tipo === 'cota') {
         const finalZ = el.z + el.dz;
         document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
         rowFinal.style.display = 'flex';
+        divAdjControls.style.display = 'none'; // Ocultar slider para tuberias
     } else {
         rowFinal.style.display = 'none';
+        
+        // Es un objeto (valvula, equipo, etc) -> MOSTRAR AJUSTES
+        if(el.tipo !== 'texto') {
+             divAdjControls.style.display = 'block';
+             const scaleVal = el.props.scaleFactor || 1.0;
+             document.getElementById('p-scale').value = scaleVal;
+             document.getElementById('p-scale-val').textContent = scaleVal;
+             document.getElementById('p-anchor').value = el.props.anchor || 'center';
+        } else {
+             divAdjControls.style.display = 'none';
+        }
     }
 
     const divGrosor = document.getElementById('row-grosor');
@@ -1401,13 +1491,24 @@ window.updateStyleProp = function(k,v) {
     if(el){ 
         if(k==='color') el.props.customColor = v; 
         else el.props[k]=v; 
+        
+        // Actualizar UI instantaneamente para slider
+        if(k === 'scaleFactor') document.getElementById('p-scale-val').textContent = v;
+        
         renderScene(); 
+        if(k==='anchor' || k==='scaleFactor') renderEffects(); // Actualizar halo de selección si cambia tamaño
     } 
 }
 window.updateBooleanProp = function(k, val) {
     const el = elementos.find(x=>x.id===estado.selID);
     if(el){ el.props[k] = val; renderScene(); }
 }
+// --- NUEVO: ACTUALIZAR PROPIEDAD ROOT (NO PROPS) ---
+window.updateRootProp = function(k, val) {
+    const el = elementos.find(x=>x.id===estado.selID);
+    if(el){ el[k] = val; renderScene(); renderEffects(); }
+}
+
 window.updateLongitud = function(valUser) {
     const el = elementos.find(x=>x.id===estado.selID);
     if(!el || el.tipo !== 'tuberia') return;
@@ -1451,6 +1552,7 @@ function limpiarTodo(){ if(confirm("Borrar?")){elementos=[]; renderScene();} }
 function mostrarReporte(){
     let html=""; let counts={};
     elementos.forEach(el=>{
+        if(el.visible === false) return; // Ignorar ocultos
         let n = el.props?.material ? (el.name || "Tuberia") : el.tipo;
         if(el.tipo==='tuberia'){ 
             let dn = el.props.diametroNominal || "S/D"; let matName = el.props.material ? el.props.material.charAt(0).toUpperCase() + el.props.material.slice(1) : "Genérico";
