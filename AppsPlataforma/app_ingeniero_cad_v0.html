@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v12.1 - Smart Hover & Vertical Fix (Integrado)</title>
+<title>CAD Gas v12.2 - Tuberías y Componentes</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ff00; }
@@ -159,7 +159,7 @@
 <body>
 
 <header>
-    <div class="brand"><span>CAD</span> GAS v12.1</div>
+    <div class="brand"><span>CAD</span> GAS v12.2</div>
     
     <div class="toolbar-sep"></div>
     <button class="btn" id="btn-undo" onclick="undo()" title="Deshacer (Ctrl+Z)">↩</button>
@@ -233,7 +233,6 @@
             <div class="lib-items" id="grp-perif"></div>
         </div>
     </div>
-    
     <div class="panel-handle handle-left" onclick="togglePanel('left-panel')">🛠️</div>
     
     <div id="main-area">
@@ -624,6 +623,13 @@ const CATALOGO = {
         { id: 't_pe_ips', name: 'PE IPS', color: '#E6E600', type: 'tuberia', props: { material: 'pe_ips', diametroNominal: '1" IPS' } },
         { id: 't_pe_cts', name: 'PE CTS', color: '#F0E68C', type: 'tuberia', props: { material: 'pe_cts', diametroNominal: '1/2" CTS' } }
     ],
+
+    // --- NUEVO: SECCIÓN COMPONENTES ---
+    comp: [
+        { id: 'c_union', name: 'Unión Universal', icon: '🔗', type: 'equipo', props: { tipo: 'accesorio' } },
+        { id: 'c_brida', name: 'Brida', icon: '⭕', type: 'equipo', props: { tipo: 'accesorio' } }
+    ],
+
     eq: [
         { id: 'eq_medidor', name: 'Medidor G4', icon: '⏱️', type: 'equipo', props: { modelo: 'G4' } },
         { id: 'eq_reg', name: 'Regulador', icon: '⚙️', type: 'equipo', props: { cap: '5 m3/h' } }
@@ -1596,6 +1602,7 @@ function toggleGroup(id) {
 function initLibrary() {
     const fillGroup = (id, items) => {
         const c = document.getElementById(id); c.innerHTML='';
+        if (!items) return; 
         items.forEach(it => {
             const div = document.createElement('div'); div.className='tool-item';
             div.innerHTML = `<div class="tool-icon" style="color:${it.color||'#aaa'}">${it.icon||'▪'}</div><div class="tool-name">${it.name}</div>`;
@@ -1608,6 +1615,7 @@ function initLibrary() {
         });
     };
     fillGroup('grp-mat', CATALOGO.mat);
+    fillGroup('grp-comp', CATALOGO.comp); // <-- Cargar Componentes
     fillGroup('grp-eq', CATALOGO.eq);
     fillGroup('grp-inst', CATALOGO.inst);
     fillGroup('grp-perif', CATALOGO.perif);
@@ -1967,7 +1975,7 @@ function abrirModalInsertar(x, y, zDefault) {
     insertCoords = { x, y };
     const sel = document.getElementById('ins-select');
     sel.innerHTML = '';
-    const groupNames = { mat: 'Materiales (Tuberías)', eq: 'Equipos', inst: 'Instrumentos', perif: 'Periféricos / Válvulas' };
+    const groupNames = { mat: 'Materiales (Tuberías)', comp: 'Componentes', eq: 'Equipos', inst: 'Instrumentos', perif: 'Periféricos / Válvulas' };
     Object.keys(CATALOGO).forEach(key => {
         const group = document.createElement('optgroup');
         group.label = groupNames[key] || key.toUpperCase();
