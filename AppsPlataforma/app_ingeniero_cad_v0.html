@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v12.5 - Stable Orbit Fix</title>
+<title>CAD Gas v13.0 - Hub Ingeniería</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ff00; }
@@ -47,7 +47,7 @@
         box-shadow: 0 0 10px rgba(0,0,0,0.5);
     }
     
-    #left-panel { width: 240px; border-right: 1px solid var(--border); }
+    #left-panel { width: 260px; border-right: 1px solid var(--border); } /* Ancho aumentado ligeramente para los tooltips */
     #right-panel { width: 280px; border-left: 1px solid var(--border); }
     
     .closed { width: 0 !important; min-width: 0 !important; border: none !important; opacity: 0; pointer-events: none; }
@@ -62,20 +62,41 @@
     .handle-left { left: 0; }
     .handle-right { right: 0; border-radius: 8px 0 0 8px; border-left: 1px solid #444; border-right: none; }
     
-    #left-panel:not(.closed) + .handle-left { left: 240px; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; margin-left: -10px; }
+    #left-panel:not(.closed) + .handle-left { left: 260px; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; margin-left: -10px; }
     #right-panel:not(.closed) ~ .handle-right { right: 280px; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; margin-right: -10px; }
     .panel-header { padding: 10px; background: #2d2d2d; font-weight:600; color:#fff; border-bottom:1px solid var(--border); display:flex; justify-content: space-between; align-items: center; }
+    
+    /* ESTILOS BIBLIOTECA MEJORADOS */
     .lib-group { border-bottom: 1px solid var(--border); }
     .lib-group-title { padding: 8px 12px; cursor: pointer; font-size:0.8rem; font-weight:bold; color:#888; text-transform:uppercase; display:flex; justify-content:space-between; transition: 0.2s;}
     .lib-group-title:hover { color: #fff; background: #333; }
-    .lib-items { display: none; padding: 5px; background: #1e1e1e; } 
+    .lib-items { display: none; padding: 5px; background: #1e1e1e; max-height: 400px; overflow-y: auto; } 
     .lib-items.open { display: block; animation: fadeIn 0.3s; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     
-    .tool-item { display: flex; align-items: center; gap: 10px; padding: 6px 10px; margin: 2px 0; cursor: pointer; border-radius: 4px; transition: 0.1s; border: 1px solid transparent; }
+    .lib-subheader {
+        font-size: 0.7rem; color: var(--accent); font-weight: bold; 
+        margin: 10px 0 4px 5px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 2px;
+    }
+
+    .tool-item { position: relative; display: flex; align-items: center; gap: 10px; padding: 6px 10px; margin: 2px 0; cursor: pointer; border-radius: 4px; transition: 0.1s; border: 1px solid transparent; }
     .tool-item:hover { background: #383838; } 
     .tool-item.active { background: #37373d; border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
     .tool-icon { width: 20px; text-align: center; font-size: 1.1rem; } .tool-name { font-size: 0.85rem; }
+    
+    /* TOOLTIP DE BIBLIOTECA */
+    .lib-tooltip {
+        display: none; position: absolute; left: 100%; top: 0;
+        width: 280px; background: rgba(30, 30, 30, 0.98); border: 1px solid var(--accent);
+        padding: 12px; z-index: 1000; font-size: 0.8rem; color: #ddd;
+        box-shadow: 4px 4px 15px rgba(0,0,0,0.7); white-space: normal;
+        border-radius: 0 4px 4px 4px; backdrop-filter: blur(4px); pointer-events: none;
+    }
+    .tool-item:hover .lib-tooltip { display: block; }
+    .tooltip-title { font-weight: bold; color: #fff; font-size: 0.9rem; margin-bottom: 4px; display:block; border-bottom: 1px solid #444; padding-bottom: 4px;}
+    .tooltip-desc { margin-bottom: 6px; color: #bbb; line-height: 1.3;}
+    .tooltip-meta { font-style: italic; color: #0078d7; font-size: 0.75rem; display: block; margin-top: 5px;}
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     
     #main-area { flex-grow: 1; position: relative; background: #111; cursor: none; }
     svg { display: block; width: 100%; height: 100%; }
@@ -172,7 +193,7 @@
 <body>
 
 <header>
-    <div class="brand"><span>CAD</span> GAS v12.5</div>
+    <div class="brand"><span>CAD</span> GAS v13.0</div>
     
     <div class="toolbar-sep"></div>
     <button class="btn" id="btn-undo" onclick="undo()" title="Deshacer (Ctrl+Z)">↩</button>
@@ -244,6 +265,10 @@
         <div class="lib-group">
             <div class="lib-group-title" onclick="toggleGroup('grp-perif')">Periféricos <span>▼</span></div>
             <div class="lib-items" id="grp-perif"></div>
+        </div>
+        <div class="lib-group">
+            <div class="lib-group-title" onclick="toggleGroup('grp-cons')">Consumibles <span>▼</span></div>
+            <div class="lib-items" id="grp-cons"></div>
         </div>
     </div>
     <div class="panel-handle handle-left" onclick="togglePanel('left-panel')">🛠️</div>
@@ -542,128 +567,128 @@ function parseInputFloat(val) {
 
 // --- LISTAS DE DIAMETROS DISPONIBLES ---
 const DIAMETROS_DISPONIBLES = {
-    // Acero al Carbón
     'acero_sch40': ['1/4"', '1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '2-1/2"', '3"', '4"', '6"'],
     'acero_sch80': ['1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '3"', '4"'],
     'acero_sch160': ['1/2"', '3/4"', '1"', '2"'],
-    
-    // Acero Galvanizado
     'galv_sch40': ['1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '3"', '4"'],
     'galv_sch80': ['1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"'],
     'galv_sch160': ['1/2"', '3/4"', '1"'],
-
-    // Multicapa (PE-AL-PE) - Formato Tuberia (mm)
     'multicapa': ['1216 (16mm)', '1620 (20mm)', '2025 (25mm)', '2632 (32mm)', '4050 (50mm)'],
-
-    // Cobre Rígido
     'cobre_k': ['3/8"', '1/2"', '5/8"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"'],
     'cobre_l': ['1/4"', '3/8"', '1/2"', '5/8"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"'],
     'cobre_m': ['3/8"', '1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"'],
-    
-    // Cobre Flexible
     'cobre_flex': ['1/8"', '3/16"', '1/4"', '5/16"', '3/8"', '1/2"', '5/8"', '3/4"'],
-
-    // Polietileno (PE)
     'pe_ips': ['1/2" IPS', '3/4" IPS', '1" IPS', '1-1/4" IPS', '2" IPS', '3" IPS', '4" IPS'],
-    'pe_cts': ['1/2" CTS', '1" CTS'], // Copper Tube Size para plástico
+    'pe_cts': ['1/2" CTS', '1" CTS'],
     'pe_metric': ['20mm', '25mm', '32mm', '40mm', '50mm', '63mm', '90mm', '110mm', '160mm']
 };
 
 // --- CONFIGURACIÓN ---
 let CONFIG = { 
-    tileW: 100, 
-    tileH: 50, 
-    zStep: 1, 
-    snapRadius: 8, 
-    showGrid: true, enableSnap: true, unit: 'm',
-    showTags: true 
+    tileW: 100, tileH: 50, zStep: 1, 
+    snapRadius: 8, showGrid: true, enableSnap: true, unit: 'm', showTags: true 
 };
 const UNITS = { 'm': { factor: 1, label: 'm', precision: 2 }, 'dm': { factor: 10, label: 'cm', precision: 1 }, 'cm': { factor: 100, label: 'cm', precision: 1 }, 'mm': { factor: 1000, label: 'mm', precision: 0 } };
 
 function parseDiameterToScale(valStr) {
     if(!valStr) return 2; 
-
     let meters = 0;
-    // Lógica mejorada para detectar mm, IPS, CTS y fracciones
     if(valStr.toLowerCase().includes('mm')) {
-        // Extraer número de strings como "1216 (16mm)"
         const match = valStr.match(/(\d+)mm/);
-        if (match) {
-            meters = parseFloat(match[1]) / 1000;
-        } else {
-            meters = parseFloat(valStr) / 1000;
-        }
+        if (match) { meters = parseFloat(match[1]) / 1000; } else { meters = parseFloat(valStr) / 1000; }
     } else {
-        // Limpiar sufijos como IPS, CTS o comillas
         let clean = valStr.replace(/"/g, '').replace('IPS','').replace('CTS','').trim();
         let parts = clean.split(/[- ]/);
         let inches = 0;
         parts.forEach(p => {
-            if(p.includes('/')) {
-                const frac = p.split('/');
-                if(frac.length === 2) inches += parseFloat(frac[0]) / parseFloat(frac[1]);
-            } else {
-                const f = parseFloat(p);
-                if(!isNaN(f)) inches += f;
-            }
+            if(p.includes('/')) { const frac = p.split('/'); if(frac.length === 2) inches += parseFloat(frac[0]) / parseFloat(frac[1]); } else { const f = parseFloat(p); if(!isNaN(f)) inches += f; }
         });
         meters = inches * 0.0254;
     }
-
     if(isNaN(meters) || meters === 0) return 2;
     let pixelWidth = meters * CONFIG.tileW;
-    // Grosor mínimo visual de 1.5px para que no desaparezca
     return Math.max(1.5, pixelWidth);
 }
 
-// --- CATALOGO ---
+// --- CATALOGO (ACTUALIZADO CON SUBDIVISIONES Y TOOLTIPS) ---
 const CATALOGO = {
     mat: [
-        // --- ACERO AL CARBÓN (Negros/Grises) ---
-        { id: 't_ac_40', name: 'A. Carbón Sch40', color: '#444444', type: 'tuberia', props: { material: 'acero_sch40', diametroNominal: '1"' } },
-        { id: 't_ac_80', name: 'A. Carbón Sch80', color: '#222222', type: 'tuberia', props: { material: 'acero_sch80', diametroNominal: '1"' } },
-        { id: 't_ac_160', name: 'A. Carbón Sch160', color: '#000000', type: 'tuberia', props: { material: 'acero_sch160', diametroNominal: '1"' } },
+        { subCat: 'Acero al Carbón', id: 't_ac_40', name: 'Sch40', color: '#444444', type: 'tuberia', props: { material: 'acero_sch40', diametroNominal: '1"' } },
+        { subCat: 'Acero al Carbón', id: 't_ac_80', name: 'Sch80', color: '#222222', type: 'tuberia', props: { material: 'acero_sch80', diametroNominal: '1"' } },
+        { subCat: 'Acero al Carbón', id: 't_ac_160', name: 'Sch160', color: '#000000', type: 'tuberia', props: { material: 'acero_sch160', diametroNominal: '1"' } },
         
-        // --- ACERO GALVANIZADO (Plateados) ---
-        { id: 't_gl_40', name: 'Galvanizado Sch40', color: '#C0C0C0', type: 'tuberia', props: { material: 'galv_sch40', diametroNominal: '1"' } },
-        { id: 't_gl_80', name: 'Galvanizado Sch80', color: '#A9A9A9', type: 'tuberia', props: { material: 'galv_sch80', diametroNominal: '1"' } },
-        { id: 't_gl_160', name: 'Galvanizado Sch160', color: '#808080', type: 'tuberia', props: { material: 'galv_sch160', diametroNominal: '1"' } },
-
-        // --- MULTICAPA (Crema/Blanco) ---
-        { id: 't_multi', name: 'Multicapa PE-AL', color: '#FFFFE0', type: 'tuberia', props: { material: 'multicapa', diametroNominal: '1620 (20mm)' } },
-
-        // --- COBRE RÍGIDO (Colores estándar: K=Verde, L=Azul, M=Rojo) ---
-        { id: 't_cu_k', name: 'Cobre Tipo K', color: '#006400', type: 'tuberia', props: { material: 'cobre_k', diametroNominal: '1/2"' } },
-        { id: 't_cu_l', name: 'Cobre Tipo L', color: '#1E90FF', type: 'tuberia', props: { material: 'cobre_l', diametroNominal: '1/2"' } },
-        { id: 't_cu_m', name: 'Cobre Tipo M', color: '#DC143C', type: 'tuberia', props: { material: 'cobre_m', diametroNominal: '1/2"' } },
+        { subCat: 'Acero Galvanizado', id: 't_gl_40', name: 'Sch40 Galv', color: '#C0C0C0', type: 'tuberia', props: { material: 'galv_sch40', diametroNominal: '1"' } },
         
-        // --- COBRE FLEXIBLE (Color Cobre) ---
-        { id: 't_cu_flex', name: 'Cobre Flexible', color: '#B87333', type: 'tuberia', props: { material: 'cobre_flex', diametroNominal: '3/8"' } },
-
-        // --- POLIETILENO (Amarillos) ---
-        { id: 't_pe_met', name: 'PE Métrico', color: '#FFD700', type: 'tuberia', props: { material: 'pe_metric', diametroNominal: '32mm' } },
-        { id: 't_pe_ips', name: 'PE IPS', color: '#E6E600', type: 'tuberia', props: { material: 'pe_ips', diametroNominal: '1" IPS' } },
-        { id: 't_pe_cts', name: 'PE CTS', color: '#F0E68C', type: 'tuberia', props: { material: 'pe_cts', diametroNominal: '1/2" CTS' } }
+        { subCat: 'Cobre Rígido', id: 't_cu_k', name: 'Tipo K (Verde)', color: '#006400', type: 'tuberia', props: { material: 'cobre_k', diametroNominal: '1/2"' } },
+        { subCat: 'Cobre Rígido', id: 't_cu_l', name: 'Tipo L (Azul)', color: '#1E90FF', type: 'tuberia', props: { material: 'cobre_l', diametroNominal: '1/2"' } },
+        { subCat: 'Cobre Flexible', id: 't_cu_flex', name: 'Flexible', color: '#B87333', type: 'tuberia', props: { material: 'cobre_flex', diametroNominal: '3/8"' } },
+        
+        { subCat: 'Multicapa', id: 't_multi', name: 'PE-AL-PE', color: '#FFFFE0', type: 'tuberia', props: { material: 'multicapa', diametroNominal: '1620 (20mm)' } },
+        { subCat: 'Plásticas', id: 't_pe_met', name: 'PE Métrico', color: '#FFD700', type: 'tuberia', props: { material: 'pe_metric', diametroNominal: '32mm' } }
     ],
 
-    // --- NUEVO: SECCIÓN COMPONENTES ---
+    // --- COMPONENTES (Actualizado con válvulas y tooltips) ---
     comp: [
-        { id: 'c_union', name: 'Unión Universal', icon: '🔗', type: 'equipo', props: { tipo: 'accesorio' } },
-        { id: 'c_brida', name: 'Brida', icon: '⭕', type: 'equipo', props: { tipo: 'accesorio' } }
+        { subCat: 'Uniones', id: 'c_union', name: 'Unión Universal', icon: '🔗', type: 'equipo', props: { tipo: 'accesorio' } },
+        { subCat: 'Uniones', id: 'c_brida', name: 'Brida', icon: '⭕', type: 'equipo', props: { tipo: 'accesorio' } },
+        
+        // Válvulas de Aislamiento
+        { 
+            subCat: 'Válvulas (Aislamiento)', id: 'v_bola', name: 'V. Bola', icon: '⧓', type: 'valvula', props: { tipo: 'bola', rotacion: 0 },
+            info: { title: "Válvula de Bola (Ball Valve)", desc: "Cierre rápido y hermético girando la manija 90°. Para alta presión (>600psi) usar tipo Trunnion.", use: "Cierre general." }
+        },
+        { 
+            subCat: 'Válvulas (Aislamiento)', id: 'v_macho', name: 'V. Macho/Tapón', icon: '🔽', type: 'valvula', props: { tipo: 'macho', rotacion: 0 },
+            info: { title: "Válvula de Macho (Plug Valve)", desc: "Usa un cono metálico con grasa sellante. Se puede re-lubricar sin detener flujo.", use: "Acometidas de medidores y redes urbanas." }
+        },
+        
+        // Válvulas de Regulación
+        { 
+            subCat: 'Válvulas (Regulación)', id: 'v_aguja', name: 'V. Aguja', icon: '📍', type: 'valvula', props: { tipo: 'aguja', rotacion: 0 },
+            info: { title: "Válvula de Aguja", desc: "Permite un control extremadamente fino y preciso del caudal.", use: "Líneas de instrumentación y manómetros." }
+        },
+        { 
+            subCat: 'Válvulas (Regulación)', id: 'v_globo', name: 'V. Globo', icon: '🌐', type: 'valvula', props: { tipo: 'globo', rotacion: 0 },
+            info: { title: "Válvula de Globo", desc: "Diseñada para estrangular o regular el flujo, no solo on/off.", use: "Bypass de regulación." }
+        },
+
+        // Válvulas de Seguridad (Movidas aquí)
+        { 
+            subCat: 'Válvulas (Seguridad)', id: 'v_check', name: 'V. Cheque', icon: '▶', type: 'valvula', props: { tipo: 'retencion', rotacion: 0 },
+            info: { title: "Válvula Cheque (Retención)", desc: "Permite el flujo en una sola dirección y bloquea el retorno.", use: "Salida de bombas." }
+        },
+        { 
+            subCat: 'Válvulas (Seguridad)', id: 'v_exceso', name: 'Exc. Flujo', icon: '⚡', type: 'valvula', props: { tipo: 'exceso', rotacion: 0 },
+            info: { title: "Válvula Exceso Flujo", desc: "Cierre automático de golpe (Slam Shut) si detecta caudal de ruptura.", use: "Salidas de tanques GLP." }
+        }
     ],
 
     eq: [
-        { id: 'eq_medidor', name: 'Medidor G4', icon: '⏱️', type: 'equipo', props: { modelo: 'G4' } },
-        { id: 'eq_reg', name: 'Regulador', icon: '⚙️', type: 'equipo', props: { cap: '5 m3/h' } }
+        { subCat: 'Medición', id: 'eq_medidor', name: 'Medidor G4', icon: '⏱️', type: 'equipo', props: { modelo: 'G4' } },
+        { subCat: 'Medición', id: 'eq_ecor', name: 'Electro-corrector', icon: '📟', type: 'equipo', props: { modelo: 'EC' } },
+        { subCat: 'Regulación', id: 'eq_reg', name: 'Regulador', icon: '⚙️', type: 'equipo', props: { cap: '5 m3/h' } },
+        { subCat: 'Compresión', id: 'eq_comp', name: 'Compresor', icon: '🔋', type: 'equipo', props: { cap: 'HP' } }
     ],
     inst: [
-          { id: 'i_mano', name: 'Manómetro', icon: '⌚', type: 'equipo', props: { rango: '0-60 psi' } }
+          { subCat: 'Presión', id: 'i_mano', name: 'Manómetro', icon: '⌚', type: 'equipo', props: { rango: '0-60 psi' } },
+          { subCat: 'Presión', id: 'i_pres', name: 'Presostato', icon: '🛑', type: 'equipo', props: { set: 'High' } },
+          { subCat: 'Seguridad', id: 'i_ion', name: 'Sensor Ionizado', icon: '🔥', type: 'equipo', props: { tipo: 'Ion' } }
     ],
     perif: [
-        { id: 'v_bola', name: 'Válvula Bola', icon: '⧓', type: 'valvula', props: { tipo: 'bola', rotacion: 0 } },
-        { id: 'v_check', name: 'Válvula Check', icon: '▶', type: 'valvula', props: { tipo: 'retencion', rotacion: 0 } }
+        { subCat: 'Soportes', id: 'p_sop', name: 'Soporte', icon: '⚓', type: 'equipo', props: { tipo: 'soporte' } },
+        { subCat: 'Tanques', id: 'p_tanque', name: 'Tanque GLP', icon: '💊', type: 'equipo', props: { cap: '1000L' } }
+    ],
+    // --- NUEVA CATEGORÍA CONSUMIBLES ---
+    cons: [
+        { subCat: 'Sellantes', id: 'cs_teflon', name: 'Cinta Teflón', icon: '🧶', type: 'consumible', props: { tipo: 'teflon' } },
+        { subCat: 'Sellantes', id: 'cs_fuerza_alt', name: 'Traba. Fuerza Alta', icon: '🔴', type: 'consumible', props: { tipo: 'anaerobico' } },
+        { subCat: 'Sellantes', id: 'cs_fuerza_med', name: 'Traba. Fuerza Media', icon: '🔵', type: 'consumible', props: { tipo: 'anaerobico' } },
+        { subCat: 'Pinturas', id: 'cs_anti', name: 'Anticorrosivo', icon: '🖌️', type: 'consumible', props: { tipo: 'pintura' } },
+        { subCat: 'Pinturas', id: 'cs_epox', name: 'Epóxica', icon: '🧪', type: 'consumible', props: { tipo: 'pintura' } },
+        { subCat: 'Solventes', id: 'cs_tiner', name: 'Tiner', icon: '💧', type: 'consumible', props: { tipo: 'solvente' } }
     ]
 };
+
 let layers = [{ id: 'l_gas', name: 'Gas', color: '#FFD700', visible: true }];
 let activeLayerId = 'l_gas';
 let elementos = [];
@@ -673,7 +698,7 @@ let estado = {
     drawing: false, startPt: null, selID: null, hoverID: null,
     view: { x: 0, y: 0, scale: 1, angle: Math.PI/4 },
     action: null, startAction: {x:0, y:0}, snapDir: null, tempVector: null,
-    verticalPendingDir: 0 // 1 para arriba, -1 para abajo, 0 nada
+    verticalPendingDir: 0
 };
 
 const svg = document.getElementById('lienzo-cad');
@@ -682,7 +707,7 @@ const world = document.getElementById('world-transform');
 function setUnit(u) { 
     CONFIG.unit = u; 
     document.getElementById('hud-z-unit').innerText = UNITS[u].label;
-    syncZInput(); // Refrescar valor del input Z al cambiar unidad
+    syncZInput();
     renderScene(); renderInterface(); updatePropsPanel(); 
 }
 function formatLength(valMeters) { const u = UNITS[CONFIG.unit]; const val = valMeters * u.factor; return parseFloat(val.toFixed(u.precision)) + " " + u.label; }
@@ -769,7 +794,7 @@ function analizarRed() {
     return accesorios;
 }
 
-// --- RENDERIZADO (CORREGIDO: Etiquetas separadas) ---
+// --- RENDERIZADO ---
 function renderGrid() {
     const pMaj = document.getElementById('grid-path'); const pMin = document.getElementById('grid-minor'); const a = document.getElementById('grid-axis');
     if(!CONFIG.showGrid) { pMaj.setAttribute('d', ''); pMin.setAttribute('d', ''); a.setAttribute('d', ''); return; }
@@ -821,14 +846,10 @@ function renderScene() {
             
             const lenRaw = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
             
-            // --- NUEVA LÓGICA DE ETIQUETAS ---
             if(showLabel && (el.props.diametroNominal || el.props.material)) {
-                
                 const matRaw = el.props.material || '';
                 const matDisplay = matRaw.charAt(0).toUpperCase() + matRaw.slice(1);
                 const diamDisplay = el.props.diametroNominal ? `Ø${el.props.diametroNominal}` : '';
-                
-                // 1. Texto Superior: Material y Diámetro (ARRIBA)
                 const txtTop = `${matDisplay} ${diamDisplay}`.trim();
                 const tTop = document.createElementNS("http://www.w3.org/2000/svg", "text");
                 tTop.setAttribute("x", midX); tTop.setAttribute("y", midY - 8); 
@@ -837,29 +858,21 @@ function renderScene() {
                 tTop.textContent = txtTop;
                 g.appendChild(tTop);
 
-                // 2. Texto Inferior: Longitud y Altura (ABAJO)
                 const lenDisplay = `L=${formatLength(lenRaw)}`;
                 let hDisplay = `Z=${formatLength(el.z)}`;
-                if (Math.abs(el.dz) > 0.05) {
-                    hDisplay = `Z=${formatLength(el.z)}⮕${formatLength(el.z + el.dz)}`;
-                }
+                if (Math.abs(el.dz) > 0.05) { hDisplay = `Z=${formatLength(el.z)}⮕${formatLength(el.z + el.dz)}`; }
                 const txtBottom = `${lenDisplay}  |  ${hDisplay}`;
-                
                 const tBot = document.createElementNS("http://www.w3.org/2000/svg", "text");
                 tBot.setAttribute("x", midX); tBot.setAttribute("y", midY + 12); 
                 tBot.setAttribute("class", "label-tech");
-                tBot.setAttribute("fill", "#999"); // Color gris suave
+                tBot.setAttribute("fill", "#999");
                 tBot.setAttribute("transform", `rotate(${angDeg}, ${midX}, ${midY})`);
                 tBot.textContent = txtBottom;
                 g.appendChild(tBot);
             }
-
-            // 3. Etiqueta Personalizada (TAG)
             if(showLabel && el.props.tag) {
                 const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                // Si hay datos técnicos, bajamos el TAG más para no superponer
                 const offset = (el.props.diametroNominal || el.props.material) ? 24 : -5;
-                
                 tt.setAttribute("x", midX); tt.setAttribute("y", midY + offset); 
                 tt.setAttribute("font-size", "10px"); tt.setAttribute("fill", "#fff"); 
                 tt.setAttribute("text-anchor", "middle");
@@ -867,29 +880,24 @@ function renderScene() {
                 tt.textContent = el.props.tag;
                 g.appendChild(tt);
             }
-            // ---------------------------------
 
         } else if(el.tipo === 'cota') {
             const e = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz);
             const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
             l.setAttribute("x1",s.x); l.setAttribute("y1",s.y); l.setAttribute("x2",e.x); l.setAttribute("y2",e.y);
             l.setAttribute("class","dim-line"); l.setAttribute("stroke", "#aaa");
-            
             const rawLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
             const txtLen = formatLength(rawLen);
             const midX = (s.x + e.x) / 2; const midY = (s.y + e.y) / 2;
             let angDeg = Math.atan2(e.y - s.y, e.x - s.x) * (180 / Math.PI);
             if (angDeg > 90 || angDeg < -90) { angDeg += 180; }
-            
             if(showLabel) {
                 const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
                 t.setAttribute("x", midX); t.setAttribute("y", midY); t.setAttribute("class","dim-text");
                 t.setAttribute("transform", `rotate(${angDeg}, ${midX}, ${midY}) translate(0, -5)`);
                 t.textContent = txtLen;
                 g.appendChild(l); g.appendChild(t);
-            } else {
-                g.appendChild(l);
-            }
+            } else { g.appendChild(l); }
         } else if (el.tipo === 'texto') {
             const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
             t.setAttribute("x",s.x); t.setAttribute("y",s.y); t.setAttribute("class","dim-text");
@@ -900,9 +908,7 @@ function renderScene() {
             if (el.props.dirVector) {
                 const p1 = isoToScreen(0, 0, 0); const p2 = isoToScreen(el.props.dirVector.dx, el.props.dirVector.dy, el.props.dirVector.dz);
                 rot = Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180 / Math.PI);
-            } else {
-                rot = parseFloat(el.props.rotacion || 0);
-            }
+            } else { rot = parseFloat(el.props.rotacion || 0); }
             g.setAttribute("transform", `translate(${s.x},${s.y}) rotate(${rot}) translate(${-s.x},${-s.y})`);
             
             const scaleFactor = el.props.scaleFactor || 1.0; 
@@ -911,15 +917,8 @@ function renderScene() {
             
             let drawOffsetX = 0;
             const anchor = el.props.anchor || 'center';
-            
-            if (anchor === 'start') {
-                drawOffsetX = halfS;
-            } else if (anchor === 'end') {
-                drawOffsetX = -halfS;
-            }
-
-            const drawX = s.x - halfS + drawOffsetX;
-            const drawY = s.y - halfS;
+            if (anchor === 'start') { drawOffsetX = halfS; } else if (anchor === 'end') { drawOffsetX = -halfS; }
+            const drawX = s.x - halfS + drawOffsetX; const drawY = s.y - halfS;
             
             if(el.tipo === 'valvula') {
                     const p = document.createElementNS("http://www.w3.org/2000/svg","path");
@@ -929,24 +928,18 @@ function renderScene() {
                     g.appendChild(p);
             } else {
                 const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
-                r.setAttribute("x", drawX); 
-                r.setAttribute("y", drawY); 
-                r.setAttribute("width", baseSize); 
-                r.setAttribute("height", baseSize);
+                r.setAttribute("x", drawX); r.setAttribute("y", drawY); r.setAttribute("width", baseSize); r.setAttribute("height", baseSize);
                 r.setAttribute("fill", "#222"); r.setAttribute("stroke", col);
                 const tx = document.createElementNS("http://www.w3.org/2000/svg","text");
-                tx.setAttribute("x", s.x + drawOffsetX); 
-                tx.setAttribute("y", s.y + 4); 
+                tx.setAttribute("x", s.x + drawOffsetX); tx.setAttribute("y", s.y + 4); 
                 tx.setAttribute("text-anchor","middle");
                 tx.setAttribute("fill",col); tx.setAttribute("font-size", (baseSize*0.6)+"px"); 
                 tx.textContent = el.icon;
                 g.appendChild(r); g.appendChild(tx);
             }
-            
             if(showLabel && el.props.tag) {
                  const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                 tt.setAttribute("x", s.x + drawOffsetX); 
-                 tt.setAttribute("y", s.y - halfS - 5); 
+                 tt.setAttribute("x", s.x + drawOffsetX); tt.setAttribute("y", s.y - halfS - 5); 
                  tt.setAttribute("text-anchor","middle");
                  tt.setAttribute("fill","#fff"); tt.setAttribute("font-size","10px"); tt.textContent = el.props.tag;
                  g.appendChild(tt);
@@ -966,28 +959,22 @@ function renderScene() {
             const v1 = fit.dirs[0]; const v2 = fit.dirs[1];
             const p1 = isoToScreen(fit.x + v1.x * elbowRadius, fit.y + v1.y * elbowRadius, fit.z + v1.z * elbowRadius);
             const p2 = isoToScreen(fit.x + v2.x * elbowRadius, fit.y + v2.y * elbowRadius, fit.z + v2.z * elbowRadius);
-            
             const d = `M${p1.x},${p1.y} Q${s.x},${s.y} ${p2.x},${p2.y}`;
             const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
             path.setAttribute("d", d); path.setAttribute("stroke", fit.color); path.setAttribute("stroke-width", fit.width); path.setAttribute("class", "fitting-auto");
             g.appendChild(path);
-            
             const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); 
-            c.setAttribute("r", fit.width * 0.6); 
-            c.setAttribute("fill", fit.color);
+            c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.6); c.setAttribute("fill", fit.color);
             g.appendChild(c);
         } else if (fit.tipo === 'reductor_auto') {
              const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
              const r = fit.width * 1.5;
              const d = `M${s.x-r},${s.y-r/2} L${s.x+r},${s.y} L${s.x-r},${s.y+r/2} Z`;
-             p.setAttribute("d", d);
-             p.setAttribute("fill", "#444"); p.setAttribute("stroke", fit.color); p.setAttribute("stroke-width", 1);
+             p.setAttribute("d", d); p.setAttribute("fill", "#444"); p.setAttribute("stroke", fit.color); p.setAttribute("stroke-width", 1);
              g.appendChild(p);
         } else {
             const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); 
-            c.setAttribute("r", fit.width * 1.2);
+            c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 1.2);
             c.setAttribute("fill", "#222"); c.setAttribute("stroke", fit.color); c.setAttribute("stroke-width", fit.width);
             g.appendChild(c);
         }
@@ -1038,37 +1025,18 @@ svg.addEventListener('mousedown', e => {
 svg.addEventListener('mousemove', e => {
     const p = getSVGPoint(e.clientX, e.clientY);
 
-    // --- CORRECCIÓN: ROTACIÓN ORBITAL ---
-    // Esto soluciona que las tuberías "se muevan de lugar" al rotar.
     if(estado.action === 'rotate') { 
-        // 1. Calculamos la posición del mouse relativa al grupo escalado (Coordenadas locales)
         const mx_local = (e.clientX - estado.view.x) / estado.view.scale;
         const my_local = (e.clientY - estado.view.y) / estado.view.scale;
-
-        // 2. Obtenemos la coordenada isométrica (X, Y) teórica bajo el mouse ANTES de rotar
-        // Nota: screenToIso usa 'estado.view.angle' actual.
         const pivotIso = screenToIso(mx_local, my_local);
-
-        // 3. Aplicamos la rotación al ángulo
         estado.view.angle += (e.clientX - estado.startAction.x) * 0.01;
-        
-        // 4. Calculamos dónde quedó ese punto pivote AHORA con el nuevo ángulo
-        // Asumimos Z=0 para el pivote de rotación para mantener la consistencia con el suelo
         const newScreenPos = isoToScreen(pivotIso.x, pivotIso.y, 0);
-
-        // 5. Ajustamos el Pan (view.x, view.y) para que el punto pivote siga bajo el mouse
-        // Fórmula: PosMouse = (PosPantallaNueva * Escala) + OffsetVista
-        // Despejamos OffsetVista:
         estado.view.x = e.clientX - (newScreenPos.x * estado.view.scale);
         estado.view.y = e.clientY - (newScreenPos.y * estado.view.scale);
-
         estado.startAction = {x: e.clientX, y: e.clientY}; 
-        
-        // Renderizamos todo
         renderGrid(); renderScene(); renderEffects(); updateTransform(); 
         return; 
     }
-    // -------------------------------------
 
     if(estado.action === 'pan') { 
         estado.view.x += e.clientX - estado.startAction.x; 
@@ -1078,13 +1046,11 @@ svg.addEventListener('mousemove', e => {
         return; 
     }
     
-    // Proyección sobre plano Z
     const zOffsetHeight = (estado.currentZ || 0) * CONFIG.tileW * 0.7;
     const adjustedY = p.y + zOffsetHeight;
     const isoRaw = screenToIso(p.x, adjustedY);
     estado.mouseIso = { x: isoRaw.x, y: isoRaw.y };
     
-    // Snap Logic
     let sn = null; let snID = null;
     if (CONFIG.enableSnap) {
         const tol = CONFIG.snapRadius / estado.view.scale;
@@ -1105,14 +1071,12 @@ svg.addEventListener('mousemove', e => {
             if (targetEl && targetEl.tipo === 'tuberia') { estado.snapDir = { dx: targetEl.dx, dy: targetEl.dy, dz: targetEl.dz }; }
     } else { estado.snapDir = null; }
     
-    // Lógica de arrastre
     if (estado.action === 'dragging' && estado.selID) {
         const el = elementos.find(x => x.id === estado.selID);
         if (el) {
             const gridX = Math.round(estado.mouseIso.x * 10) / 10;
             const gridY = Math.round(estado.mouseIso.y * 10) / 10;
             const destino = estado.snapped || { x: gridX, y: gridY };
-            
             el.x = destino.x; el.y = destino.y;
             if (estado.snapped && estado.snapped.z !== undefined) el.z = estado.snapped.z;
             renderScene(); renderEffects();
@@ -1126,7 +1090,6 @@ svg.addEventListener('mousemove', e => {
             }
     }
     
-    // Hover logic
     if(estado.tool === 'select' && !estado.action && !estado.snapped) {
         const tol = 8 / estado.view.scale; let h = null; let minD = tol; 
         elementos.forEach(el => {
@@ -1141,25 +1104,19 @@ svg.addEventListener('mousemove', e => {
         if(h !== estado.hoverID) { estado.hoverID = h; renderEffects(); }
     }
     
-    // TOOLTIP FLOTANTE
     const tooltip = document.getElementById('hover-tooltip');
     if (estado.hoverID) {
         const el = elementos.find(x => x.id === estado.hoverID);
         if(el) {
             const u = UNITS[CONFIG.unit];
             let txt = `Z: ${formatLength(el.z)}`;
-            // Si es tuberia con pendiente, mostrar rango
-            if (el.tipo === 'tuberia' && Math.abs(el.dz) > 0.01) {
-                txt = `Z: ${formatLength(el.z)} ⮕ ${formatLength(el.z + el.dz)}`;
-            }
+            if (el.tipo === 'tuberia' && Math.abs(el.dz) > 0.01) { txt = `Z: ${formatLength(el.z)} ⮕ ${formatLength(el.z + el.dz)}`; }
             tooltip.innerText = txt;
             tooltip.style.display = 'block';
             tooltip.style.left = (e.clientX + 15) + 'px';
             tooltip.style.top = (e.clientY + 15) + 'px';
         }
-    } else {
-        tooltip.style.display = 'none';
-    }
+    } else { tooltip.style.display = 'none'; }
 
     renderInterface(p);
 });
@@ -1200,7 +1157,7 @@ function confirmarInput() {
 }
 document.getElementById('dynamic-len').addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmarInput(); if (e.key === 'Escape') { document.getElementById('dynamic-input-container').style.display = 'none'; estado.tempVector = null; } e.stopPropagation(); });
 
-// --- LOGICA CLICK (CORREGIDA: Alineación exacta con guía roja) ---
+// --- LOGICA CLICK ---
 function handleCanvasClick(e) {
     if(document.getElementById('dynamic-input-container').style.display === 'flex' ||
        document.getElementById('vertical-input-container').style.display === 'flex') return;
@@ -1217,64 +1174,35 @@ function handleCanvasClick(e) {
         estado.selID = estado.hoverID; 
         if(estado.selID) {
             const el = elementos.find(x => x.id === estado.selID);
-            if(el) {
-                // Al seleccionar, establecemos la altura de trabajo a la altura del objeto
-                estado.currentZ = el.z;
-                syncZInput(); // Actualizar HUD
-            }
+            if(el) { estado.currentZ = el.z; syncZInput(); }
         }
-        updatePropsPanel(); 
-        renderEffects();
+        updatePropsPanel(); renderEffects();
         const rp = document.getElementById('right-panel');
         if(estado.selID) { rp.classList.remove('closed'); } else { rp.classList.add('closed'); }
         return; 
     }
     
-    // --- CAMBIO IMPORTANTE AQUÍ ---
-    // Usamos 'let' en lugar de 'const' para poder modificar las coordenadas si se alinean
     let tx = estado.snapped ? estado.snapped.x : Math.round(estado.mouseIso.x*10)/10;
     let ty = estado.snapped ? estado.snapped.y : Math.round(estado.mouseIso.y*10)/10;
     let tz = estado.snapped ? estado.snapped.z : estado.currentZ;
     
-    // CORRECCIÓN: Si estamos dibujando y NO hay snap a objeto, aplicamos "Imán Ortogonal"
     if (estado.drawing && estado.inicio && !estado.snapped) {
-        const diffX = tx - estado.inicio.x;
-        const diffY = ty - estado.inicio.y;
-        const diffZ = tz - estado.inicio.z;
-        const th = 0.5; // Umbral de sensibilidad (debe ser igual al visual)
-
-        // Detectar si estamos alineados y forzar la coordenada
-        if (Math.abs(diffY) < th && Math.abs(diffZ) < th) { 
-            ty = estado.inicio.y; tz = estado.inicio.z; // Bloqueo en Eje X
-        } 
-        else if (Math.abs(diffX) < th && Math.abs(diffZ) < th) { 
-            tx = estado.inicio.x; tz = estado.inicio.z; // Bloqueo en Eje Y
-        } 
-        else if (Math.abs(diffX) < th && Math.abs(diffY) < th) { 
-            tx = estado.inicio.x; ty = estado.inicio.y; // Bloqueo en Eje Z (Vertical)
-        }
+        const diffX = tx - estado.inicio.x; const diffY = ty - estado.inicio.y; const diffZ = tz - estado.inicio.z; const th = 0.5;
+        if (Math.abs(diffY) < th && Math.abs(diffZ) < th) { ty = estado.inicio.y; tz = estado.inicio.z; } 
+        else if (Math.abs(diffX) < th && Math.abs(diffZ) < th) { tx = estado.inicio.x; tz = estado.inicio.z; } 
+        else if (Math.abs(diffX) < th && Math.abs(diffY) < th) { tx = estado.inicio.x; ty = estado.inicio.y; }
     }
-    // -----------------------------
 
     if(estado.tool === 'texto') { 
         const txt = prompt("Texto:", "Etiqueta"); 
-        if(txt) {
-            addEl({tipo:'texto', x:tx, y:ty, z:tz, props:{text:txt}}); 
-        }
+        if(txt) { addEl({tipo:'texto', x:tx, y:ty, z:tz, props:{text:txt}}); }
         return; 
     }
     
     if(estado.activeItem?.type === 'tuberia' || estado.tool === 'cota') {
         if(!estado.drawing) { 
-            // PRIMER CLICK
-            estado.drawing = true; 
-            estado.inicio = {x:tx, y:ty, z:tz}; 
-            estado.currentZ = tz; // Asegurar que Z coincida
-            syncZInput();
-        } 
-        else {
-            // SEGUNDO CLICK (CONFIRMAR TRAMO)
-            // Calculamos con las coordenadas YA CORREGIDAS (tx, ty, tz)
+            estado.drawing = true; estado.inicio = {x:tx, y:ty, z:tz}; estado.currentZ = tz; syncZInput();
+        } else {
             let dx=tx-estado.inicio.x, dy=ty-estado.inicio.y, dz=tz-estado.inicio.z;
             const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
             if(dist > 0.01) { mostrarInputDinámico(e.clientX, e.clientY, dist, {dx, dy, dz}); } else { estado.drawing = false; }
@@ -1282,7 +1210,7 @@ function handleCanvasClick(e) {
     } else if (estado.activeItem) {
         const props = JSON.parse(JSON.stringify(estado.activeItem.props)); 
         if (estado.snapDir && (estado.activeItem.type === 'valvula' || estado.activeItem.type === 'equipo')) { props.dirVector = estado.snapDir; delete props.rotacion; }
-        addEl({tipo: estado.activeItem.type, x:tx, y:ty, z:tz, props});
+        addEl({tipo: estado.activeItem.type, x:tx, y:ty, z:tz, props, icon: estado.activeItem.icon});
     }
     renderInterface();
 }
@@ -1290,8 +1218,7 @@ function handleCanvasClick(e) {
 svg.addEventListener('wheel', e => { 
     e.preventDefault(); 
     let newScale = estado.view.scale * (e.deltaY > 0 ? 0.9 : 1.1); 
-    if (newScale < 0.1) newScale = 0.1; 
-    if (newScale > 20) newScale = 20; 
+    if (newScale < 0.1) newScale = 0.1; if (newScale > 20) newScale = 20; 
     if(estado.selID) {
         const el = elementos.find(x => x.id === estado.selID);
         if(el) {
@@ -1299,16 +1226,13 @@ svg.addEventListener('wheel', e => {
             if(el.tipo === 'tuberia' || el.tipo === 'cota') { objX += el.dx/2; objY += el.dy/2; objZ += el.dz/2; }
             const ptLocal = isoToScreen(objX, objY, objZ); 
             const rect = svg.getBoundingClientRect();
-            const centerX = rect.width / 2;
-            const centerY = rect.height / 2;
             estado.view.scale = newScale;
-            estado.view.x = centerX - (ptLocal.x * newScale); 
-            estado.view.y = centerY - (ptLocal.y * newScale);
+            estado.view.x = (rect.width / 2) - (ptLocal.x * newScale); 
+            estado.view.y = (rect.height / 2) - (ptLocal.y * newScale);
         }
     } else {
             const rect = svg.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+            const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
             const oldScale = estado.view.scale;
             estado.view.x = mouseX - (mouseX - estado.view.x) * (newScale / oldScale);
             estado.view.y = mouseY - (mouseY - estado.view.y) * (newScale / oldScale);
@@ -1317,12 +1241,9 @@ svg.addEventListener('wheel', e => {
     updateTransform(); renderEffects(); 
 }, { passive: false });
 
-// --- MANEJO DE TECLAS Y VERTICALIDAD ---
 window.addEventListener('keydown', e => {
-    // Si estamos editando un input normal, dejar pasar
     if(document.activeElement && (document.activeElement.classList.contains('hud-input') || document.activeElement.classList.contains('float-input'))) {
          if(e.key === 'Escape') {
-             // Cerrar todos los inputs flotantes
              document.getElementById('dynamic-input-container').style.display = 'none';
              document.getElementById('vertical-input-container').style.display = 'none';
              estado.verticalPendingDir = 0;
@@ -1334,123 +1255,59 @@ window.addEventListener('keydown', e => {
     if(e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
     if(e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
 
-    // --- NUEVA LÓGICA Q / A para VERTICALIDAD ---
     const k = e.key.toLowerCase();
-    
     if (k === 'q' || k === 'a') {
-        // Detectar si estamos "dibujando" o tenemos un objeto seleccionado desde donde partir
         let originPoint = null;
-        
-        if (estado.drawing && estado.inicio) {
-            // Estamos a mitad de un comando de dibujo
-            originPoint = estado.inicio;
-        } else if (estado.selID) {
-            // Tenemos algo seleccionado, usar su posición como base
+        if (estado.drawing && estado.inicio) { originPoint = estado.inicio; } else if (estado.selID) {
             const el = elementos.find(x => x.id === estado.selID);
-            if(el) {
-                // Si es tubería, esto es ambiguo, pero usaremos el punto (x,y,z) base
-                originPoint = { x: el.x, y: el.y, z: el.z };
-                // Establecer estado de dibujo para continuar después
-                estado.drawing = true;
-                estado.inicio = originPoint;
-                estado.activeItem = el.tipo === 'tuberia' ? { type: 'tuberia', props: el.props, color: el.props.customColor } : estado.activeItem;
-            }
+            if(el) { originPoint = { x: el.x, y: el.y, z: el.z }; estado.drawing = true; estado.inicio = originPoint; estado.activeItem = el.tipo === 'tuberia' ? { type: 'tuberia', props: el.props, color: el.props.customColor } : estado.activeItem; }
         } else {
-            // Nada seleccionado, comportamiento legacy (mover plano Z global solamente)
-            if(k==='q') estado.currentZ += 1;
-            if(k==='a') estado.currentZ -= 1;
-            syncZInput();
-            renderInterface();
-            return;
+            if(k==='q') estado.currentZ += 1; if(k==='a') estado.currentZ -= 1; syncZInput(); renderInterface(); return;
         }
 
         if (originPoint) {
             e.preventDefault();
-            // Abrir el modal de verticalidad
             const dir = (k === 'q') ? 1 : -1;
             estado.verticalPendingDir = dir;
-            
             const box = document.getElementById('vertical-input-container');
             const title = document.getElementById('v-text');
             const icon = document.getElementById('v-icon');
-            
-            if (dir === 1) { title.innerText = "SUBIENDO (Vertical)"; icon.innerText = "⬆"; title.style.color = "#0f0"; }
-            else { title.innerText = "BAJANDO (Vertical)"; icon.innerText = "⬇"; title.style.color = "#f44"; }
-            
-            // Posicionar cerca del centro de pantalla o mouse (usaremos centro por simplicidad)
+            if (dir === 1) { title.innerText = "SUBIENDO"; icon.innerText = "⬆"; title.style.color = "#0f0"; }
+            else { title.innerText = "BAJANDO"; icon.innerText = "⬇"; title.style.color = "#f44"; }
             const rect = svg.getBoundingClientRect();
-            box.style.left = (rect.width/2 - 75) + 'px';
-            box.style.top = (rect.height/2 - 50) + 'px';
+            box.style.left = (rect.width/2 - 75) + 'px'; box.style.top = (rect.height/2 - 50) + 'px';
             box.style.display = 'flex';
-            
-            const inp = document.getElementById('v-len');
-            inp.value = '';
-            inp.focus();
+            const inp = document.getElementById('v-len'); inp.value = ''; inp.focus();
         }
         return;
     }
     
     if(e.key==='Escape') { 
-        estado.drawing=false; 
-        setTool('select'); 
+        estado.drawing=false; setTool('select'); 
         document.getElementById('dynamic-input-container').style.display = 'none';
         document.getElementById('vertical-input-container').style.display = 'none';
     } 
-    
-    if(e.key==='Delete') borrarSeleccion(); 
-    renderInterface();
+    if(e.key==='Delete') borrarSeleccion(); renderInterface();
 });
 
-// --- CONFIRMAR VERTICALIDAD ---
 document.getElementById('v-len').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         const val = parseInputFloat(e.target.value);
         if (!isNaN(val) && val > 0 && estado.verticalPendingDir !== 0 && estado.inicio) {
-            
-            // 1. Calcular nueva Z
             const u = UNITS[CONFIG.unit];
-            const lenMeters = val / u.factor; // metros reales
-            const dz = lenMeters * estado.verticalPendingDir;
-            
-            // 2. Crear Tubería Vertical
+            const lenMeters = val / u.factor; const dz = lenMeters * estado.verticalPendingDir;
             let props = {};
-            // Intentar heredar propiedades
-            if (estado.activeItem && estado.activeItem.type === 'tuberia') {
-                 props = JSON.parse(JSON.stringify(estado.activeItem.props));
-            } else {
-                 props = { material: 'acero', diametroNominal: '1"' }; // Default
-            }
-
-            // Color?
+            if (estado.activeItem && estado.activeItem.type === 'tuberia') { props = JSON.parse(JSON.stringify(estado.activeItem.props)); } else { props = { material: 'acero', diametroNominal: '1"' }; }
             const col = estado.activeItem?.color || '#ccc';
-
-            addEl({
-                tipo: 'tuberia',
-                x: estado.inicio.x, y: estado.inicio.y, z: estado.inicio.z,
-                dx: 0, dy: 0, dz: dz,
-                props: props,
-                customColor: col
-            });
-            
-            // 3. ACTUALIZAR PUNTO DE INICIO PARA SEGUIR DIBUJANDO
-            // El nuevo punto de inicio es el final de la tubería vertical
-            estado.inicio.z += dz;
-            estado.currentZ = estado.inicio.z;
-            syncZInput();
-
-            // 4. Cerrar modal
+            addEl({ tipo: 'tuberia', x: estado.inicio.x, y: estado.inicio.y, z: estado.inicio.z, dx: 0, dy: 0, dz: dz, props: props, customColor: col });
+            estado.inicio.z += dz; estado.currentZ = estado.inicio.z; syncZInput();
             document.getElementById('vertical-input-container').style.display = 'none';
             estado.verticalPendingDir = 0;
-            
-            // 5. Render
-            renderScene();
-            renderInterface(); // Actualiza cursor a nueva altura
+            renderScene(); renderInterface(); 
         }
     }
 });
 
-
-// --- GUIZMO ---
 function renderGizmo() {
     const c = document.getElementById('gizmo-axes'); c.innerHTML = '';
     const ang = estado.view.angle;
@@ -1468,67 +1325,37 @@ function renderGizmo() {
     });
 }
 
-// --- INTERFAZ & CURSOR (CORREGIDO CON LINEAS GUIA) ---
 function renderInterface(pSVG) {
-    const g = document.getElementById('capa-interfaz'); 
-    g.innerHTML='';
-    
+    const g = document.getElementById('capa-interfaz'); g.innerHTML='';
     if(estado.action === 'rotate' || estado.action === 'pan') return;
 
     let tx = estado.snapped ? estado.snapped.x : estado.mouseIso.x;
     let ty = estado.snapped ? estado.snapped.y : estado.mouseIso.y;
     let tz = estado.snapped ? estado.snapped.z : estado.currentZ;
-    
-    // Variable para detectar si estamos alineados a un eje
     let lockedAxis = null; 
 
-    // Drawing constraints (Ajuste Ortogonal)
     if (estado.drawing && !estado.snapped) {
-        // Redondeamos para visualización limpia
         const gridX = Math.round(estado.mouseIso.x * 10) / 10;
         const gridY = Math.round(estado.mouseIso.y * 10) / 10;
-        
-        const dx = gridX - estado.inicio.x; 
-        const dy = gridY - estado.inicio.y; 
-        const dz = estado.currentZ - estado.inicio.z;
-        const th = 0.5; // Umbral de sensibilidad
-        
-        if (Math.abs(dy) < th && Math.abs(dz) < th) { 
-            ty = estado.inicio.y; tz = estado.inicio.z; tx = gridX; 
-            lockedAxis = 'x'; // Bloqueado en Eje X
-        } 
-        else if (Math.abs(dx) < th && Math.abs(dz) < th) { 
-            tx = estado.inicio.x; tz = estado.inicio.z; ty = gridY; 
-            lockedAxis = 'y'; // Bloqueado en Eje Y
-        } 
-        else if (Math.abs(dx) < th && Math.abs(dy) < th) { 
-            tx = estado.inicio.x; ty = estado.inicio.y; tz = estado.inicio.z; 
-            lockedAxis = 'z'; // Bloqueado en Eje Z (Vertical)
-        }
+        const dx = gridX - estado.inicio.x; const dy = gridY - estado.inicio.y; const dz = estado.currentZ - estado.inicio.z;
+        const th = 0.5;
+        if (Math.abs(dy) < th && Math.abs(dz) < th) { ty = estado.inicio.y; tz = estado.inicio.z; tx = gridX; lockedAxis = 'x'; } 
+        else if (Math.abs(dx) < th && Math.abs(dz) < th) { tx = estado.inicio.x; tz = estado.inicio.z; ty = gridY; lockedAxis = 'y'; } 
+        else if (Math.abs(dx) < th && Math.abs(dy) < th) { tx = estado.inicio.x; ty = estado.inicio.y; tz = estado.inicio.z; lockedAxis = 'z'; }
         else { tx = gridX; ty = gridY; }
     }
-
-    // Coordenadas "Mundo" (sin zoom/pan)
     const worldPoint = isoToScreen(tx, ty, tz);
     
-    // --- LÍNEA DE REFERENCIA AL SUELO (PUNTEADA) ---
     if(Math.abs(tz) > 0.01) {
         const floor = isoToScreen(tx, ty, 0);
         const l = document.createElementNS("http://www.w3.org/2000/svg","line");
         l.setAttribute("x1",floor.x); l.setAttribute("y1",floor.y); l.setAttribute("x2",worldPoint.x); l.setAttribute("y2",worldPoint.y);
-        l.setAttribute("stroke", "#666"); l.setAttribute("stroke-dasharray", "3,3"); 
-        l.setAttribute("class","z-ref-line"); 
-        g.appendChild(l);
-        
-        // Marca en suelo
-        const markSize = 3;
+        l.setAttribute("stroke", "#666"); l.setAttribute("stroke-dasharray", "3,3"); l.setAttribute("class","z-ref-line"); g.appendChild(l);
         const pathFloor = document.createElementNS("http://www.w3.org/2000/svg","path");
-        pathFloor.setAttribute("d", `M${floor.x-markSize},${floor.y-markSize} L${floor.x+markSize},${floor.y+markSize} M${floor.x-markSize},${floor.y+markSize} L${floor.x+markSize},${floor.y-markSize}`);
-        pathFloor.setAttribute("stroke", "#666"); pathFloor.setAttribute("opacity", "0.6");
-        g.appendChild(pathFloor);
+        pathFloor.setAttribute("d", `M${floor.x-3},${floor.y-3} L${floor.x+3},${floor.y+3} M${floor.x-3},${floor.y+3} L${floor.x+3},${floor.y-3}`);
+        pathFloor.setAttribute("stroke", "#666"); pathFloor.setAttribute("opacity", "0.6"); g.appendChild(pathFloor);
     }
 
-    // --- CURSOR / SNAP UNIFICADO ---
     if(estado.snapped) {
         const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
         r.setAttribute("x", worldPoint.x-5); r.setAttribute("y",worldPoint.y-5); r.setAttribute("width",10); r.setAttribute("height",10);
@@ -1536,47 +1363,28 @@ function renderInterface(pSVG) {
     } else {
         const path = document.createElementNS("http://www.w3.org/2000/svg","path");
         path.setAttribute("d", `M${worldPoint.x-15},${worldPoint.y} L${worldPoint.x+15},${worldPoint.y} M${worldPoint.x},${worldPoint.y-15} L${worldPoint.x},${worldPoint.y+15}`);
-        path.setAttribute("class","cursor-crosshair"); 
-        g.appendChild(path);
+        path.setAttribute("class","cursor-crosshair"); g.appendChild(path);
     }
     
     if(estado.drawing) {
         const start = isoToScreen(estado.inicio.x, estado.inicio.y, estado.inicio.z);
-
-        // --- RECUPERADO: LÍNEAS GUÍA (Guide Lines) ---
-        // Esto dibuja la linea infinita de color cuando detecta el ángulo
         if(lockedAxis) {
-            let vec = {x:0, y:0, z:0};
-            let col = '#fff';
-            // Colores tipo CAD: X=Rojo, Y=Verde, Z=Azul
-            if(lockedAxis === 'x') { vec.x = 1; col = '#ff4444'; } 
-            if(lockedAxis === 'y') { vec.y = 1; col = '#44ff44'; }
-            if(lockedAxis === 'z') { vec.z = 1; col = '#4444ff'; }
-
-            // Calculamos puntos lejanos para simular linea infinita
-            const distGuia = 200; // Longitud visual de la guia
+            let vec = {x:0, y:0, z:0}; let col = '#fff';
+            if(lockedAxis === 'x') { vec.x = 1; col = '#ff4444'; } if(lockedAxis === 'y') { vec.y = 1; col = '#44ff44'; } if(lockedAxis === 'z') { vec.z = 1; col = '#4444ff'; }
+            const distGuia = 200; 
             const p1 = isoToScreen(estado.inicio.x - vec.x*distGuia, estado.inicio.y - vec.y*distGuia, estado.inicio.z - vec.z*distGuia);
             const p2 = isoToScreen(estado.inicio.x + vec.x*distGuia, estado.inicio.y + vec.y*distGuia, estado.inicio.z + vec.z*distGuia);
-
             const guideLine = document.createElementNS("http://www.w3.org/2000/svg","line");
-            guideLine.setAttribute("x1", p1.x); guideLine.setAttribute("y1", p1.y);
-            guideLine.setAttribute("x2", p2.x); guideLine.setAttribute("y2", p2.y);
-            guideLine.setAttribute("stroke", col);
-            guideLine.setAttribute("stroke-width", "1");
-            guideLine.setAttribute("stroke-dasharray", "5,3"); // Punteada para diferenciar
-            guideLine.setAttribute("opacity", "0.8");
+            guideLine.setAttribute("x1", p1.x); guideLine.setAttribute("y1", p1.y); guideLine.setAttribute("x2", p2.x); guideLine.setAttribute("y2", p2.y);
+            guideLine.setAttribute("stroke", col); guideLine.setAttribute("stroke-width", "1"); guideLine.setAttribute("stroke-dasharray", "5,3"); guideLine.setAttribute("opacity", "0.8");
             g.appendChild(guideLine);
         }
-        // ------------------------------------------------
-
         const l = document.createElementNS("http://www.w3.org/2000/svg","line");
         l.setAttribute("x1",start.x); l.setAttribute("y1",start.y); l.setAttribute("x2",worldPoint.x); l.setAttribute("y2",worldPoint.y);
-        l.setAttribute("stroke", "#fff"); l.setAttribute("stroke-dasharray", "4,4"); l.setAttribute("opacity", "0.5");
-        g.appendChild(l);
+        l.setAttribute("stroke", "#fff"); l.setAttribute("stroke-dasharray", "4,4"); l.setAttribute("opacity", "0.5"); g.appendChild(l);
     }
 }
 
-// --- PANEL LOGIC & SMART RESET ---
 function toggleConfig(key) {
     if(key === 'grid') CONFIG.showGrid = !CONFIG.showGrid; if(key === 'snap') CONFIG.enableSnap = !CONFIG.enableSnap;
     const btn = document.getElementById('cmd-'+key); if(btn) btn.classList.toggle('active'); renderGrid(); renderScene();
@@ -1590,74 +1398,76 @@ function toggleTags() {
 }
 
 function resetView() { 
-    const rect = svg.getBoundingClientRect(); 
-    const centerX = rect.width/2; const centerY = rect.height/2;
-    estado.view.angle = Math.PI / 4; 
-    
+    const rect = svg.getBoundingClientRect(); estado.view.angle = Math.PI / 4; 
     if (estado.selID) {
         const el = elementos.find(e => e.id === estado.selID);
         if(el) {
-            let ox = el.x, oy = el.y, oz = el.z;
-            if(el.tipo === 'tuberia' || el.tipo === 'cota') { ox += el.dx/2; oy += el.dy/2; oz += el.dz/2; }
+            let ox = el.x, oy = el.y, oz = el.z; if(el.tipo === 'tuberia' || el.tipo === 'cota') { ox += el.dx/2; oy += el.dy/2; oz += el.dz/2; }
             const ptLocal = isoToScreen(ox, oy, oz);
-            estado.view.x = centerX - (ptLocal.x * estado.view.scale);
-            estado.view.y = centerY - (ptLocal.y * estado.view.scale);
+            estado.view.x = (rect.width/2) - (ptLocal.x * estado.view.scale); estado.view.y = (rect.height/2) - (ptLocal.y * estado.view.scale);
         }
     } else {
-        if(elementos.length === 0) {
-             estado.view.scale = 1; estado.view.x = centerX; estado.view.y = centerY; 
-        } else {
+        if(elementos.length === 0) { estado.view.scale = 1; estado.view.x = rect.width/2; estado.view.y = rect.height/2; } 
+        else {
              let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
              elementos.forEach(el => {
                  if(el.visible === false) return;
                  let pts = [{x:el.x, y:el.y, z:el.z}];
                  if(el.tipo === 'tuberia' || el.tipo === 'cota'){ pts.push({x:el.x+el.dx, y:el.y+el.dy, z:el.z+el.dz}); }
-                 pts.forEach(p => {
-                     const s = isoToScreen(p.x, p.y, p.z);
-                     if(s.x < minX) minX = s.x; if(s.x > maxX) maxX = s.x;
-                     if(s.y < minY) minY = s.y; if(s.y > maxY) maxY = s.y;
-                 });
+                 pts.forEach(p => { const s = isoToScreen(p.x, p.y, p.z); if(s.x < minX) minX = s.x; if(s.x > maxX) maxX = s.x; if(s.y < minY) minY = s.y; if(s.y > maxY) maxY = s.y; });
              });
              const w = maxX - minX; const h = maxY - minY;
-             if(w===0 && h===0) {
-                 estado.view.scale = 1; estado.view.x = centerX - (minX); estado.view.y = centerY - (minY);
-             } else {
-                 const padding = 50;
-                 const scaleX = (rect.width - padding*2) / w; const scaleY = (rect.height - padding*2) / h;
+             if(w===0 && h===0) { estado.view.scale = 1; estado.view.x = rect.width/2 - (minX); estado.view.y = rect.height/2 - (minY); } 
+             else {
+                 const padding = 50; const scaleX = (rect.width - padding*2) / w; const scaleY = (rect.height - padding*2) / h;
                  let newScale = Math.min(scaleX, scaleY); if(newScale > 2) newScale = 2; 
                  estado.view.scale = newScale;
                  const midX = (minX + maxX) / 2; const midY = (minY + maxY) / 2;
-                 estado.view.x = centerX - (midX * newScale); estado.view.y = centerY - (midY * newScale);
+                 estado.view.x = (rect.width/2) - (midX * newScale); estado.view.y = (rect.height/2) - (midY * newScale);
              }
         }
     }
     updateTransform(); renderGrid(); renderScene(); renderEffects(); 
 }
 
-function togglePanel(id) { 
-    document.getElementById(id).classList.toggle('closed'); 
-    setTimeout(() => { updateTransform(); }, 410); 
-}
+function togglePanel(id) { document.getElementById(id).classList.toggle('closed'); setTimeout(() => { updateTransform(); }, 410); }
+function toggleGroup(id) { document.querySelectorAll('.lib-items').forEach(el => { if(el.id !== id) el.classList.remove('open'); }); document.getElementById(id).classList.toggle('open'); }
+function toggleAccordion(id) { const el = document.getElementById(id); if(el) el.classList.toggle('collapsed'); }
 
-function toggleGroup(id) { 
-    document.querySelectorAll('.lib-items').forEach(el => { if(el.id !== id) el.classList.remove('open'); });
-    document.getElementById(id).classList.toggle('open'); 
-}
-
-// --- FUNCION ACORDEON ---
-function toggleAccordion(id) {
-    const el = document.getElementById(id);
-    if(el) el.classList.toggle('collapsed');
-}
-
-// --- INICIALIZACIÓN BIBLIOTECA ---
+// --- INICIALIZACIÓN BIBLIOTECA MEJORADA ---
 function initLibrary() {
     const fillGroup = (id, items) => {
         const c = document.getElementById(id); c.innerHTML='';
         if (!items) return; 
+        
+        let lastSubCat = null;
+
         items.forEach(it => {
+            // Lógica de Subtítulos (Headers)
+            if (it.subCat && it.subCat !== lastSubCat) {
+                const subHeader = document.createElement('div');
+                subHeader.className = 'lib-subheader';
+                subHeader.innerText = it.subCat;
+                c.appendChild(subHeader);
+                lastSubCat = it.subCat;
+            }
+
             const div = document.createElement('div'); div.className='tool-item';
             div.innerHTML = `<div class="tool-icon" style="color:${it.color||'#aaa'}">${it.icon||'▪'}</div><div class="tool-name">${it.name}</div>`;
+            
+            // --- INYECCIÓN DE TOOLTIP (Información Flotante) ---
+            if (it.info) {
+                const tip = document.createElement('div');
+                tip.className = 'lib-tooltip';
+                tip.innerHTML = `
+                    <span class="tooltip-title">${it.info.title}</span>
+                    <div class="tooltip-desc">${it.info.desc}</div>
+                    ${it.info.use ? `<span class="tooltip-meta">Uso: ${it.info.use}</span>` : ''}
+                    ${it.info.spec ? `<span class="tooltip-meta">Spec: ${it.info.spec}</span>` : ''}
+                `;
+                div.appendChild(tip);
+            }
+
             div.onclick = () => { 
                 document.querySelectorAll('.tool-item').forEach(x=>x.classList.remove('active')); div.classList.add('active'); 
                 estado.activeItem = it; setTool(it.id); 
@@ -1667,50 +1477,34 @@ function initLibrary() {
         });
     };
     fillGroup('grp-mat', CATALOGO.mat);
-    fillGroup('grp-comp', CATALOGO.comp); // <-- Cargar Componentes
+    fillGroup('grp-comp', CATALOGO.comp);
     fillGroup('grp-eq', CATALOGO.eq);
     fillGroup('grp-inst', CATALOGO.inst);
     fillGroup('grp-perif', CATALOGO.perif);
+    fillGroup('grp-cons', CATALOGO.cons); // Cargar Consumibles
     renderLayersUI();
 }
+
 function setTool(t) { 
     estado.tool = (t==='cota'||t==='texto'||t==='select'||t==='insert') ? t : 'draw'; 
     estado.drawing=false; estado.selID=null; renderEffects(); 
-    
-    // Reset buttons
     document.querySelectorAll('.tool-item').forEach(x=>x.classList.remove('active'));
-    ['btn-select','btn-cota','btn-texto', 'btn-insert'].forEach(id => {
-         const btn = document.getElementById(id);
-         if(btn) btn.classList.remove('active');
-    });
-
-    // Activar botón específico si existe
-    if(document.getElementById('btn-'+t)) {
-        document.getElementById('btn-'+t).classList.add('active');
-    }
+    ['btn-select','btn-cota','btn-texto', 'btn-insert'].forEach(id => { const btn = document.getElementById(id); if(btn) btn.classList.remove('active'); });
+    if(document.getElementById('btn-'+t)) { document.getElementById('btn-'+t).classList.add('active'); }
 }
 function addEl(data) { 
     if(!data.props.diametroNominal && estado.activeItem?.props?.diametroNominal) { data.props.diametroNominal = estado.activeItem.props.diametroNominal; }
-    // Asignar visibilidad por defecto y escala
     elementos.push({id:Date.now(), layerId:activeLayerId, visible:true, ...data}); 
-    saveState(); 
-    renderScene(); 
+    saveState(); renderScene(); 
 }
-function borrarSeleccion() { 
-    elementos=elementos.filter(x=>x.id!==estado.selID); estado.selID=null; 
-    saveState(); 
-    updatePropsPanel(); renderScene(); document.getElementById('right-panel').classList.add('closed'); 
-}
+function borrarSeleccion() { elementos=elementos.filter(x=>x.id!==estado.selID); estado.selID=null; saveState(); updatePropsPanel(); renderScene(); document.getElementById('right-panel').classList.add('closed'); }
 
 // --- GESTIÓN DE CAPAS ---
 function toggleLayerMenu() { document.getElementById('layer-menu-content').classList.toggle('show'); }
 window.onclick = function(event) {
     if (!event.target.matches('.btn') && !event.target.closest('.layer-dropdown')) {
         var dropdowns = document.getElementsByClassName("layer-content");
-        for (var i = 0; i < dropdowns.length; i++) {
-            var openDropdown = dropdowns[i];
-            if (openDropdown.classList.contains('show')) { openDropdown.classList.remove('show'); }
-        }
+        for (var i = 0; i < dropdowns.length; i++) { var openDropdown = dropdowns[i]; if (openDropdown.classList.contains('show')) { openDropdown.classList.remove('show'); } }
     }
 }
 function renderLayersUI() {
@@ -1718,17 +1512,11 @@ function renderLayersUI() {
     layers.forEach(l => {
         const r = document.createElement('div'); r.className = `layer-row-header ${l.id===activeLayerId?'active':''}`;
         r.innerHTML = `<div class="layer-vis" onclick="togLay('${l.id}')">${l.visible?'👁️':'🙈'}</div><div style="flex:1; font-size:0.8rem; color:${l.color}">${l.name}</div>`;
-        r.onclick = (e) => { 
-            if(e.target.className!=='layer-vis') { activeLayerId=l.id; renderLayersUI(); updatePropsPanel(); } 
-            e.stopPropagation();
-        };
+        r.onclick = (e) => { if(e.target.className!=='layer-vis') { activeLayerId=l.id; renderLayersUI(); updatePropsPanel(); } e.stopPropagation(); };
         c.appendChild(r);
     });
     const sel = document.getElementById('p-capa'); sel.innerHTML = '';
-    layers.forEach(l => {
-        const opt = document.createElement('option'); opt.value=l.id; opt.innerText=l.name;
-        sel.appendChild(opt);
-    });
+    layers.forEach(l => { const opt = document.createElement('option'); opt.value=l.id; opt.innerText=l.name; sel.appendChild(opt); });
 }
 window.togLay = (id) => { const l=layers.find(x=>x.id===id); l.visible=!l.visible; renderLayersUI(); renderScene(); }
 window.addLayer = () => { layers.push({id:'l'+Date.now(), name:'Nueva', color:'#fff', visible:true}); renderLayersUI(); }
@@ -1736,91 +1524,44 @@ window.addLayer = () => { layers.push({id:'l'+Date.now(), name:'Nueva', color:'#
 // --- PROPIEDADES ---
 window.updatePropsPanel = function() {
     const el = elementos.find(x=>x.id===estado.selID);
-    const f = document.getElementById('prop-form'); 
-    const v = document.getElementById('prop-vacio');
-    
-    // Contenedores Acordeon
-    const grpGeo = document.getElementById('grp-geo');
-    const grpApp = document.getElementById('grp-app');
+    const f = document.getElementById('prop-form'); const v = document.getElementById('prop-vacio');
     const divAdjust = document.getElementById('obj-adjust-controls');
-    
-    // Contenedor dinámico de datos técnicos
-    const contDatos = document.getElementById('prop-datos-tecnicos-container'); 
-    contDatos.innerHTML = ''; 
+    const contDatos = document.getElementById('prop-datos-tecnicos-container'); contDatos.innerHTML = ''; 
 
     if(!el) { f.style.display='none'; v.style.display='block'; return; }
-    
     f.style.display='block'; v.style.display='none';
-    
-    const chkVis = document.getElementById('p-visible');
-    chkVis.checked = (el.visible !== false); 
-
+    const chkVis = document.getElementById('p-visible'); chkVis.checked = (el.visible !== false); 
     document.getElementById('p-color').value = ensureHex(el.props.customColor || el.props.color || '#cccccc');
     document.getElementById('p-tag').value = el.props.tag || '';
     document.getElementById('p-linestyle').value = el.props.tipoLinea || 'solid';
     document.getElementById('p-capa').value = el.layerId;
-    
-    const cbLabel = document.getElementById('p-show-label');
-    cbLabel.checked = el.props.mostrarEtiqueta === true;
-
+    document.getElementById('p-show-label').checked = el.props.mostrarEtiqueta === true;
     const u = UNITS[CONFIG.unit];
-    document.getElementById('lbl-unit-z').innerText = u.label;
-    document.getElementById('p-altura').value = (el.z * u.factor).toFixed(u.precision);
-    
-    const rowFinal = document.getElementById('row-altura-final');
-    const lblFinal = document.getElementById('lbl-unit-z-final');
-    if (lblFinal) lblFinal.innerText = u.label;
+    document.getElementById('lbl-unit-z').innerText = u.label; document.getElementById('p-altura').value = (el.z * u.factor).toFixed(u.precision);
+    const rowFinal = document.getElementById('row-altura-final'); document.getElementById('lbl-unit-z-final').innerText = u.label;
 
-    // Configurar Inputs según Tipo
     if (el.tipo === 'tuberia' || el.tipo === 'cota') {
-        const finalZ = el.z + el.dz;
-        document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
-        rowFinal.style.display = 'flex';
-        // Ocultar ajuste visual para tuberías
-        divAdjust.style.display = 'none';
-        
-        // Mostrar longitud
-        document.getElementById('row-longitud').style.display = 'flex';
+        const finalZ = el.z + el.dz; document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
+        rowFinal.style.display = 'flex'; divAdjust.style.display = 'none'; document.getElementById('row-longitud').style.display = 'flex';
         const rawLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
-        document.getElementById('lbl-unit').innerText = u.label;
-        document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
-
+        document.getElementById('lbl-unit').innerText = u.label; document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
     } else {
-        rowFinal.style.display = 'none';
-        document.getElementById('row-longitud').style.display = 'none';
-        
+        rowFinal.style.display = 'none'; document.getElementById('row-longitud').style.display = 'none';
         if(el.tipo !== 'texto') {
-             divAdjust.style.display = 'block'; 
-             const scaleVal = el.props.scaleFactor || 1.0;
-             document.getElementById('p-scale').value = scaleVal;
-             document.getElementById('p-scale-val').textContent = scaleVal;
+             divAdjust.style.display = 'block'; const scaleVal = el.props.scaleFactor || 1.0;
+             document.getElementById('p-scale').value = scaleVal; document.getElementById('p-scale-val').textContent = scaleVal;
              document.getElementById('p-anchor').value = el.props.anchor || 'center';
-        } else {
-             divAdjust.style.display = 'none';
-        }
+        } else { divAdjust.style.display = 'none'; }
     }
-
-    // Grosor
     const divGrosor = document.getElementById('row-grosor');
-    if(el.tipo === 'tuberia' && el.props.material) { divGrosor.style.display = 'none'; } 
-    else { divGrosor.style.display = 'flex'; document.getElementById('p-grosor').value = el.props.grosor || 2; }
-    
+    if(el.tipo === 'tuberia' && el.props.material) { divGrosor.style.display = 'none'; } else { divGrosor.style.display = 'flex'; document.getElementById('p-grosor').value = el.props.grosor || 2; }
     if(el.props.rotacion !== undefined) document.getElementById('p-rot').value = el.props.rotacion;
     
-    // --- GENERAR DATOS TÉCNICOS EN ESTRUCTURA ACORDEÓN ---
     if (el.tipo === 'tuberia' && el.props.material) {
-        
-        // Crear estructura acordeón
-        const accGroup = document.createElement('div'); accGroup.className = 'acc-group';
-        accGroup.id = 'grp-tech';
-        
-        const accHead = document.createElement('div'); accHead.className = 'acc-header';
-        accHead.innerText = 'Datos Técnicos';
+        const accGroup = document.createElement('div'); accGroup.className = 'acc-group'; accGroup.id = 'grp-tech';
+        const accHead = document.createElement('div'); accHead.className = 'acc-header'; accHead.innerText = 'Datos Técnicos';
         accHead.onclick = function() { toggleAccordion('grp-tech'); };
-        
         const accContent = document.createElement('div'); accContent.className = 'acc-content';
-        
-        // Row Material
         const rowMat = document.createElement('div'); rowMat.className = 'prop-row';
         const lblMat = document.createElement('label'); lblMat.innerText = "Material Tubería";
         const selMat = document.createElement('select'); selMat.className = 'btn';
@@ -1830,196 +1571,86 @@ window.updatePropsPanel = function() {
             selMat.appendChild(opt);
         });
         selMat.onchange = (e) => changeMaterial(e.target.value);
-        rowMat.appendChild(lblMat); rowMat.appendChild(selMat);
-        accContent.appendChild(rowMat);
-
-        // Row Diametro
+        rowMat.appendChild(lblMat); rowMat.appendChild(selMat); accContent.appendChild(rowMat);
         if (DIAMETROS_DISPONIBLES[el.props.material]) {
             const list = DIAMETROS_DISPONIBLES[el.props.material];
             const rowDia = document.createElement('div'); rowDia.className = 'prop-row';
             const labelDia = document.createElement('label'); labelDia.innerText = "Diámetro Nominal";
             const selectDia = document.createElement('select'); selectDia.className = 'btn'; selectDia.style.width = '100%';
-            
-            // Asignar función global updateDiametro
             selectDia.onchange = function(e) { window.updateDiametro(e.target.value); };
-            
             list.forEach(nominal => {
                 const opt = document.createElement('option'); opt.value = nominal; opt.innerText = nominal; 
-                // Asegurar coincidencia exacta para seleccionar
                 if(el.props.diametroNominal === nominal) opt.selected = true;
                 selectDia.appendChild(opt);
             });
-            rowDia.appendChild(labelDia); rowDia.appendChild(selectDia);
-            accContent.appendChild(rowDia);
+            rowDia.appendChild(labelDia); rowDia.appendChild(selectDia); accContent.appendChild(rowDia);
         }
-        
-        accGroup.appendChild(accHead);
-        accGroup.appendChild(accContent);
-        contDatos.appendChild(accGroup);
+        accGroup.appendChild(accHead); accGroup.appendChild(accContent); contDatos.appendChild(accGroup);
     }
 }
 
 window.updateAlturaFinal = function(valUser) {
-    const el = elementos.find(x => x.id === estado.selID);
-    if (!el || (el.tipo !== 'tuberia' && el.tipo !== 'cota')) return;
-    const num = parseInputFloat(valUser);
-    if (isNaN(num)) return;
-    const u = UNITS[CONFIG.unit];
-    const newFinalZ = num / u.factor; 
-    el.dz = newFinalZ - el.z;
-    saveState();
-    renderScene();
-    renderEffects();
-    updatePropsPanel(); 
+    const el = elementos.find(x => x.id === estado.selID); if (!el || (el.tipo !== 'tuberia' && el.tipo !== 'cota')) return;
+    const num = parseInputFloat(valUser); if (isNaN(num)) return;
+    const u = UNITS[CONFIG.unit]; const newFinalZ = num / u.factor; el.dz = newFinalZ - el.z;
+    saveState(); renderScene(); renderEffects(); updatePropsPanel(); 
 }
-
 window.changeMaterial = function(newMat) {
-    const el = elementos.find(x=>x.id===estado.selID);
-    if(!el) return;
+    const el = elementos.find(x=>x.id===estado.selID); if(!el) return;
     const catItem = CATALOGO.mat.find(m => m.props.material === newMat);
-    if(catItem) {
-        el.props.material = newMat;
-        el.props.customColor = null; 
-        el.props.color = catItem.color;
-        el.props.diametroNominal = catItem.props.diametroNominal; 
-        saveState();
-        updatePropsPanel(); renderScene();
-    }
+    if(catItem) { el.props.material = newMat; el.props.customColor = null; el.props.color = catItem.color; el.props.diametroNominal = catItem.props.diametroNominal; saveState(); updatePropsPanel(); renderScene(); }
 }
-window.updateDiametro = function(val) { 
-    const el = elementos.find(x=>x.id===estado.selID); 
-    if(el){ 
-        el.props.diametroNominal = val; 
-        saveState(); 
-        renderScene(); 
-        // Forzar renderizado de efectos para actualizar visualmente la selección si cambia grosor
-        renderEffects(); 
-    } 
-}
-
+window.updateDiametro = function(val) { const el = elementos.find(x=>x.id===estado.selID); if(el){ el.props.diametroNominal = val; saveState(); renderScene(); renderEffects(); } }
 window.updateStyleProp = function(k,v) { 
     const el=elementos.find(x=>x.id===estado.selID); 
     if(el){ 
-        if(k==='color') {
-            el.props.customColor = v; 
-        } else if (k === 'scaleFactor') {
-            // Convertir a float para evitar bugs
-            el.props[k] = parseFloat(v);
-            document.getElementById('p-scale-val').textContent = v;
-        } else {
-            el.props[k]=v; 
-        }
-        
-        saveState();
-        renderScene(); 
-        if(k==='anchor' || k==='scaleFactor') renderEffects(); 
+        if(k==='color') { el.props.customColor = v; } 
+        else if (k === 'scaleFactor') { el.props[k] = parseFloat(v); document.getElementById('p-scale-val').textContent = v; } 
+        else { el.props[k]=v; }
+        saveState(); renderScene(); if(k==='anchor' || k==='scaleFactor') renderEffects(); 
     } 
 }
-
-window.updateBooleanProp = function(k, val) {
-    const el = elementos.find(x=>x.id===estado.selID);
-    if(el){ el.props[k] = val; saveState(); renderScene(); }
-}
-window.updateRootProp = function(k, val) {
-    const el = elementos.find(x=>x.id===estado.selID);
-    if(el){ el[k] = val; saveState(); renderScene(); renderEffects(); }
-}
-
+window.updateBooleanProp = function(k, val) { const el = elementos.find(x=>x.id===estado.selID); if(el){ el.props[k] = val; saveState(); renderScene(); } }
+window.updateRootProp = function(k, val) { const el = elementos.find(x=>x.id===estado.selID); if(el){ el[k] = val; saveState(); renderScene(); renderEffects(); } }
 window.updateLongitud = function(valUser) {
-    const el = elementos.find(x=>x.id===estado.selID);
-    if(!el || el.tipo !== 'tuberia') return;
-    const currentLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
-    if(currentLen < 0.0001) return;
-    const newValMeters = parseToMeters(parseInputFloat(valUser));
-    if(isNaN(newValMeters) || newValMeters <= 0) return;
-    const ratio = newValMeters / currentLen;
-    el.dx *= ratio; el.dy *= ratio; el.dz *= ratio;
-    saveState();
-    renderScene();
+    const el = elementos.find(x=>x.id===estado.selID); if(!el || el.tipo !== 'tuberia') return;
+    const currentLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2); if(currentLen < 0.0001) return;
+    const newValMeters = parseToMeters(parseInputFloat(valUser)); if(isNaN(newValMeters) || newValMeters <= 0) return;
+    const ratio = newValMeters / currentLen; el.dx *= ratio; el.dy *= ratio; el.dz *= ratio;
+    saveState(); renderScene();
 }
-
 window.updateAltura = function(valUser) {
-    const el = elementos.find(x=>x.id===estado.selID);
-    if(!el) return;
-    const num = parseInputFloat(valUser);
-    if(isNaN(num)) return;
-    const u = UNITS[CONFIG.unit];
-    el.z = num / u.factor;
-    saveState();
-    renderScene();
-    renderEffects(); 
-    updatePropsPanel();
+    const el = elementos.find(x=>x.id===estado.selID); if(!el) return;
+    const num = parseInputFloat(valUser); if(isNaN(num)) return;
+    const u = UNITS[CONFIG.unit]; el.z = num / u.factor;
+    saveState(); renderScene(); renderEffects(); updatePropsPanel();
 }
-
 function ensureHex(c){ if(c.startsWith('#') && c.length===7) return c; return '#cccccc'; }
 
 // --- EXPORTAR CSV ---
 function exportarCSV() {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Tipo,Descripcion,Detalle,Cantidad/Longitud,Unidad\r\n";
-    
+    let csvContent = "data:text/csv;charset=utf-8,"; csvContent += "Tipo,Descripcion,Detalle,Cantidad/Longitud,Unidad\r\n";
     let counts = {};
-    
-    // Contar elementos regulares
     elementos.forEach(el => {
         if(el.visible === false) return;
-        let type = el.tipo;
-        let desc = el.name || el.tipo;
-        let detail = "";
-        let val = 1;
-        let unit = "und";
-        
+        let type = el.tipo; let desc = el.name || el.tipo; let detail = ""; let val = 1; let unit = "und";
         if(el.tipo === 'tuberia') {
-            type = "Tuberia";
-            desc = el.props.material ? el.props.material.toUpperCase() : "Generica";
-            detail = el.props.diametroNominal || "";
-            val = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
-            unit = "m";
-        } else if (el.tipo === 'texto' || el.tipo === 'cota') {
-            return; // No exportar cotas ni textos
-        } else {
-            // Equipos, valvulas
-            detail = el.props.modelo || el.props.tipo || "";
-        }
-        
-        let key = `${type}|${desc}|${detail}|${unit}`;
-        if(!counts[key]) counts[key] = 0;
-        counts[key] += val;
+            type = "Tuberia"; desc = el.props.material ? el.props.material.toUpperCase() : "Generica"; detail = el.props.diametroNominal || ""; val = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2); unit = "m";
+        } else if (el.tipo === 'cota' || el.tipo === 'texto') { return; } 
+        else { detail = el.props.modelo || el.props.tipo || ""; }
+        let key = `${type}|${desc}|${detail}|${unit}`; if(!counts[key]) counts[key] = 0; counts[key] += val;
     });
-
-    // Contar fittings automáticos
     const autoFittings = analizarRed();
     autoFittings.forEach(fit => {
-        let type = "Accesorio";
-        let desc = "";
-        if (fit.tipo === 'codo_auto') desc = "Codo 90°";
-        else if (fit.tipo === 'tee_auto') desc = "Tee";
-        else if (fit.tipo === 'cruz_auto') desc = "Cruz";
-        else if (fit.tipo === 'reductor_auto') desc = "Reductor";
-        
-        if(desc) {
-            let key = `${type}|${desc}|Auto|und`;
-            if(!counts[key]) counts[key] = 0;
-            counts[key] += 1;
-        }
+        let type = "Accesorio"; let desc = "";
+        if (fit.tipo === 'codo_auto') desc = "Codo 90°"; else if (fit.tipo === 'tee_auto') desc = "Tee"; else if (fit.tipo === 'cruz_auto') desc = "Cruz"; else if (fit.tipo === 'reductor_auto') desc = "Reductor";
+        if(desc) { let key = `${type}|${desc}|Auto|und`; if(!counts[key]) counts[key] = 0; counts[key] += 1; }
     });
-
-    // Generar filas
     for (let key in counts) {
-        let parts = key.split('|');
-        let valStr = counts[key];
-        if(parts[3] === 'm') valStr = formatLength(counts[key]).replace(' m',''); // Solo numero
-        
+        let parts = key.split('|'); let valStr = counts[key]; if(parts[3] === 'm') valStr = formatLength(counts[key]).replace(' m','');
         csvContent += `${parts[0]},${parts[1]},${parts[2]},${valStr},${parts[3]}\r\n`;
     }
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "reporte_materiales_gas.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "reporte_materiales_gas.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 
 // --- GUARDADO/CARGA ---
@@ -2031,106 +1662,61 @@ function confirmarDescarga() {
     const a = document.createElement('a'); a.href = url; a.download = nombre; a.click();
     URL.revokeObjectURL(url); document.getElementById('modal-guardar').style.display = 'none';
 }
-function guardarEnNavegador() {
-    try { const datos = JSON.stringify({ layers, elementos }); localStorage.setItem('backup_cad_gas', datos); const msg = document.getElementById('msg-guardado'); msg.style.display = 'block'; setTimeout(() => { msg.style.display = 'none'; document.getElementById('modal-guardar').style.display = 'none'; }, 1500); } catch (e) { alert("Error: Almacenamiento lleno."); }
-}
+function guardarEnNavegador() { try { const datos = JSON.stringify({ layers, elementos }); localStorage.setItem('backup_cad_gas', datos); const msg = document.getElementById('msg-guardado'); msg.style.display = 'block'; setTimeout(() => { msg.style.display = 'none'; document.getElementById('modal-guardar').style.display = 'none'; }, 1500); } catch (e) { alert("Error: Almacenamiento lleno."); } }
 function comprobarAutoguardado() { const backup = localStorage.getItem('backup_cad_gas'); if (backup) { if(confirm("Existe un proyecto guardado en memoria. ¿Deseas recuperarlo?")) { try { const d = JSON.parse(backup); layers = d.layers; elementos = d.elementos; saveState(); renderScene(); renderLayersUI(); } catch(e) { console.error(e); } } } }
 function cargarProyecto(i){ const r=new FileReader(); r.onload=e=>{const d=JSON.parse(e.target.result); layers=d.layers; elementos=d.elementos; saveState(); renderScene(); renderLayersUI();}; r.readAsText(i.files[0]); }
 function limpiarTodo(){ if(confirm("Borrar?")){elementos=[]; saveState(); renderScene();} }
 function mostrarReporte(){
     let html=""; let counts={};
     elementos.forEach(el=>{
-        if(el.visible === false) return; // Ignorar ocultos
+        if(el.visible === false) return;
         let n = el.props?.material ? (el.name || "Tuberia") : el.tipo;
-        if(el.tipo==='tuberia'){ 
-            let dn = el.props.diametroNominal || "S/D"; let matName = el.props.material ? el.props.material.charAt(0).toUpperCase() + el.props.material.slice(1) : "Genérico";
-            let key = `${matName} Ø${dn}`; let l=Math.sqrt(el.dx**2+el.dy**2+el.dz**2); counts[key]=(counts[key]||0)+l; 
-        } else if (el.tipo !== 'cota' && el.tipo !== 'texto') { let key = el.name || el.tipo; counts[key]=(counts[key]||0)+1; }
+        if(el.tipo==='tuberia'){ let dn = el.props.diametroNominal || "S/D"; let matName = el.props.material ? el.props.material.charAt(0).toUpperCase() + el.props.material.slice(1) : "Genérico"; let key = `${matName} Ø${dn}`; let l=Math.sqrt(el.dx**2+el.dy**2+el.dz**2); counts[key]=(counts[key]||0)+l; } 
+        else if (el.tipo !== 'cota' && el.tipo !== 'texto') { let key = el.name || el.tipo; counts[key]=(counts[key]||0)+1; }
     });
     const autoFittings = analizarRed();
-    autoFittings.forEach(fit => {
-        let key = ""; 
-        if (fit.tipo === 'codo_auto') key = "Codo 90° (Auto)"; 
-        else if (fit.tipo === 'tee_auto') key = "Tee (Auto)"; 
-        else if (fit.tipo === 'cruz_auto') key = "Cruz (Auto)";
-        else if (fit.tipo === 'reductor_auto') key = "Reductor (Auto)";
-        if(key) counts[key] = (counts[key]||0) + 1;
-    });
+    autoFittings.forEach(fit => { let key = ""; if (fit.tipo === 'codo_auto') key = "Codo 90° (Auto)"; else if (fit.tipo === 'tee_auto') key = "Tee (Auto)"; else if (fit.tipo === 'cruz_auto') key = "Cruz (Auto)"; else if (fit.tipo === 'reductor_auto') key = "Reductor (Auto)"; if(key) counts[key] = (counts[key]||0) + 1; });
     for(let k in counts) { let valStr = ""; if(k.includes("Ø") || k.includes("Tuberia")) { valStr = formatLength(counts[k]); } else { valStr = counts[k] + " und"; } html+=`<tr><td>${k}</td><td align='right'>${valStr}</td></tr>`; }
-    document.getElementById('tabla-res').innerHTML=html+`<tr><td colspan='2' style='border-top:1px solid #555; font-size:0.8rem; color:#666'>Item<span style='float:right'>Cant/Long</span></td></tr>`; document.getElementById('modal-reporte').style.display='flex';    }
+    document.getElementById('tabla-res').innerHTML=html+`<tr><td colspan='2' style='border-top:1px solid #555; font-size:0.8rem; color:#666'>Item<span style='float:right'>Cant/Long</span></td></tr>`; document.getElementById('modal-reporte').style.display='flex'; }
 
 // --- FUNCIONES DE INSERCIÓN ---
 let insertCoords = { x:0, y:0 };
-
 function abrirModalInsertar(x, y, zDefault) {
     insertCoords = { x, y };
-    const sel = document.getElementById('ins-select');
-    sel.innerHTML = '';
-    const groupNames = { mat: 'Materiales (Tuberías)', comp: 'Componentes', eq: 'Equipos', inst: 'Instrumentos', perif: 'Periféricos / Válvulas' };
+    const sel = document.getElementById('ins-select'); sel.innerHTML = '';
+    const groupNames = { mat: 'Materiales (Tuberías)', comp: 'Componentes', eq: 'Equipos', inst: 'Instrumentos', perif: 'Periféricos / Válvulas', cons: 'Consumibles' };
     Object.keys(CATALOGO).forEach(key => {
-        const group = document.createElement('optgroup');
-        group.label = groupNames[key] || key.toUpperCase();
+        const group = document.createElement('optgroup'); group.label = groupNames[key] || key.toUpperCase();
         CATALOGO[key].forEach(item => {
-            const opt = document.createElement('option');
-            opt.value = key + '|' + item.id; 
-            opt.innerText = item.name;
-            opt.setAttribute('data-type', item.type); 
-            group.appendChild(opt);
+            const opt = document.createElement('option'); opt.value = key + '|' + item.id; opt.innerText = item.name; opt.setAttribute('data-type', item.type); group.appendChild(opt);
         });
         sel.appendChild(group);
     });
-    const u = UNITS[CONFIG.unit];
-    document.getElementById('ins-z1').value = (zDefault * u.factor).toFixed(u.precision);
-    document.getElementById('ins-z2').value = (zDefault * u.factor).toFixed(u.precision);
-    checkInsertType(); 
-    document.getElementById('modal-insertar').style.display = 'flex';
+    const u = UNITS[CONFIG.unit]; document.getElementById('ins-z1').value = (zDefault * u.factor).toFixed(u.precision); document.getElementById('ins-z2').value = (zDefault * u.factor).toFixed(u.precision);
+    checkInsertType(); document.getElementById('modal-insertar').style.display = 'flex';
 }
-function cerrarModalInsertar() {
-    document.getElementById('modal-insertar').style.display = 'none';
-    setTool('select'); 
-}
+function cerrarModalInsertar() { document.getElementById('modal-insertar').style.display = 'none'; setTool('select'); }
 function checkInsertType() {
-    const sel = document.getElementById('ins-select');
-    if(!sel.options.length) return;
-    const opt = sel.options[sel.selectedIndex];
-    const type = opt.getAttribute('data-type');
-    const rowZ2 = document.getElementById('row-ins-z2');
-    if(type === 'tuberia') rowZ2.style.display = 'flex'; else rowZ2.style.display = 'none';
+    const sel = document.getElementById('ins-select'); if(!sel.options.length) return;
+    const opt = sel.options[sel.selectedIndex]; const type = opt.getAttribute('data-type');
+    const rowZ2 = document.getElementById('row-ins-z2'); if(type === 'tuberia') rowZ2.style.display = 'flex'; else rowZ2.style.display = 'none';
 }
 function ejecutarInsercion() {
-    const sel = document.getElementById('ins-select');
-    const valParts = sel.value.split('|');
-    const groupKey = valParts[0]; const itemId = valParts[1];
-    const itemDef = CATALOGO[groupKey].find(x => x.id === itemId);
-    if(!itemDef) return;
-
-    const rawZ1 = parseInputFloat(document.getElementById('ins-z1').value);
-    const rawZ2 = parseInputFloat(document.getElementById('ins-z2').value);
-    const u = UNITS[CONFIG.unit];
-    const z1Meters = rawZ1 / u.factor; const z2Meters = rawZ2 / u.factor;
+    const sel = document.getElementById('ins-select'); const valParts = sel.value.split('|'); const groupKey = valParts[0]; const itemId = valParts[1];
+    const itemDef = CATALOGO[groupKey].find(x => x.id === itemId); if(!itemDef) return;
+    const rawZ1 = parseInputFloat(document.getElementById('ins-z1').value); const rawZ2 = parseInputFloat(document.getElementById('ins-z2').value);
+    const u = UNITS[CONFIG.unit]; const z1Meters = rawZ1 / u.factor; const z2Meters = rawZ2 / u.factor;
     const props = JSON.parse(JSON.stringify(itemDef.props));
-    
     if (itemDef.type === 'tuberia' && Math.abs(z1Meters - z2Meters) > 0.001) {
-        addEl({
-            tipo: 'tuberia', x: insertCoords.x, y: insertCoords.y, z: z1Meters,
-            dx: 0, dy: 0, dz: z2Meters - z1Meters,
-            props: props, layerId: activeLayerId, customColor: itemDef.color
-        });
+        addEl({ tipo: 'tuberia', x: insertCoords.x, y: insertCoords.y, z: z1Meters, dx: 0, dy: 0, dz: z2Meters - z1Meters, props: props, layerId: activeLayerId, customColor: itemDef.color });
     } else {
-        addEl({
-            tipo: itemDef.type, x: insertCoords.x, y: insertCoords.y, z: z1Meters,
-            dx: 0, dy: 0, dz: 0, 
-            props: props, icon: itemDef.icon, layerId: activeLayerId, color: itemDef.color
-        });
+        addEl({ tipo: itemDef.type, x: insertCoords.x, y: insertCoords.y, z: z1Meters, dx: 0, dy: 0, dz: 0, props: props, icon: itemDef.icon, layerId: activeLayerId, color: itemDef.color });
     }
-    document.getElementById('modal-insertar').style.display = 'none';
-    setTool('select');
-    renderScene();
+    document.getElementById('modal-insertar').style.display = 'none'; setTool('select'); renderScene();
 }
 
 // --- INICIALIZACIÓN ---
-saveState(); // Guardar estado inicial vacio
-renderGrid(); renderGizmo(); initLibrary();
+saveState(); renderGrid(); renderGizmo(); initLibrary();
 const rectInit = svg.getBoundingClientRect(); estado.view.x=rectInit.width/2; estado.view.y=rectInit.height/2; 
 updateTransform(); setTimeout(comprobarAutoguardado, 500);
 </script>
