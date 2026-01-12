@@ -513,10 +513,33 @@ function parseInputFloat(val) {
 }
 
 // --- LISTAS DE DIAMETROS DISPONIBLES ---
+// Aquí definimos qué medidas aparecen en el menú de propiedades para cada tipo
 const DIAMETROS_DISPONIBLES = {
-    'acero': ['1/4"', '1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '2-1/2"', '3"', '4"'],
-    'pe': ['20mm', '25mm', '32mm', '40mm', '50mm', '63mm', '90mm'],
-    'cobre': ['3/8"', '1/2"', '5/8"', '3/4"', '1"']
+    // Acero al Carbón
+    'acero_sch40': ['1/4"', '1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '2-1/2"', '3"', '4"'],
+    'acero_sch80': ['1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '3"', '4"'],
+    'acero_sch160': ['1/2"', '3/4"', '1"', '2"'],
+    
+    // Acero Galvanizado (Suelen compartir diámetros con el carbón, pero los separamos por si acaso)
+    'galv_sch40': ['1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '3"', '4"'],
+    'galv_sch80': ['1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"'],
+    'galv_sch160': ['1/2"', '3/4"', '1"'],
+
+    // Multicapa (PE-AL-PE) - Usamos notación común milimétrica
+    'multicapa': ['1216 (16mm)', '1620 (20mm)', '2025 (25mm)', '2632 (32mm)', '4050 (50mm)'],
+
+    // Cobre Rígido
+    'cobre_k': ['3/8"', '1/2"', '5/8"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"'],
+    'cobre_l': ['1/4"', '3/8"', '1/2"', '5/8"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"'],
+    'cobre_m': ['3/8"', '1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"'],
+    
+    // Cobre Flexible
+    'cobre_flex': ['1/8"', '3/16"', '1/4"', '5/16"', '3/8"', '1/2"', '5/8"', '3/4"'],
+
+    // Polietileno (PE)
+    'pe_ips': ['1/2" IPS', '3/4" IPS', '1" IPS', '1-1/4" IPS', '2" IPS', '3" IPS', '4" IPS'],
+    'pe_cts': ['1/2" CTS', '1" CTS'], // Copper Tube Size para plástico
+    'pe_metric': ['20mm', '25mm', '32mm', '40mm', '50mm', '63mm', '90mm', '110mm', '160mm']
 };
 
 // --- CONFIGURACIÓN ---
