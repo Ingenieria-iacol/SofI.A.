@@ -1038,13 +1038,130 @@ svg.addEventListener('mousedown', e => {
 svg.addEventListener('mousemove', e => {
     const p = getSVGPoint(e.clientX, e.clientY);
 
-    // Pan y Rotate
+    // --- CORRECCIÓN: ROTACIÓN ORBITAL ---
+    // Esto soluciona que las tuberías "se muevan de lugar" al rotar.
     if(estado.action === 'rotate') { 
-        estado.view.angle += (e.clientX - estado.startAction.x) * 0.01; 
+        // 1. Calculamos la posición del mouse relativa al grupo escalado (Coordenadas locales)
+        const mx_local = (e.clientX - estado.view.x) / estado.view.scale;
+        const my_local = (e.clientY - estado.view.y) / estado.view.scale;
+
+        // 2. Obtenemos la coordenada isométrica (X, Y) teórica bajo el mouse ANTES de rotar
+        // Nota: screenToIso usa 'estado.view.angle' actual.
+        const pivotIso = screenToIso(mx_local, my_local);
+
+        // 3. Aplicamos la rotación al ángulo
+        estado.view.angle += (e.clientX - estado.startAction.x) * 0.01;
+        
+        // 4. Calculamos dónde quedó ese punto pivote AHORA con el nuevo ángulo
+        // Asumimos Z=0 para el pivote de rotación para mantener la consistencia con el suelo
+        const newScreenPos = isoToScreen(pivotIso.x, pivotIso.y, 0);
+
+        // 5. Ajustamos el Pan (view.x, view.y) para que el punto pivote siga bajo el mouse
+        // Fórmula: PosMouse = (PosPantallaNueva * Escala) + OffsetVista
+        // Despejamos OffsetVista:
+        estado.view.x = e.clientX - (newScreenPos.x * estado.view.scale);
+        estado.view.y = e.clientY - (newScreenPos.y * estado.view.scale);
+
         estado.startAction = {x: e.clientX, y: e.clientY}; 
+        
+        // Renderizamos todo
         renderGrid(); renderScene(); renderEffects(); updateTransform(); 
         return; 
     }
+    // -------------------------------------
+
+    if(estado.action === 'pan') { 
+        estado.view.x += e.clientX - estado.startAction.x; 
+        estado.view.y += e.clientY - estado.startAction.y; 
+        estado.startAction = {x: e.clientX, y: e.clientY}; 
+        updateTransform(); 
+        return; 
+    }
+    
+    // Proyección sobre plano Z
+    const zOffsetHeight = (estado.currentZ || 0) * CONFIG.tileW * 0.7;
+    const adjustedY = p.y + zOffsetHeight;
+    const isoRaw = screenToIso(p.x, adjustedY);
+    estado.mouseIso = { x: isoRaw.x, y: isoRaw.y };
+    
+    // Snap Logic
+    let sn = null; let snID = null;
+    if (CONFIG.enableSnap) {
+        const tol = CONFIG.snapRadius / estado.view.scale;
+        elementos.forEach(el => {
+            if(el.visible === false) return;
+            const pts = getSnapPoints(el); 
+            pts.forEach(pt => { 
+                const s = isoToScreen(pt.x, pt.y, pt.z); 
+                if(Math.sqrt((p.x-s.x)**2+(p.y-s.y)**2) < tol) { sn = pt; snID = el.id; }
+            });
+        });
+    }
+    estado.snapped = sn;
+    if (snID) estado.hoverID = snID; 
+    
+    if (snID && (estado.activeItem?.type === 'valvula' || estado.activeItem?.type === 'equipo')) {
+            const targetEl = elementos.find(x => x.id === snID);
+            if (targetEl && targetEl.tipo === 'tuberia') { estado.snapDir = { dx: targetEl.dx, dy: targetEl.dy, dz: targetEl.dz }; }
+    } else { estado.snapDir = null; }
+    
+    // Lógica de arrastre
+    if (estado.action === 'dragging' && estado.selID) {
+        const el = elementos.find(x => x.id === estado.selID);
+        if (el) {
+            const gridX = Math.round(estado.mouseIso.x * 10) / 10;
+            const gridY = Math.round(estado.mouseIso.y * 10) / 10;
+            const destino = estado.snapped || { x: gridX, y: gridY };
+            
+            el.x = destino.x; el.y = destino.y;
+            if (estado.snapped && estado.snapped.z !== undefined) el.z = estado.snapped.z;
+            renderScene(); renderEffects();
+        }
+    } else if (estado.action === 'potential_drag') {
+            const distDrag = Math.hypot(e.clientX - estado.startAction.x, e.clientY - estado.startAction.y);
+            if(distDrag > 5) { 
+                estado.action = 'dragging'; 
+                if(!estado.selID) { estado.selID = estado.hoverID; updatePropsPanel(); } 
+                saveState(); 
+            }
+    }
+    
+    // Hover logic
+    if(estado.tool === 'select' && !estado.action && !estado.snapped) {
+        const tol = 8 / estado.view.scale; let h = null; let minD = tol; 
+        elementos.forEach(el => {
+            if(el.visible === false) return; 
+            const s = isoToScreen(el.x, el.y, el.z); let d = 10000;
+            if(el.tipo==='tuberia') {
+                const en = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz); const L2 = (en.x-s.x)**2 + (en.y-s.y)**2;
+                if(L2>0) { let t = ((p.x-s.x)*(en.x-s.x)+(p.y-s.y)*(en.y-s.y))/L2; t = Math.max(0, Math.min(1, t)); d = Math.sqrt((p.x - (s.x+t*(en.x-s.x)))**2 + (p.y - (s.y+t*(en.y-s.y)))**2); }
+            } else { d = Math.sqrt((p.x-s.x)**2+(p.y-s.y)**2); }
+            if(d < minD) { minD=d; h=el.id; }
+        });
+        if(h !== estado.hoverID) { estado.hoverID = h; renderEffects(); }
+    }
+    
+    // TOOLTIP FLOTANTE
+    const tooltip = document.getElementById('hover-tooltip');
+    if (estado.hoverID) {
+        const el = elementos.find(x => x.id === estado.hoverID);
+        if(el) {
+            const u = UNITS[CONFIG.unit];
+            let txt = `Z: ${formatLength(el.z)}`;
+            if (el.tipo === 'tuberia' && Math.abs(el.dz) > 0.01) {
+                txt = `Z: ${formatLength(el.z)} ⮕ ${formatLength(el.z + el.dz)}`;
+            }
+            tooltip.innerText = txt;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 15) + 'px';
+            tooltip.style.top = (e.clientY + 15) + 'px';
+        }
+    } else {
+        tooltip.style.display = 'none';
+    }
+
+    renderInterface(p);
+});
     if(estado.action === 'pan') { 
         estado.view.x += e.clientX - estado.startAction.x; 
         estado.view.y += e.clientY - estado.startAction.y; 
