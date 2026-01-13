@@ -1071,9 +1071,43 @@ function renderEffects() {
 }
 
 // --- SNAP & EVENTS ---
+// ==========================================
+// REEMPLAZAR LA FUNCIÓN getSnapPoints ACTUAL
+// ==========================================
 function getSnapPoints(el) {
-    if(el.visible === false) return []; 
+    if(el.visible === false) return [];
+    
+    // 1. El centro siempre es un punto de conexión
     const pts = [{x: el.x, y: el.y, z: el.z}]; 
+
+    // 2. LÓGICA NUEVA: Calcular extremos para válvulas y equipos
+    if(el.tipo === 'valvula' || el.tipo === 'equipo') {
+        const scale = el.props.scaleFactor || 1.0;
+        
+        // 'radio' define qué tan lejos del centro están los conectores.
+        // 0.15 es un valor aproximado basado en el tamaño visual de tus iconos.
+        const radio = 0.15 * scale; 
+        
+        // Convertimos la rotación de Grados a Radianes para calcular la posición
+        const rads = (parseFloat(el.props.rotacion || 0) * Math.PI) / 180;
+
+        // Puerto A (Izquierda / Entrada)
+        // Usamos Coseno para X y Seno para Y para proyectar la rotación
+        pts.push({
+            x: el.x - Math.cos(rads) * radio,
+            y: el.y - Math.sin(rads) * radio,
+            z: el.z
+        });
+
+        // Puerto B (Derecha / Salida)
+        pts.push({
+            x: el.x + Math.cos(rads) * radio,
+            y: el.y + Math.sin(rads) * radio,
+            z: el.z
+        });
+    }
+
+    // 3. Puntos para tuberías (Inicio, Medio, Fin) - Esto se mantiene igual
     if(el.tipo === 'tuberia' || el.tipo === 'cota') {
         pts.push({x: el.x + el.dx, y: el.y + el.dy, z: el.z + el.dz});
         pts.push({x: el.x + el.dx*0.5, y: el.y + el.dy*0.5, z: el.z + el.dz*0.5});
@@ -1312,13 +1346,34 @@ function handleCanvasClick(e) {
     }
     
     if(estado.activeItem?.type === 'tuberia' || estado.tool === 'cota') {
+        if(estado.activeItem?.type === 'tuberia' || estado.tool === 'cota') {
         if(!estado.drawing) { 
-            estado.drawing = true; estado.inicio = {x:tx, y:ty, z:tz}; estado.currentZ = tz; syncZInput();
+            // INICIO DEL DIBUJO
+            estado.drawing = true; 
+            
+            // CORRECCIÓN VISUAL CRÍTICA:
+            // Si hicimos 'snap' (tz viene del objeto), forzamos al sistema global
+            // a usar esa altura. Esto evita que la tubería se vaya al fondo al mover el mouse.
+            if (estado.snapped) {
+                estado.currentZ = tz; 
+            }
+            
+            estado.inicio = {x:tx, y:ty, z:tz}; 
+            
+            // Actualizamos el input de la interfaz para que el usuario vea que la altura cambió
+            syncZInput();
+
         } else {
+            // FIN DEL DIBUJO (Confirmar tubería)
             let dx=tx-estado.inicio.x, dy=ty-estado.inicio.y, dz=tz-estado.inicio.z;
             const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-            if(dist > 0.01) { mostrarInputDinámico(e.clientX, e.clientY, dist, {dx, dy, dz}); } else { estado.drawing = false; }
+            if(dist > 0.01) { 
+                mostrarInputDinámico(e.clientX, e.clientY, dist, {dx, dy, dz}); 
+            } else { 
+                estado.drawing = false; 
+            }
         }
+    }
     } else if (estado.activeItem) {
         const props = JSON.parse(JSON.stringify(estado.activeItem.props)); 
         if (estado.snapDir && (estado.activeItem.type === 'valvula' || estado.activeItem.type === 'equipo')) { props.dirVector = estado.snapDir; delete props.rotacion; }
