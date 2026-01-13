@@ -653,7 +653,28 @@ const CATALOGO = {
     ],
     perif: [
         { subCat: 'Soportes', id: 'p_sop', name: 'Soporte', icon: '⚓', type: 'equipo', props: { tipo: 'soporte' } },
-        { subCat: 'Tanques', id: 'p_tanque', name: 'Tanque GLP', icon: '💊', type: 'equipo', props: { cap: '1000L' } }
+        { 
+            subCat: 'Tanques', 
+            id: 'p_tanque', 
+            name: 'Tanque GLP Horizontal', 
+            icon: '💊', 
+            type: 'equipo', 
+            props: { 
+                tipo: 'tanque_glp', // IMPORTANTE: Este tipo nos servirá para detectarlo
+                diametro: 2.0,      // metros
+                longitud: 6.0,      // metros
+                capacidadGalones: 1000,
+                numConexiones: 2,
+                checklist: {        // Datos por defecto
+                    rotogate: false,
+                    indicadorLlenado: true,
+                    multivalvulas: false,
+                    drenaje: true,
+                    valvulaAlivio: true,
+                    valvulaLlenado: true
+                }
+            } 
+        }
     ],
     cons: [
         { subCat: 'Sellantes', id: 'cs_teflon', name: 'Cinta Teflón', icon: '🧶', type: 'consumible', props: { tipo: 'teflon' } },
