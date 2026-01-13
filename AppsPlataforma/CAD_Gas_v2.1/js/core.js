@@ -1,26 +1,47 @@
-// js/core.js - Estado Global y Lógica de Negocio
+// js/core.js - Cerebro de la Aplicación: Estado, Lógica y Archivos
 
-// --- VARIABLES GLOBALES DE ESTADO ---
+// ==========================================
+// 1. ESTADO GLOBAL Y VARIABLES
+// ==========================================
 window.EPSILON_GRID = 0.001; 
 window.layers = [{ id: 'l_gas', name: 'Gas', color: '#FFD700', visible: true }];
 window.activeLayerId = 'l_gas';
 window.elementos = [];
+
+// Estado de la herramienta y vista
 window.estado = {
-    tool: 'select', activeItem: null, mouseIso: {x:0, y:0}, snapped: null, currentZ: 0,
-    drawing: false, startPt: null, selID: null, hoverID: null,
+    tool: 'select', 
+    activeItem: null, 
+    mouseIso: {x:0, y:0}, 
+    snapped: null, 
+    currentZ: 0,
+    drawing: false, 
+    startPt: null, 
+    selID: null, 
+    hoverID: null,
     view: { x: 0, y: 0, scale: 1, angle: Math.PI/4 },
-    action: null, startAction: {x:0, y:0}, snapDir: null, tempVector: null,
-    verticalPendingDir: 0, clipboard: null
+    action: null, 
+    startAction: {x:0, y:0}, 
+    snapDir: null, 
+    tempVector: null,
+    verticalPendingDir: 0, 
+    clipboard: null
 };
 
+// Historial
 let historyStack = [];
 let historyIndex = -1;
 const MAX_HISTORY = 50;
-let insertCoords = { x:0, y:0 };
+let insertCoords = { x:0, y:0 }; // Variable auxiliar para inserción
 
-// --- SISTEMA DE HISTORIAL (UNDO/REDO) ---
+// ==========================================
+// 2. SISTEMA DE HISTORIAL (UNDO/REDO)
+// ==========================================
 window.saveState = function() {
-    if (historyIndex < historyStack.length - 1) { historyStack = historyStack.slice(0, historyIndex + 1); }
+    if (historyIndex < historyStack.length - 1) {
+        historyStack = historyStack.slice(0, historyIndex + 1);
+    }
+    // Guardamos una copia profunda de los elementos
     const state = JSON.stringify(window.elementos);
     historyStack.push(state);
     if (historyStack.length > MAX_HISTORY) historyStack.shift();
@@ -29,19 +50,29 @@ window.saveState = function() {
 }
 
 window.undo = function() {
-    if (historyIndex > 0) { historyIndex--; restaurarEstado(historyStack[historyIndex]); updateUndoRedoUI(); }
+    if (historyIndex > 0) {
+        historyIndex--;
+        restaurarEstado(historyStack[historyIndex]);
+        updateUndoRedoUI();
+    }
 }
 
 window.redo = function() {
-    if (historyIndex < historyStack.length - 1) { historyIndex++; restaurarEstado(historyStack[historyIndex]); updateUndoRedoUI(); }
+    if (historyIndex < historyStack.length - 1) {
+        historyIndex++;
+        restaurarEstado(historyStack[historyIndex]);
+        updateUndoRedoUI();
+    }
 }
 
 function restaurarEstado(jsonState) {
     window.elementos = JSON.parse(jsonState);
     window.estado.selID = null; 
-    // Estas funciones vienen de renderer.js, pero como son globales funcionarán
+    
+    // Actualizamos la vista (funciones de renderer.js)
     if(typeof renderScene === 'function') renderScene();
     if(typeof updatePropsPanel === 'function') updatePropsPanel();
+    
     const rp = document.getElementById('right-panel');
     if(rp) rp.classList.add('closed');
 }
@@ -53,22 +84,37 @@ function updateUndoRedoUI() {
     if(btnRedo) btnRedo.disabled = (historyIndex >= historyStack.length - 1);
 }
 
-// --- GESTIÓN DE ELEMENTOS ---
+// ==========================================
+// 3. GESTIÓN DE ELEMENTOS (CRUD)
+// ==========================================
 window.addEl = function(data) { 
+    // Heredar diámetro si no existe y está en el ítem activo
     if(!data.props.diametroNominal && window.estado.activeItem?.props?.diametroNominal) { 
         data.props.diametroNominal = window.estado.activeItem.props.diametroNominal; 
     }
-    window.elementos.push({id:Date.now(), layerId:window.activeLayerId, visible:true, ...data}); 
+    
+    window.elementos.push({
+        id: Date.now(), 
+        layerId: window.activeLayerId, 
+        visible: true, 
+        ...data
+    }); 
+    
     window.saveState(); 
     if(typeof renderScene === 'function') renderScene(); 
 }
 
 window.borrarSeleccion = function() { 
+    if (!window.estado.selID) return;
+    
     window.elementos = window.elementos.filter(x => x.id !== window.estado.selID); 
     window.estado.selID = null; 
+    
     window.saveState(); 
+    
     if(typeof updatePropsPanel === 'function') updatePropsPanel(); 
     if(typeof renderScene === 'function') renderScene(); 
+    
     const rp = document.getElementById('right-panel');
     if(rp) rp.classList.add('closed'); 
 }
@@ -77,33 +123,40 @@ window.setTool = function(t) {
     window.estado.tool = (t==='cota'||t==='texto'||t==='select'||t==='insert'||t==='cut') ? t : 'draw'; 
     window.estado.drawing = false; 
     window.estado.selID = null; 
+    
     if(typeof renderEffects === 'function') renderEffects(); 
     
+    // Actualizar UI de botones
     document.querySelectorAll('.tool-item').forEach(x => x.classList.remove('active'));
     ['btn-select','btn-cota','btn-texto', 'btn-insert','btn-cut'].forEach(id => { 
         const btn = document.getElementById(id); 
         if(btn) btn.classList.remove('active'); 
     });
+    
     const activeBtn = document.getElementById('btn-'+t);
     if(activeBtn) activeBtn.classList.add('active'); 
 }
 
-// --- LÓGICA DE INGENIERÍA (Conexiones y Cortes) ---
+// ==========================================
+// 4. LÓGICA DE INGENIERÍA (Conexiones y Cortes)
+// ==========================================
 window.moverConConexiones = function(idElemento, dx, dy, dz) {
     const el = window.elementos.find(e => e.id === idElemento); if (!el) return;
     const oldStart = { x: el.x, y: el.y, z: el.z };
     let oldEnd = null;
-    if (el.tipo === 'tuberia' || el.tipo === 'cota') { oldEnd = { x: el.x + el.dx, y: el.y + el.dy, z: el.z + el.dz }; }
+    
+    if (el.tipo === 'tuberia' || el.tipo === 'cota') { 
+        oldEnd = { x: el.x + el.dx, y: el.y + el.dy, z: el.z + el.dz }; 
+    }
     
     el.x += dx; el.y += dy; el.z += dz;
+
+    // Helper para comparar puntos (de utils.js)
+    const check = window.arePointsEqual;
 
     window.elementos.forEach(vecino => {
         if (vecino.id === idElemento || vecino.visible === false) return;
         
-        // Función helper local para no depender de utils.js dentro del loop si no cargó, 
-        // aunque debería estar cargado. Usamos window.arePointsEqual
-        const check = window.arePointsEqual;
-
         if (check({x: vecino.x, y: vecino.y, z: vecino.z}, oldStart)) { 
             vecino.x += dx; vecino.y += dy; vecino.z += dz; 
         } else if (vecino.tipo === 'tuberia' || vecino.tipo === 'cota') {
@@ -124,36 +177,41 @@ window.moverConConexiones = function(idElemento, dx, dy, dz) {
 
 window.cortarTuberia = function(idTuberia, xCorte, yCorte, zCorte) {
     const el = window.elementos.find(e => e.id === idTuberia); if(!el || el.tipo !== 'tuberia') return;
+    
     const finalOriginal = { x: el.x + el.dx, y: el.y + el.dy, z: el.z + el.dz };
     const propsOriginal = JSON.parse(JSON.stringify(el.props));
     
+    // Modificar actual
     el.dx = xCorte - el.x; el.dy = yCorte - el.y; el.dz = zCorte - el.z;
     
+    // Crear nueva
     const dx2 = finalOriginal.x - xCorte; 
     const dy2 = finalOriginal.y - yCorte; 
     const dz2 = finalOriginal.z - zCorte;
     
     window.addEl({ 
-        tipo: 'tuberia', x: xCorte, y: yCorte, z: zCorte, 
+        tipo: 'tuberia', 
+        x: xCorte, y: yCorte, z: zCorte, 
         dx: dx2, dy: dy2, dz: dz2, 
-        props: propsOriginal, layerId: el.layerId, customColor: el.props.customColor 
+        props: propsOriginal, 
+        layerId: el.layerId, 
+        customColor: el.props.customColor 
     });
 }
 
 window.analizarRed = function() {
     const mapNodos = new Map(); const accesorios = [];
+    
     window.elementos.forEach(el => {
         if (el.tipo !== 'tuberia' || el.visible === false) return;
         if (isNaN(el.x) || isNaN(el.dx)) return; 
         
-        // Dependencia de utils.js
         const kStart = window.getKey(el.x, el.y, el.z); 
         const kEnd = window.getKey(el.x + el.dx, el.y + el.dy, el.z + el.dz);
         
         const len = Math.hypot(el.dx, el.dy, el.dz); if (len < 0.001) return;
         
         let width = 2; 
-        // Dependencia de utils.js
         if (el.props.diametroNominal) width = window.parseDiameterToScale(el.props.diametroNominal);
         
         const dir = { x: el.dx/len, y: el.dy/len, z: el.dz/len }; 
@@ -165,13 +223,13 @@ window.analizarRed = function() {
     });
 
     mapNodos.forEach((conns, key) => {
-        // EPSILON_GRID definido arriba
         const parts = key.split('_').map(p => parseFloat(p) * window.EPSILON_GRID);
-        const x = parts[0], y = parts[1], z = parts[2]; const base = conns[0]; 
+        const x = parts[0], y = parts[1], z = parts[2]; 
         
         if (conns.length === 2) {
             const c1 = conns[0]; const c2 = conns[1];
             const dot = c1.dir.x * c2.dir.x + c1.dir.y * c2.dir.y + c1.dir.z * c2.dir.z;
+            
             if (dot < -0.99 && Math.abs(c1.width - c2.width) > 0.5) { 
                 accesorios.push({ tipo: 'reductor_auto', x, y, z, dirs: [c1.dir, c2.dir], color: base.color, width: Math.max(c1.width, c2.width) }); 
             } else if (dot > -0.99 && dot < 0.99) { 
@@ -186,28 +244,33 @@ window.analizarRed = function() {
     return accesorios;
 }
 
-// --- HELPERS INTERFAZ ---
+// ==========================================
+// 5. HELPERS DE INTERACCIÓN (Inputs, Clicks, Insertar)
+// ==========================================
 window.mostrarInputDinámico = function(xScreen, yScreen, distActual, vectorData) {
     const box = document.getElementById('dynamic-input-container'); 
     const input = document.getElementById('dynamic-len');
     window.estado.tempVector = { ...vectorData, distOriginal: distActual };
-    box.style.left = (xScreen + 15) + 'px'; box.style.top = (yScreen + 15) + 'px'; box.style.display = 'flex';
     
-    // Dependencias utils y config
+    box.style.left = (xScreen + 15) + 'px'; 
+    box.style.top = (yScreen + 15) + 'px'; 
+    box.style.display = 'flex';
+    
     const u = window.UNITS[window.CONFIG.unit]; 
     const valDisplay = distActual * u.factor;
-    input.value = valDisplay.toFixed(u.precision); input.focus(); input.select();
+    input.value = valDisplay.toFixed(u.precision); 
+    input.focus(); input.select();
 }
 
 window.confirmarInput = function() {
     const box = document.getElementById('dynamic-input-container'); 
     const input = document.getElementById('dynamic-len');
-    const val = window.parseInputFloat(input.value); // utils.js
+    const val = window.parseInputFloat(input.value); 
     
     if (window.estado.tempVector && !isNaN(val) && val > 0) {
         let { dx, dy, dz, distOriginal } = window.estado.tempVector;
         if (distOriginal < 0.001) distOriginal = 1; 
-        const valInMeters = window.parseToMeters(val); // utils.js
+        const valInMeters = window.parseToMeters(val); 
         const ratio = valInMeters / distOriginal;
         dx *= ratio; dy *= ratio; dz *= ratio;
         
@@ -235,7 +298,7 @@ window.handleCanvasClick = function(e) {
     if(document.getElementById('dynamic-input-container').style.display === 'flex' || 
        document.getElementById('vertical-input-container').style.display === 'flex') return;
     
-    // Herramienta CORTAR
+    // CORTAR
     if(window.estado.tool === 'cut' && window.estado.hoverID) {
         const tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
         const ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
@@ -246,22 +309,22 @@ window.handleCanvasClick = function(e) {
         return;
     }
     
-    // Herramienta INSERTAR
+    // INSERTAR
     if(window.estado.tool === 'insert') {
         const tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
         const ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
         const tz = window.estado.snapped ? window.estado.snapped.z : window.estado.currentZ;
-        window.abrirModalInsertar(tx, ty, tz); return; 
+        window.abrirModalInsertar(tx, ty, tz); 
+        return; 
     }
     
-    // Herramienta SELECT
+    // SELECCIONAR
     if(window.estado.tool === 'select') { 
         window.estado.selID = window.estado.hoverID; 
         if(window.estado.selID) { 
             const el = window.elementos.find(x => x.id === window.estado.selID); 
             if(el) { 
                 window.estado.currentZ = el.z; 
-                // Esta función está en renderer.js, se asume cargada
                 if(typeof syncZInput === 'function') syncZInput(); 
             } 
         }
@@ -272,24 +335,25 @@ window.handleCanvasClick = function(e) {
         return; 
     }
     
-    // Herramienta DIBUJO (Draw, Cota, etc)
+    // DIBUJAR
     let tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
     let ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
     let tz = window.estado.snapped ? window.estado.snapped.z : window.estado.currentZ;
+    let lockedAxis = null;
     
     if (window.estado.drawing && window.estado.inicio && !window.estado.snapped) {
-        const diffX = tx - window.estado.inicio.x; 
-        const diffY = ty - window.estado.inicio.y; 
-        const diffZ = tz - window.estado.inicio.z; 
+        // Lógica de ejes ortogonales
+        const gridX = Math.round(window.estado.mouseIso.x * 10) / 10;
+        const gridY = Math.round(window.estado.mouseIso.y * 10) / 10;
+        const dx = gridX - window.estado.inicio.x; 
+        const dy = gridY - window.estado.inicio.y; 
+        const dz = window.estado.currentZ - window.estado.inicio.z;
         const th = 0.5;
-        if (Math.abs(diffY) < th && Math.abs(diffZ) < th) { ty = window.estado.inicio.y; tz = window.estado.inicio.z; tx = gridX; } 
-        else if (Math.abs(diffX) < th && Math.abs(diffZ) < th) { tx = window.estado.inicio.x; tz = window.estado.inicio.z; ty = gridY; } 
-        else if (Math.abs(diffX) < th && Math.abs(diffY) < th) { tx = window.estado.inicio.x; ty = window.estado.inicio.y; tz = window.estado.inicio.z; }
-        else { 
-            // Grid snap suave
-            tx = Math.round(window.estado.mouseIso.x*10)/10;
-            ty = Math.round(window.estado.mouseIso.y*10)/10;
-        }
+        
+        if (Math.abs(dy) < th && Math.abs(dz) < th) { ty = window.estado.inicio.y; tz = window.estado.inicio.z; tx = gridX; } 
+        else if (Math.abs(dx) < th && Math.abs(dz) < th) { tx = window.estado.inicio.x; tz = window.estado.inicio.z; ty = gridY; } 
+        else if (Math.abs(dx) < th && Math.abs(diffY) < th) { tx = window.estado.inicio.x; ty = window.estado.inicio.y; tz = window.estado.inicio.z; }
+        else { tx = gridX; ty = gridY; }
     }
 
     if(window.estado.tool === 'texto') { 
@@ -300,7 +364,6 @@ window.handleCanvasClick = function(e) {
     
     if(window.estado.activeItem?.type === 'tuberia' || window.estado.tool === 'cota') {
         if(!window.estado.drawing) { 
-            // INICIO DEL DIBUJO
             window.estado.drawing = true; 
             if (window.estado.snapped) { 
                 window.estado.currentZ = tz; 
@@ -380,20 +443,22 @@ window.ejecutarInsercion = function() {
     window.setTool('select'); 
     if(typeof renderScene === 'function') renderScene();
 }
-// --- EN js/core.js (Añadir al final) ---
 
-// 1. Abrir el Modal de Guardado
+// ==========================================
+// 6. GESTIÓN DE ARCHIVOS Y REPORTES (¡REPARADO!)
+// ==========================================
+
+// Guardar Proyecto (Abre Modal)
 window.guardarProyecto = function() { 
     document.getElementById('modal-guardar').style.display = 'flex'; 
     document.getElementById('input-filename').focus(); 
 }
 
-// 2. Descargar el archivo .JSON al PC
+// Confirmar Descarga JSON
 window.confirmarDescarga = function() {
     let nombre = document.getElementById('input-filename').value || 'proyecto_gas'; 
     if (!nombre.endsWith('.json')) { nombre += '.json'; }
     
-    // Usamos las variables globales window.layers y window.elementos
     const datos = JSON.stringify({ 
         layers: window.layers, 
         elementos: window.elementos 
@@ -411,7 +476,7 @@ window.confirmarDescarga = function() {
     document.getElementById('modal-guardar').style.display = 'none';
 }
 
-// 3. Guardado Rápido en el Navegador (LocalStorage)
+// Guardar en Navegador (LocalStorage)
 window.guardarEnNavegador = function() { 
     try { 
         const datos = JSON.stringify({ 
@@ -420,7 +485,6 @@ window.guardarEnNavegador = function() {
         }); 
         localStorage.setItem('backup_cad_gas', datos); 
         
-        // Feedback visual
         const msg = document.getElementById('msg-guardado'); 
         if(msg) {
             msg.style.display = 'block'; 
@@ -430,20 +494,11 @@ window.guardarEnNavegador = function() {
             }, 1500); 
         }
     } catch (e) { 
-        alert("Error: Almacenamiento lleno o deshabilitado."); 
+        alert("Error: Almacenamiento lleno."); 
     } 
 }
 
-// 4. Limpiar / Nuevo Proyecto
-window.limpiarTodo = function(){ 
-    if(confirm("¿Estás seguro de querer borrar todo el dibujo?")){
-        window.elementos = []; 
-        window.saveState(); 
-        if(typeof renderScene === 'function') renderScene();
-    } 
-}
-
-// 5. Cargar Proyecto desde Archivo (Botón Abrir)
+// Cargar Proyecto (Desde Archivo)
 window.cargarProyecto = function(inputElement){ 
     if (!inputElement.files.length) return;
     const r = new FileReader(); 
@@ -457,10 +512,123 @@ window.cargarProyecto = function(inputElement){
             if(typeof renderScene === 'function') renderScene(); 
             if(typeof renderLayersUI === 'function') renderLayersUI();
         } catch(err) {
-            alert("Error al leer el archivo JSON.");
+            alert("Error al leer el archivo.");
             console.error(err);
         }
     }; 
     r.readAsText(inputElement.files[0]); 
 }
-console.log("✅ Core Logic cargado");
+
+// Limpiar Lienzo
+window.limpiarTodo = function(){ 
+    if(confirm("¿Estás seguro de borrar todo?")){
+        window.elementos = []; 
+        window.saveState(); 
+        if(typeof renderScene === 'function') renderScene();
+    } 
+}
+
+// Mostrar Reporte (Tabla)
+window.mostrarReporte = function(){
+    let html=""; let counts={};
+    window.elementos.forEach(el=>{
+        if(el.visible === false) return;
+        let n = el.props?.material ? (el.name || "Tuberia") : el.tipo;
+        
+        if(el.tipo==='tuberia'){ 
+            let dn = el.props.diametroNominal || "S/D"; 
+            let matName = el.props.material ? el.props.material.charAt(0).toUpperCase() + el.props.material.slice(1) : "Genérico"; 
+            let key = `${matName} Ø${dn}`; 
+            let l = Math.sqrt(el.dx**2+el.dy**2+el.dz**2); 
+            counts[key]=(counts[key]||0)+l; 
+        } else if (el.tipo !== 'cota' && el.tipo !== 'texto') { 
+            let key = el.name || el.tipo; 
+            counts[key]=(counts[key]||0)+1; 
+        }
+    });
+    
+    // Agregar accesorios auto
+    if(typeof window.analizarRed === 'function') {
+        const autoFittings = window.analizarRed();
+        autoFittings.forEach(fit => { 
+            let key = ""; 
+            if (fit.tipo === 'codo_auto') key = "Codo 90° (Auto)"; 
+            else if (fit.tipo === 'tee_auto') key = "Tee (Auto)"; 
+            else if (fit.tipo === 'cruz_auto') key = "Cruz (Auto)"; 
+            else if (fit.tipo === 'reductor_auto') key = "Reductor (Auto)"; 
+            if(key) counts[key] = (counts[key]||0) + 1; 
+        });
+    }
+
+    for(let k in counts) { 
+        let valStr = ""; 
+        if(k.includes("Ø") || k.includes("Tuberia")) { 
+            valStr = window.formatLength(counts[k]); 
+        } else { 
+            valStr = counts[k] + " und"; 
+        } 
+        html+=`<tr><td>${k}</td><td align='right'>${valStr}</td></tr>`; 
+    }
+    
+    const table = document.getElementById('tabla-res');
+    if(table) {
+        table.innerHTML = html + `<tr><td colspan='2' style='border-top:1px solid #555; font-size:0.8rem; color:#666'>Item<span style='float:right'>Cant/Long</span></td></tr>`; 
+        document.getElementById('modal-reporte').style.display='flex';
+    }
+}
+
+// Exportar CSV
+window.exportarCSV = function() {
+    let csvContent = "data:text/csv;charset=utf-8,"; csvContent += "Tipo,Descripcion,Detalle,Cantidad/Longitud,Unidad\r\n";
+    let counts = {};
+    
+    window.elementos.forEach(el => {
+        if(el.visible === false) return;
+        let type = el.tipo; let desc = el.name || el.tipo; let detail = ""; let val = 1; let unit = "und";
+        
+        if(el.tipo === 'tuberia') {
+            type = "Tuberia"; 
+            desc = el.props.material ? el.props.material.toUpperCase() : "Generica"; 
+            detail = el.props.diametroNominal || ""; 
+            val = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2); 
+            unit = "m";
+        } else if (el.tipo === 'cota' || el.tipo === 'texto') { return; } 
+        else { detail = el.props.modelo || el.props.tipo || ""; }
+        
+        let key = `${type}|${desc}|${detail}|${unit}`; 
+        if(!counts[key]) counts[key] = 0; counts[key] += val;
+    });
+    
+    if(typeof window.analizarRed === 'function') {
+        const autoFittings = window.analizarRed();
+        autoFittings.forEach(fit => {
+            let type = "Accesorio"; let desc = "";
+            if (fit.tipo === 'codo_auto') desc = "Codo 90°"; 
+            else if (fit.tipo === 'tee_auto') desc = "Tee"; 
+            else if (fit.tipo === 'cruz_auto') desc = "Cruz"; 
+            else if (fit.tipo === 'reductor_auto') desc = "Reductor";
+            
+            if(desc) { 
+                let key = `${type}|${desc}|Auto|und`; 
+                if(!counts[key]) counts[key] = 0; counts[key] += 1; 
+            }
+        });
+    }
+
+    for (let key in counts) {
+        let parts = key.split('|'); 
+        let valStr = counts[key]; 
+        if(parts[3] === 'm') valStr = window.formatLength(counts[key]).replace(' m','');
+        csvContent += `${parts[0]},${parts[1]},${parts[2]},${valStr},${parts[3]}\r\n`;
+    }
+    
+    const encodedUri = encodeURI(csvContent); 
+    const link = document.createElement("a"); 
+    link.setAttribute("href", encodedUri); 
+    link.setAttribute("download", "reporte_materiales_gas.csv"); 
+    document.body.appendChild(link); 
+    link.click(); 
+    document.body.removeChild(link);
+}
+
+console.log("✅ Core Logic (Full) cargado");
