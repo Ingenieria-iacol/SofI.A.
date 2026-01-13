@@ -380,5 +380,87 @@ window.ejecutarInsercion = function() {
     window.setTool('select'); 
     if(typeof renderScene === 'function') renderScene();
 }
+// --- EN js/core.js (Añadir al final) ---
 
+// 1. Abrir el Modal de Guardado
+window.guardarProyecto = function() { 
+    document.getElementById('modal-guardar').style.display = 'flex'; 
+    document.getElementById('input-filename').focus(); 
+}
+
+// 2. Descargar el archivo .JSON al PC
+window.confirmarDescarga = function() {
+    let nombre = document.getElementById('input-filename').value || 'proyecto_gas'; 
+    if (!nombre.endsWith('.json')) { nombre += '.json'; }
+    
+    // Usamos las variables globales window.layers y window.elementos
+    const datos = JSON.stringify({ 
+        layers: window.layers, 
+        elementos: window.elementos 
+    });
+    
+    const blob = new Blob([datos], { type: "application/json" }); 
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a'); 
+    a.href = url; 
+    a.download = nombre; 
+    a.click();
+    
+    URL.revokeObjectURL(url); 
+    document.getElementById('modal-guardar').style.display = 'none';
+}
+
+// 3. Guardado Rápido en el Navegador (LocalStorage)
+window.guardarEnNavegador = function() { 
+    try { 
+        const datos = JSON.stringify({ 
+            layers: window.layers, 
+            elementos: window.elementos 
+        }); 
+        localStorage.setItem('backup_cad_gas', datos); 
+        
+        // Feedback visual
+        const msg = document.getElementById('msg-guardado'); 
+        if(msg) {
+            msg.style.display = 'block'; 
+            setTimeout(() => { 
+                msg.style.display = 'none'; 
+                document.getElementById('modal-guardar').style.display = 'none'; 
+            }, 1500); 
+        }
+    } catch (e) { 
+        alert("Error: Almacenamiento lleno o deshabilitado."); 
+    } 
+}
+
+// 4. Limpiar / Nuevo Proyecto
+window.limpiarTodo = function(){ 
+    if(confirm("¿Estás seguro de querer borrar todo el dibujo?")){
+        window.elementos = []; 
+        window.saveState(); 
+        if(typeof renderScene === 'function') renderScene();
+    } 
+}
+
+// 5. Cargar Proyecto desde Archivo (Botón Abrir)
+window.cargarProyecto = function(inputElement){ 
+    if (!inputElement.files.length) return;
+    const r = new FileReader(); 
+    r.onload = function(e) {
+        try {
+            const d = JSON.parse(e.target.result); 
+            if(d.layers) window.layers = d.layers; 
+            if(d.elementos) window.elementos = d.elementos; 
+            
+            window.saveState(); 
+            if(typeof renderScene === 'function') renderScene(); 
+            if(typeof renderLayersUI === 'function') renderLayersUI();
+        } catch(err) {
+            alert("Error al leer el archivo JSON.");
+            console.error(err);
+        }
+    }; 
+    r.readAsText(inputElement.files[0]); 
+}
 console.log("✅ Core Logic cargado");
