@@ -74,29 +74,34 @@ window. CATALOGO = {
     ],
     perif: [
         { subCat: 'Soportes', id: 'p_sop', name: 'Soporte', icon: '⚓', type: 'equipo', props: { tipo: 'soporte' } },
-        { 
-            subCat: 'Tanques', 
-            id: 'p_tanque', 
-            name: 'Tanque GLP Horizontal', 
-            icon: '💊', 
-            type: 'equipo', // Nota: Asegúrate que sea 'equipo'
-            props: { 
-            tipo: 'tanque_glp',
-            diametro: 2.0,       
-            longitud: 6.0,       
-            capacidadGalones: 1000,
-            numConexiones: 2,
-            rotacion: 0, // <--- ¡IMPORTANTE! Agrega esto para que funcione el giro 3D
-            checklist: {         
+       // En js/config.js -> Dentro de CATALOGO.perif
+
+{ 
+    subCat: 'Tanques', 
+    id: 'p_tanque', 
+    name: 'Tanque GLP Horizontal', 
+    icon: '💊', 
+    type: 'equipo', 
+    props: { 
+        tipo: 'tanque_glp',
+        diametro: 2.0,       
+        longitud: 6.0,       
+        capacidadGalones: 1000,
+        rotacion: 0,
+        // NUEVO: Array de conexiones específicas
+        conexiones: [
+            { id: 1, nombre: "Llenado", tipo: "brida", diametro: '2"' },
+            { id: 2, nombre: "Servicio", tipo: "macho", diametro: '1"' },
+            { id: 3, nombre: "Retorno", tipo: "hembra", diametro: '3/4"' }
+        ],
+        checklist: {         
             rotogate: false,
-                    indicadorLlenado: true,
-                    multivalvulas: false,
-                    drenaje: true,
-                    valvulaAlivio: true,
-                    valvulaLlenado: true
-                }
-            } 
+            indicadorLlenado: true,
+            drenaje: true,
+            valvulaAlivio: true
         }
+    } 
+}
     ],
     cons: [
         { subCat: 'Sellantes', id: 'cs_teflon', name: 'Cinta Teflón', icon: '🧶', type: 'consumible', props: { tipo: 'teflon' } },
