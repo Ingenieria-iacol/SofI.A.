@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v14.0 - Suite Completa + Tanque GLP (Modular)</title>
+<title>CAD Gas v14.0 - Suite Completa + Tanque GLP (Modular v2)</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ffff; }
@@ -561,44 +561,12 @@ function updateUndoRedoUI() {
     document.getElementById('btn-redo').disabled = (historyIndex >= historyStack.length - 1);
 }
 
-function parseInputFloat(val) {
-    if (typeof val === 'number') return val;
-    if (!val) return 0;
-    return parseFloat(val.toString().replace(',', '.'));
-}
-
-// Math Helpers Robustos
-function getKey(x, y, z) {
-    return `${Math.round(x/EPSILON_GRID)}_${Math.round(y/EPSILON_GRID)}_${Math.round(z/EPSILON_GRID)}`;
-}
-function arePointsEqual(p1, p2) {
-    return Math.abs(p1.x - p2.x) < EPSILON && 
-           Math.abs(p1.y - p2.y) < EPSILON && 
-           Math.abs(p1.z - p2.z) < EPSILON;
-}
+// FUNCIONES MATEMATICAS MOVIDAS A UTILS.JS (parseInputFloat, getKey, arePointsEqual)
 
 // --- DATA ---
-// (Los datos se cargan desde ./js/config.js)
+// Los datos se cargan desde ./js/config.js
 
-function parseDiameterToScale(valStr) {
-    if(!valStr) return 2; 
-    let meters = 0;
-    if(valStr.toLowerCase().includes('mm')) {
-        const match = valStr.match(/(\d+)mm/);
-        if (match) { meters = parseFloat(match[1]) / 1000; } else { meters = parseFloat(valStr) / 1000; }
-    } else {
-        let clean = valStr.replace(/"/g, '').replace('IPS','').replace('CTS','').trim();
-        let parts = clean.split(/[- ]/);
-        let inches = 0;
-        parts.forEach(p => {
-            if(p.includes('/')) { const frac = p.split('/'); if(frac.length === 2) inches += parseFloat(frac[0]) / parseFloat(frac[1]); } else { const f = parseFloat(p); if(!isNaN(f)) inches += f; }
-        });
-        meters = inches * 0.0254;
-    }
-    if(isNaN(meters) || meters === 0) return 2;
-    let pixelWidth = meters * CONFIG.tileW;
-    return Math.max(1.5, pixelWidth);
-}
+// parseDiameterToScale movida a utils.js
 
 let layers = [{ id: 'l_gas', name: 'Gas', color: '#FFD700', visible: true }];
 let activeLayerId = 'l_gas';
@@ -621,8 +589,8 @@ function setUnit(u) {
     syncZInput();
     renderScene(); renderInterface(); updatePropsPanel(); 
 }
-function formatLength(valMeters) { const u = UNITS[CONFIG.unit]; const val = valMeters * u.factor; return parseFloat(val.toFixed(u.precision)) + " " + u.label; }
-function parseToMeters(valUser) { const u = UNITS[CONFIG.unit]; return valUser / u.factor; }
+
+// formatLength y parseToMeters movidas a utils.js
 
 // --- MATH 3D ---
 function isoToScreen(x, y, z) {
@@ -1342,9 +1310,10 @@ function handleCanvasClick(e) {
     
     if (estado.drawing && estado.inicio && !estado.snapped) {
         const diffX = tx - estado.inicio.x; const diffY = ty - estado.inicio.y; const diffZ = tz - estado.inicio.z; const th = 0.5;
-        if (Math.abs(diffY) < th && Math.abs(diffZ) < th) { ty = estado.inicio.y; tz = estado.inicio.z; } 
-        else if (Math.abs(diffX) < th && Math.abs(diffZ) < th) { tx = estado.inicio.x; tz = estado.inicio.z; } 
-        else if (Math.abs(diffX) < th && Math.abs(diffY) < th) { tx = estado.inicio.x; ty = estado.inicio.y; }
+        if (Math.abs(diffY) < th && Math.abs(diffZ) < th) { ty = estado.inicio.y; tz = estado.inicio.z; tx = gridX; lockedAxis = 'x'; } 
+        else if (Math.abs(diffX) < th && Math.abs(diffZ) < th) { tx = estado.inicio.x; tz = estado.inicio.z; ty = gridY; lockedAxis = 'y'; } 
+        else if (Math.abs(diffX) < th && Math.abs(diffY) < th) { tx = estado.inicio.x; ty = estado.inicio.y; tz = estado.inicio.z; lockedAxis = 'z'; }
+        else { tx = gridX; ty = gridY; }
     }
 
     if(estado.tool === 'texto') { 
