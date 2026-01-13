@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v14.0 - Suite Completa + Tanque GLP (Corregido)</title>
+<title>CAD Gas v14.0 - Suite Completa + Tanque GLP (Modular)</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ffff; }
@@ -577,8 +577,7 @@ function arePointsEqual(p1, p2) {
 }
 
 // --- DATA ---
-// ¡IMPORTANTE! AQUÍ BORRASTE TODO EL BLOQUE DE 'DIAMETROS_DISPONIBLES', 'CONFIG' y 'CATALOGO'
-// PORQUE YA LO CARGAMOS ARRIBA EN EL SCRIPT TYPE MODULE.
+// (Los datos se cargan desde ./js/config.js)
 
 function parseDiameterToScale(valStr) {
     if(!valStr) return 2; 
@@ -599,7 +598,6 @@ function parseDiameterToScale(valStr) {
     let pixelWidth = meters * CONFIG.tileW;
     return Math.max(1.5, pixelWidth);
 }
-};
 
 let layers = [{ id: 'l_gas', name: 'Gas', color: '#FFD700', visible: true }];
 let activeLayerId = 'l_gas';
@@ -2020,7 +2018,6 @@ function ejecutarInsercion() {
     } else {
         addEl({ tipo: itemDef.type, x: insertCoords.x, y: insertCoords.y, z: z1Meters, dx: 0, dy: 0, dz: 0, props: props, icon: itemDef.icon, layerId: activeLayerId, color: itemDef.color });
     }
-    // FIX: Se agregaron las llaves de cierre y la lógica de reset que faltaba
     document.getElementById('modal-insertar').style.display = 'none'; 
     setTool('select'); 
     renderScene();
