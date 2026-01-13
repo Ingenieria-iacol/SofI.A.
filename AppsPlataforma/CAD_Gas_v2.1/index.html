@@ -507,18 +507,7 @@
     </div>
 </div>
 
-<script type="module">
-    // Importamos las constantes desde tu nuevo archivo
-    import { CONFIG, UNITS, DIAMETROS_DISPONIBLES, CATALOGO } from './js/config.js';
-
-    // TRUCO: Las pegamos en la ventana global (window) para que tu script antiguo las encuentre
-    window.CONFIG = CONFIG;
-    window.UNITS = UNITS;
-    window.DIAMETROS_DISPONIBLES = DIAMETROS_DISPONIBLES;
-    window.CATALOGO = CATALOGO;
-    
-    console.log("✅ Configuración cargada desde js/config.js");
-</script>
+<script src="./js/config.js"></script>
 
 <script>
 // ==========================================
