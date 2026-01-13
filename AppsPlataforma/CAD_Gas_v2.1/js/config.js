@@ -79,15 +79,16 @@ window. CATALOGO = {
             id: 'p_tanque', 
             name: 'Tanque GLP Horizontal', 
             icon: '💊', 
-            type: 'equipo', 
+            type: 'equipo', // Nota: Asegúrate que sea 'equipo'
             props: { 
-                tipo: 'tanque_glp',
-                diametro: 2.0,       
-                longitud: 6.0,       
-                capacidadGalones: 1000,
-                numConexiones: 2,
-                checklist: {         
-                    rotogate: false,
+            tipo: 'tanque_glp',
+            diametro: 2.0,       
+            longitud: 6.0,       
+            capacidadGalones: 1000,
+            numConexiones: 2,
+            rotacion: 0, // <--- ¡IMPORTANTE! Agrega esto para que funcione el giro 3D
+            checklist: {         
+            rotogate: false,
                     indicadorLlenado: true,
                     multivalvulas: false,
                     drenaje: true,
