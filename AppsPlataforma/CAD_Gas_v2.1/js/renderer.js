@@ -1,6 +1,9 @@
 // js/renderer.js - Lógica de Visualización e Interfaz
 
-// --- MATH 3D & PROYECCIÓN ---
+// ==========================================
+// 1. MATEMÁTICAS VISUALES (Proyecciones)
+// ==========================================
+
 function isoToScreen(x, y, z) {
     const ang = window.estado.view.angle;
     const nx = x * Math.cos(ang) - y * Math.sin(ang);
@@ -26,7 +29,17 @@ function getSVGPoint(ex, ey) {
 
 function getSnapPoints(el) {
     if(el.visible === false) return [];
+    
+    // Centro base
     const pts = [{x: el.x, y: el.y, z: el.z}]; 
+
+    // Puntos específicos para Tanques (Las conexiones definidas)
+    if(el.props.tipo === 'tanque_glp' && el.props.conexiones) {
+        // Debemos recalcular la posición 3D de cada nozzle para que el snap funcione ahí
+        // (Nota: Esto es cálculo avanzado, por simplicidad mantenemos centro por ahora,
+        // pero aquí es donde agregarías la lógica si quieres que el snap "imante" a las válvulas)
+    }
+
     if(el.tipo === 'valvula' || el.tipo === 'equipo') {
         const scale = el.props.scaleFactor || 1.0;
         const radio = 0.15 * scale; 
@@ -41,7 +54,10 @@ function getSnapPoints(el) {
     return pts;
 }
 
-// --- ACTUALIZACIONES DE UI ---
+// ==========================================
+// 2. ACTUALIZACIÓN DE INTERFAZ (HUD, GIZMO)
+// ==========================================
+
 function updateTransform() {
     const world = document.getElementById('world-transform');
     world.setAttribute('transform', `translate(${window.estado.view.x}, ${window.estado.view.y}) scale(${window.estado.view.scale})`);
@@ -72,7 +88,6 @@ function syncZInput() {
     document.getElementById('hud-z-input').value = (window.estado.currentZ * u.factor).toFixed(u.precision);
 }
 
-// --- RENDERIZADO ESCENA ---
 function renderGrid() {
     const pMaj = document.getElementById('grid-path'); const pMin = document.getElementById('grid-minor'); const a = document.getElementById('grid-axis');
     if(!window.CONFIG.showGrid) { pMaj.setAttribute('d', ''); pMin.setAttribute('d', ''); a.setAttribute('d', ''); return; }
@@ -105,6 +120,10 @@ function renderGizmo() {
     });
 }
 
+// ==========================================
+// 3. RENDERIZADO PRINCIPAL (Scene)
+// ==========================================
+
 function renderScene() {
     const cont = document.getElementById('contenedor-elementos'); 
     const capFit = document.getElementById('capa-fittings');
@@ -134,10 +153,10 @@ function renderScene() {
             else if(el.props.tipoLinea === 'dotted') body.setAttribute("stroke-dasharray", "2,2");
             g.appendChild(body);
             
+            // Etiquetas Tuberia
             const midX = (s.x + e.x)/2; const midY = (s.y + e.y)/2;
             let angDeg = Math.atan2(e.y - s.y, e.x - s.x) * (180 / Math.PI);
             if (angDeg > 90 || angDeg < -90) { angDeg += 180; }
-            
             const lenRaw = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
             
             if(showLabel && (el.props.diametroNominal || el.props.material)) {
@@ -198,9 +217,11 @@ function renderScene() {
             t.setAttribute("fill", col); t.setAttribute("font-size", "14px"); t.textContent = el.props.text;
             g.appendChild(t);
         } else {
+            // === LOGICA TANQUE GLP MEJORADO ===
             if (el.props.tipo === 'tanque_glp') {
                 dibujarTanqueGLP(g, s, el, col);
             } else {
+                // LOGICA ORIGINAL PARA OTROS EQUIPOS
                 let rot = 0;
                 if (el.props.dirVector) {
                     const p1 = isoToScreen(0, 0, 0); const p2 = isoToScreen(el.props.dirVector.dx, el.props.dirVector.dy, el.props.dirVector.dz);
@@ -283,7 +304,10 @@ function renderScene() {
     renderEffects();
 }
 
-// --- DIBUJO DEL TANQUE 3D VOLUMÉTRICO ---
+// ==========================================
+// 4. DIBUJO AVANZADO: TANQUE 3D CONFIGURABLE
+// ==========================================
+
 function dibujarTanqueGLP(g, screenPos, el, colorBase) {
     // 1. Configuraciones
     const tileW = window.CONFIG.tileW; 
@@ -294,42 +318,39 @@ function dibujarTanqueGLP(g, screenPos, el, colorBase) {
     // 2. Orientación 3D
     const rotacionGrados = parseFloat(el.props.rotacion || 0);
     const rads = rotacionGrados * Math.PI / 180;
-    
     const dx = Math.cos(rads) * (longitudReal / 2);
     const dy = Math.sin(rads) * (longitudReal / 2);
     
-    // Extremos 3D
     const p1_iso = { x: el.x + dx, y: el.y + dy, z: el.z };
     const p2_iso = { x: el.x - dx, y: el.y - dy, z: el.z };
-    
-    // Proyección a Pantalla
     const s1 = isoToScreen(p1_iso.x, p1_iso.y, p1_iso.z);
     const s2 = isoToScreen(p2_iso.x, p2_iso.y, p2_iso.z);
     
     // Colores
-    const colorCuerpo = "#eeeeee"; 
-    const colorSombra = "#cccccc"; 
-    const strokeCol = colorBase || "#555";
+    const colorCuerpo = "#eeeeee"; const colorSombra = "#cccccc"; const strokeCol = colorBase || "#555";
 
-    // Geometría en pantalla (Perpendicular para el grosor)
+    // Geometría en pantalla
     const angleScreen = Math.atan2(s2.y - s1.y, s2.x - s1.x);
     const perpX = Math.cos(angleScreen + Math.PI/2) * radioScreen;
     const perpY = Math.sin(angleScreen + Math.PI/2) * radioScreen;
+    
+    // Vector "Arriba" en visualización (perpendicular al eje del cilindro en pantalla)
+    // Para que las válvulas giren CON el tanque, usamos perpX y perpY pero invertidos para "arriba"
+    const upX = -perpX; 
+    const upY = -perpY;
 
-    // --- A. DRENAJE (Fondo) ---
+    // --- A. DRENAJE ---
     const chk = el.props.checklist || {};
     if (chk.drenaje) {
-        const cx = (s1.x + s2.x) / 2;
-        const cy = (s1.y + s2.y) / 2;
-        // El vector "Abajo" en pantalla relativo al tanque es +perpX, +perpY
-        const drainX = cx + perpX; 
-        const drainY = cy + perpY; 
+        const cx = (s1.x + s2.x) / 2; const cy = (s1.y + s2.y) / 2;
+        // Drenaje hacia abajo (opuesto a upX, upY)
+        const drainX = cx - (upX * 0.9); 
+        const drainY = cy - (upY * 0.9); 
 
-        const drainW = radioScreen * 0.15;
-        const drainH = radioScreen * 0.25;
-
+        const drainW = radioScreen * 0.1; const drainH = radioScreen * 0.2;
+        // Pequeño tubo hacia abajo absoluto (simulando gravedad)
         const drain = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        drain.setAttribute("d", `M ${drainX - drainW},${drainY} L ${drainX - drainW},${drainY + drainH} L ${drainX + drainW},${drainY + drainH} L ${drainX + drainW},${drainY} Z`);
+        drain.setAttribute("d", `M ${drainX},${drainY} L ${drainX},${drainY + drainH} L ${drainX + drainW},${drainY + drainH} L ${drainX + drainW},${drainY} Z`);
         drain.setAttribute("fill", "#333");
         drain.setAttribute("stroke", strokeCol);
         g.appendChild(drain);
@@ -338,59 +359,100 @@ function dibujarTanqueGLP(g, screenPos, el, colorBase) {
     // --- B. CUERPO ---
     const bodyPath = `M ${s1.x + perpX},${s1.y + perpY} L ${s2.x + perpX},${s2.y + perpY} L ${s2.x - perpX},${s2.y - perpY} L ${s1.x - perpX},${s1.y - perpY} Z`;
     const body = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    body.setAttribute("d", bodyPath);
-    body.setAttribute("fill", colorCuerpo);
-    body.setAttribute("stroke", strokeCol);
-    body.setAttribute("stroke-width", 2);
+    body.setAttribute("d", bodyPath); body.setAttribute("fill", colorCuerpo); body.setAttribute("stroke", strokeCol); body.setAttribute("stroke-width", 2);
     g.appendChild(body);
     
     // --- C. TAPAS ---
     const tapa2 = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
     tapa2.setAttribute("cx", s2.x); tapa2.setAttribute("cy", s2.y);
-    tapa2.setAttribute("rx", radioScreen * 0.5); 
-    tapa2.setAttribute("ry", radioScreen);
+    tapa2.setAttribute("rx", radioScreen * 0.5); tapa2.setAttribute("ry", radioScreen);
     tapa2.setAttribute("transform", `rotate(${angleScreen * 180 / Math.PI}, ${s2.x}, ${s2.y})`);
-    tapa2.setAttribute("fill", colorSombra);
-    tapa2.setAttribute("stroke", strokeCol);
+    tapa2.setAttribute("fill", colorSombra); tapa2.setAttribute("stroke", strokeCol);
     g.appendChild(tapa2);
 
     const tapa1 = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
     tapa1.setAttribute("cx", s1.x); tapa1.setAttribute("cy", s1.y);
-    tapa1.setAttribute("rx", radioScreen * 0.5); 
-    tapa1.setAttribute("ry", radioScreen);
+    tapa1.setAttribute("rx", radioScreen * 0.5); tapa1.setAttribute("ry", radioScreen);
     tapa1.setAttribute("transform", `rotate(${angleScreen * 180 / Math.PI}, ${s1.x}, ${s1.y})`);
-    tapa1.setAttribute("fill", "#ffffff"); 
-    tapa1.setAttribute("stroke", strokeCol);
+    tapa1.setAttribute("fill", "#ffffff"); tapa1.setAttribute("stroke", strokeCol);
     g.appendChild(tapa1);
 
-    // --- D. VÁLVULAS SUPERIORES ---
-    const numConexiones = parseInt(el.props.numConexiones) || 2;
-    const valveNeckW = radioScreen * 0.15; 
-    const valveNeckH = radioScreen * 0.35; 
-    const valveHeadR = radioScreen * 0.20;
-
-    for(let i = 1; i <= numConexiones; i++) {
-        const t = i / (numConexiones + 1);
+    // --- D. CONEXIONES CONFIGURABLES ---
+    const conexiones = el.props.conexiones || [];
+    const num = conexiones.length;
+    
+    conexiones.forEach((conn, index) => {
+        // Distribución a lo largo del lomo
+        const t = (index + 1) / (num + 1);
         const axisX = s1.x + (s2.x - s1.x) * t;
         const axisY = s1.y + (s2.y - s1.y) * t;
         
-        // "Arriba" es -perpX, -perpY (Opuesto al drenaje)
-        const topX = axisX - perpX * 0.9;
-        const topY = axisY - perpY * 0.9;
+        // Posición sobre la superficie (Top)
+        const topX = axisX + upX; 
+        const topY = axisY + upY;
         
-        // Cuello
-        const neck = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        neck.setAttribute("d", `M ${topX - valveNeckW},${topY} L ${topX - valveNeckW},${topY - valveNeckH} L ${topX + valveNeckW},${topY - valveNeckH} L ${topX + valveNeckW},${topY} Z`);
-        neck.setAttribute("fill", "#444");
-        g.appendChild(neck);
+        // Escala real según diámetro
+        const diamPix = window.parseDiameterToScale(conn.diametro); 
+        const radiusConn = diamPix / 2;
+        const heightConn = Math.max(10, diamPix * 1.2); 
         
-        // Cabeza
-        const head = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-        head.setAttribute("cx", topX); head.setAttribute("cy", topY - valveNeckH);
-        head.setAttribute("rx", valveHeadR * 1.5); head.setAttribute("ry", valveHeadR * 0.6);
-        head.setAttribute("fill", "#222");
-        g.appendChild(head);
-    }
+        const tipo = conn.tipo || 'macho';
+        
+        // Dibujo según tipo
+        if (tipo === 'brida') {
+            // Cuello
+            const neck = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            neck.setAttribute("x", topX - radiusConn); neck.setAttribute("y", topY - heightConn);
+            neck.setAttribute("width", diamPix); neck.setAttribute("height", heightConn);
+            neck.setAttribute("fill", "#555");
+            g.appendChild(neck);
+            // Plato Brida
+            const flange = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+            flange.setAttribute("cx", topX); flange.setAttribute("cy", topY - heightConn);
+            flange.setAttribute("rx", radiusConn * 2.2); flange.setAttribute("ry", radiusConn * 0.8);
+            flange.setAttribute("fill", "#333");
+            g.appendChild(flange);
+            
+        } else if (tipo === 'hembra') {
+            // Cople (más ancho que el tubo nominal)
+            const copleW = diamPix * 1.4;
+            const cople = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            cople.setAttribute("x", topX - copleW/2); cople.setAttribute("y", topY - heightConn/2);
+            cople.setAttribute("width", copleW); cople.setAttribute("height", heightConn/2);
+            cople.setAttribute("fill", "#444"); cople.setAttribute("stroke", "#222");
+            g.appendChild(cople);
+            
+        } else if (tipo === 'soldadura') {
+             // Filete cónico abajo
+             const fillet = document.createElementNS("http://www.w3.org/2000/svg", "path");
+             fillet.setAttribute("d", `M ${topX - radiusConn*1.5},${topY} L ${topX + radiusConn*1.5},${topY} L ${topX},${topY - heightConn/3} Z`);
+             fillet.setAttribute("fill", "#777");
+             g.appendChild(fillet);
+             // Tubo
+             const tube = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+             tube.setAttribute("x", topX - radiusConn); tube.setAttribute("y", topY - heightConn);
+             tube.setAttribute("width", diamPix); tube.setAttribute("height", heightConn);
+             tube.setAttribute("fill", "#666");
+             g.appendChild(tube);
+             
+        } else { // Macho (Default)
+             const tube = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+             tube.setAttribute("x", topX - radiusConn); tube.setAttribute("y", topY - heightConn);
+             tube.setAttribute("width", diamPix); tube.setAttribute("height", heightConn);
+             tube.setAttribute("fill", "#888"); tube.setAttribute("stroke", "#444");
+             // Rayas de rosca
+             tube.setAttribute("stroke-dasharray", "2,2");
+             g.appendChild(tube);
+        }
+
+        // Etiqueta número conexión
+        const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        txt.setAttribute("x", topX); txt.setAttribute("y", topY - heightConn - 5);
+        txt.setAttribute("text-anchor", "middle"); txt.setAttribute("font-size", "9px");
+        txt.setAttribute("fill", "#0078d7"); txt.setAttribute("font-weight", "bold");
+        txt.textContent = conn.id; 
+        g.appendChild(txt);
+    });
 
     // --- E. SEGURIDAD ---
     const esSeguro = chk.valvulaAlivio && chk.indicadorLlenado;
@@ -427,7 +489,7 @@ function renderEffects() {
             l.setAttribute("x1",s.x); l.setAttribute("y1",s.y); l.setAttribute("x2",e.x); l.setAttribute("y2",e.y);
             l.setAttribute("class", cls); root.appendChild(l);
         } else if (el.props.tipo === 'tanque_glp') {
-             // El efecto de selección podría ser un rect envolvente simple
+             // Efecto selección Tanque
              const g = document.createElementNS("http://www.w3.org/2000/svg","circle");
              g.setAttribute("cx", s.x); g.setAttribute("cy", s.y); g.setAttribute("r", 20);
              g.setAttribute("class", cls); root.appendChild(g);
@@ -502,6 +564,10 @@ function renderInterface() {
         l.setAttribute("stroke", "#fff"); l.setAttribute("stroke-dasharray", "4,4"); l.setAttribute("opacity", "0.5"); g.appendChild(l);
     }
 }
+
+// ==========================================
+// 5. GESTIÓN DE PANELES (Props & Lib)
+// ==========================================
 
 function toggleConfig(key) {
     if(key === 'grid') window.CONFIG.showGrid = !window.CONFIG.showGrid; 
@@ -603,41 +669,83 @@ function renderLayersUI() {
     window.layers.forEach(l => { const opt = document.createElement('option'); opt.value=l.id; opt.innerText=l.name; sel.appendChild(opt); });
 }
 
+// --- FORMULARIO DE PROPIEDADES TANQUE ---
 function generarFormularioTanque(el, container) {
     container.innerHTML = ''; 
     const props = el.props;
-    const styleAlert = "background:#ffe6e6; border:1px solid #d9534f; color:#d9534f; padding:5px; border-radius:3px; margin-bottom:5px; font-size:0.75rem;";
-    
-    const chk = props.checklist || {};
-    const esSeguro = chk.valvulaAlivio && chk.indicadorLlenado;
-    if(!esSeguro) {
-        const divAlert = document.createElement('div');
-        divAlert.style.cssText = styleAlert;
-        divAlert.innerText = "⚠️ Faltan componentes críticos de seguridad.";
-        container.appendChild(divAlert);
+
+    // Migración para tanques viejos sin array de conexiones
+    if (!props.conexiones) {
+        const n = props.numConexiones || 2;
+        props.conexiones = [];
+        for(let i=0; i<n; i++) props.conexiones.push({ id: i+1, nombre: `Punto ${i+1}`, tipo: "brida", diametro: '2"' });
     }
 
+    // A. Dimensiones
     const grpDim = document.createElement('div');
-    grpDim.className = 'prop-row';
-    grpDim.innerHTML = `<label style="color:#fff; border-bottom:1px solid #444; margin-bottom:5px;">Dimensiones Físicas</label><div style="display:flex; gap:5px;"><div><label>D (m)</label><input type="number" class="inp-tanque" data-key="diametro" value="${props.diametro}" step="0.1" style="width:100%"></div><div><label>L (m)</label><input type="number" class="inp-tanque" data-key="longitud" value="${props.longitud}" step="0.5" style="width:100%"></div></div>`;
+    grpDim.className = 'acc-group';
+    grpDim.innerHTML = `
+        <div class="acc-header" onclick="this.parentElement.classList.toggle('collapsed')">Dimensiones Tanque</div>
+        <div class="acc-content">
+            <div class="prop-row"><label>Diámetro (m)</label><input type="number" class="inp-tanque" data-key="diametro" value="${props.diametro}" step="0.1"></div>
+            <div class="prop-row"><label>Longitud (m)</label><input type="number" class="inp-tanque" data-key="longitud" value="${props.longitud}" step="0.5"></div>
+            <div class="prop-row"><label>Capacidad (Gal)</label><input type="number" class="inp-tanque" data-key="capacidadGalones" value="${props.capacidadGalones}"></div>
+        </div>
+    `;
     container.appendChild(grpDim);
-    
+
+    // B. Conexiones (Nozzles)
     const grpConn = document.createElement('div');
-    grpConn.className = 'prop-row';
-    grpConn.innerHTML = `<label>Nro. Conexiones</label><input type="number" class="inp-tanque" data-key="numConexiones" value="${props.numConexiones}" step="1">`;
-    container.appendChild(grpConn);
-
-    const gal = parseFloat(props.capacidadGalones) || 0;
-    const kg = (gal * 1.96).toFixed(2);
-    const grpCap = document.createElement('div');
-    grpCap.className = 'prop-row';
-    grpCap.innerHTML = `<label>Capacidad (Galones)</label><input type="number" class="inp-tanque" data-key="capacidadGalones" value="${gal}"><div style="text-align:right; color:#0078d7; font-weight:bold; font-size:0.8rem; margin-top:2px;">≈ ${kg} Kg GLP</div>`;
-    container.appendChild(grpCap);
-
-    const grpChk = document.createElement('div');
-    grpChk.style.marginTop = "10px";
-    grpChk.innerHTML = `<label style="color:#fff; border-bottom:1px solid #444; display:block; margin-bottom:5px;">Checklist Técnico</label>`;
+    grpConn.className = 'acc-group';
+    const btnAdd = `<button class="btn" style="float:right; font-size:0.7rem; padding:2px 6px;" onclick="addConexionTanque()">+</button>`;
     
+    grpConn.innerHTML = `
+        <div class="acc-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            Puntos de Acople ${btnAdd}
+        </div>
+        <div class="acc-content" id="list-conexiones"></div>
+    `;
+    container.appendChild(grpConn);
+    const listConn = grpConn.querySelector('#list-conexiones');
+    
+    props.conexiones.forEach((conn, index) => {
+        const row = document.createElement('div');
+        row.style.borderBottom = "1px solid #444";
+        row.style.padding = "5px"; row.style.marginBottom = "5px"; row.style.background = "#1e1e1e";
+        
+        row.innerHTML = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="font-weight:bold; color:#0078d7; font-size:0.8rem;">#${index+1} ${conn.nombre}</span>
+                <span style="cursor:pointer; color:#d44;" onclick="delConexionTanque(${index})">✕</span>
+            </div>
+            <div style="display:flex; gap:5px;">
+                <select class="btn conn-change" data-idx="${index}" data-field="tipo" style="flex:1; font-size:0.75rem;">
+                    <option value="brida" ${conn.tipo==='brida'?'selected':''}>Brida</option>
+                    <option value="macho" ${conn.tipo==='macho'?'selected':''}>Macho (Rosca)</option>
+                    <option value="hembra" ${conn.tipo==='hembra'?'selected':''}>Hembra (Cople)</option>
+                    <option value="soldadura" ${conn.tipo==='soldadura'?'selected':''}>Soldadura</option>
+                </select>
+                <select class="btn conn-change" data-idx="${index}" data-field="diametro" style="width:70px; font-size:0.75rem;">
+                    <option value='1/2"' ${conn.diametro==='1/2"'?'selected':''}>1/2"</option>
+                    <option value='3/4"' ${conn.diametro==='3/4"'?'selected':''}>3/4"</option>
+                    <option value='1"' ${conn.diametro==='1"'?'selected':''}>1"</option>
+                    <option value='1-1/2"' ${conn.diametro==='1-1/2"'?'selected':''}>1.5"</option>
+                    <option value='2"' ${conn.diametro==='2"'?'selected':''}>2"</option>
+                    <option value='3"' ${conn.diametro==='3"'?'selected':''}>3"</option>
+                    <option value='4"' ${conn.diametro==='4"'?'selected':''}>4"</option>
+                </select>
+            </div>
+        `;
+        listConn.appendChild(row);
+    });
+
+    // C. Checklist
+    const grpChk = document.createElement('div');
+    grpChk.className = 'acc-group';
+    grpChk.innerHTML = `<div class="acc-header" onclick="this.parentElement.classList.toggle('collapsed')">Checklist Técnico</div><div class="acc-content" id="list-chk"></div>`;
+    container.appendChild(grpChk);
+    const listChk = grpChk.querySelector('#list-chk');
+    const chk = props.checklist || {};
     const itemsCheck = [ {k:'valvulaAlivio', l:'Válvula Alivio', crit: true}, {k:'indicadorLlenado', l:'Indicador Nivel', crit: true}, {k:'drenaje', l:'Drenaje'}, {k:'rotogate', l:'Rotogate'}, {k:'multivalvulas', l:'Multiválvulas'} ];
 
     itemsCheck.forEach(it => {
@@ -646,16 +754,35 @@ function generarFormularioTanque(el, container) {
         const isMissingCrit = it.crit && !chk[it.k];
         if(isMissingCrit) div.style.color = "#ff6666";
         div.innerHTML = `<input type="checkbox" class="chk-tanque" data-key="${it.k}" ${chk[it.k] ? 'checked' : ''} style="margin-right:8px;"><span style="font-size:0.8rem">${it.l} ${it.crit ? '*' : ''}</span>`;
-        grpChk.appendChild(div);
+        listChk.appendChild(div);
     });
-    container.appendChild(grpChk);
 
+    // Listeners
     container.querySelectorAll('.inp-tanque').forEach(inp => {
         inp.onchange = (e) => { el.props[e.target.dataset.key] = parseFloat(e.target.value); window.saveState(); renderScene(); updatePropsPanel(); };
     });
     container.querySelectorAll('.chk-tanque').forEach(chkBox => {
         chkBox.onchange = (e) => { if(!el.props.checklist) el.props.checklist = {}; el.props.checklist[e.target.dataset.key] = e.target.checked; window.saveState(); renderScene(); updatePropsPanel(); };
     });
+    listConn.querySelectorAll('.conn-change').forEach(sel => {
+        sel.onchange = (e) => {
+            const idx = parseInt(e.target.dataset.idx);
+            const field = e.target.dataset.field;
+            el.props.conexiones[idx][field] = e.target.value;
+            window.saveState(); renderScene();
+        };
+    });
+
+    // Helpers locales asignados a window para los botones + y x
+    window.addConexionTanque = () => {
+        const id = el.props.conexiones.length + 1;
+        el.props.conexiones.push({ id: id, nombre: "Nuevo", tipo: "macho", diametro: '1"' });
+        window.saveState(); updatePropsPanel(); renderScene();
+    };
+    window.delConexionTanque = (idx) => {
+        el.props.conexiones.splice(idx, 1);
+        window.saveState(); updatePropsPanel(); renderScene();
+    };
 }
 
 function updatePropsPanel() {
@@ -731,7 +858,7 @@ function updatePropsPanel() {
     }
 }
 
-// --- HELPERS GLOBALES DE UI ---
+// --- HELPERS GLOBALES ---
 window.togLay = (id) => { const l=window.layers.find(x=>x.id===id); l.visible=!l.visible; renderLayersUI(); renderScene(); }
 window.addLayer = () => { window.layers.push({id:'l'+Date.now(), name:'Nueva', color:'#fff', visible:true}); renderLayersUI(); }
 window.updateAlturaFinal = function(valUser) {
