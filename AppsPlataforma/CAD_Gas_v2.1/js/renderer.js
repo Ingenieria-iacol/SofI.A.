@@ -369,69 +369,147 @@ function renderInterface() {
     }
 }
 
+// En js/renderer.js
+
 function dibujarTanqueGLP(g, screenPos, el, colorBase) {
-    const pixelesPorMetro = window.CONFIG.tileW; 
-    const largo = (parseFloat(el.props.longitud) || 1) * pixelesPorMetro;
-    const alto = (parseFloat(el.props.diametro) || 1) * pixelesPorMetro;
+    // 1. Configuración y dimensiones
+    // Usamos window.CONFIG porque así lo definimos en la modularización
+    const tileW = window.CONFIG.tileW; 
     
-    const chk = el.props.checklist || {};
-    const esSeguro = chk.valvulaAlivio && chk.indicadorLlenado; 
+    // Obtenemos dimensiones reales o usamos valores por defecto
+    const diametroReal = parseFloat(el.props.diametro) || 2.0;
+    const longitudReal = parseFloat(el.props.longitud) || 6.0;
     
-    const fillSafe = "#dcdcdc"; 
-    const fillDanger = "#ffcccc";
-    const strokeSafe = colorBase;
-    const strokeDanger = "#cc0000";
+    // Calculamos el radio visual en pantalla (la mitad del diámetro * escala de tiles)
+    const radioScreen = (diametroReal / 2) * tileW; 
+    
+    // 2. Calcular la orientación en el espacio 3D
+    // Esto es lo que permite que el tanque "gire" visualmente en 3D
+    const rotacionGrados = parseFloat(el.props.rotacion || 0);
+    const rads = rotacionGrados * Math.PI / 180;
+    
+    // Vector de dirección: Calculamos cuánto se desplaza del centro hacia las puntas
+    const dx = Math.cos(rads) * (longitudReal / 2);
+    const dy = Math.sin(rads) * (longitudReal / 2);
+    
+    // 3. Obtener los dos extremos del tanque en el mundo 3D (Coordenadas lógicas)
+    // p1 = Cabeza, p2 = Cola
+    const p1_iso = { x: el.x + dx, y: el.y + dy, z: el.z };
+    const p2_iso = { x: el.x - dx, y: el.y - dy, z: el.z };
+    
+    // 4. Proyección Isométrica: Convertir 3D -> Pantalla 2D
+    // Usamos la función global isoToScreen que ya tienes
+    const s1 = isoToScreen(p1_iso.x, p1_iso.y, p1_iso.z);
+    const s2 = isoToScreen(p2_iso.x, p2_iso.y, p2_iso.z);
+    
+    // Colores del tanque
+    const colorCuerpo = "#eeeeee"; // Blanco grisáceo para el cuerpo
+    const colorSombra = "#cccccc"; // Gris más oscuro para la tapa trasera (sombra)
+    const strokeCol = colorBase || "#666";
 
-    const body = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    body.setAttribute("x", screenPos.x - largo / 2);
-    body.setAttribute("y", screenPos.y - alto / 2);
-    body.setAttribute("width", largo);
-    body.setAttribute("height", alto);
-    body.setAttribute("rx", alto / 2); 
-    body.setAttribute("ry", alto / 2);
-    body.setAttribute("fill", esSeguro ? fillSafe : fillDanger);
-    body.setAttribute("stroke", esSeguro ? strokeSafe : strokeDanger);
-    body.setAttribute("stroke-width", esSeguro ? 2 : 4);
+    // 5. Dibujar el CUERPO (Conectando las dos tapas)
+    // Calculamos el vector perpendicular para dar el grosor del cilindro en pantalla
+    const angleScreen = Math.atan2(s2.y - s1.y, s2.x - s1.x);
+    const perpX = Math.cos(angleScreen + Math.PI/2) * radioScreen;
+    const perpY = Math.sin(angleScreen + Math.PI/2) * radioScreen;
+    
+    // Creamos el camino (path) que conecta los extremos
+    const bodyPath = `
+        M ${s1.x + perpX},${s1.y + perpY} 
+        L ${s2.x + perpX},${s2.y + perpY} 
+        L ${s2.x - perpX},${s2.y - perpY} 
+        L ${s1.x - perpX},${s1.y - perpY} 
+        Z
+    `;
+    
+    const body = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    body.setAttribute("d", bodyPath);
+    body.setAttribute("fill", colorCuerpo);
+    body.setAttribute("stroke", strokeCol);
+    body.setAttribute("stroke-width", 2);
     g.appendChild(body);
+    
+    // 6. Dibujar las TAPAS (Elipses)
+    // Importante: Dibujamos primero la trasera para que quede "detrás"
+    
+    // Tapa Trasera (s2)
+    const tapa2 = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+    tapa2.setAttribute("cx", s2.x); tapa2.setAttribute("cy", s2.y);
+    tapa2.setAttribute("rx", radioScreen * 0.5); // Achatada por el efecto isométrico
+    tapa2.setAttribute("ry", radioScreen);
+    tapa2.setAttribute("transform", `rotate(${angleScreen * 180 / Math.PI}, ${s2.x}, ${s2.y})`);
+    tapa2.setAttribute("fill", colorSombra);
+    tapa2.setAttribute("stroke", strokeCol);
+    g.appendChild(tapa2);
 
-    const numConexiones = parseInt(el.props.numConexiones) || 0;
-    const yTop = screenPos.y - alto / 2;
-    const startX = screenPos.x - largo / 2;
-    const spacing = largo / (numConexiones + 1);
+    // Tapa Frontal (s1) - Se dibuja DESPUÉS del cuerpo para tapar la unión
+    const tapa1 = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+    tapa1.setAttribute("cx", s1.x); tapa1.setAttribute("cy", s1.y);
+    tapa1.setAttribute("rx", radioScreen * 0.5); 
+    tapa1.setAttribute("ry", radioScreen);
+    tapa1.setAttribute("transform", `rotate(${angleScreen * 180 / Math.PI}, ${s1.x}, ${s1.y})`);
+    tapa1.setAttribute("fill", "#ffffff"); // Más brillante que el cuerpo
+    tapa1.setAttribute("stroke", strokeCol);
+    g.appendChild(tapa1);
 
-    for(let i = 0; i < numConexiones; i++) {
-        const vx = startX + (spacing * (i + 1));
-        const vW = Math.max(4, alto * 0.15); 
-        const vH = Math.max(6, alto * 0.25);
-        const stalk = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        stalk.setAttribute("x", vx - vW/2); stalk.setAttribute("y", yTop - vH + 2);
-        stalk.setAttribute("width", vW); stalk.setAttribute("height", vH);
-        stalk.setAttribute("fill", "#333");
+    // 7. Dibujar Válvulas sobre el lomo
+    const numConexiones = parseInt(el.props.numConexiones) || 2;
+    for(let i = 1; i <= numConexiones; i++) {
+        // Interpolación lineal para ubicar válvulas a lo largo del tanque
+        const t = i / (numConexiones + 1);
+        const vx = s1.x + (s2.x - s1.x) * t;
+        const vy = s1.y + (s2.y - s1.y) * t;
+        
+        // Offset visual hacia "arriba"
+        const topX = vx - perpX * 0.8; 
+        const topY = vy - perpY * 0.8;
+        const vSize = radioScreen * 0.3; // Tamaño de la válvula
+
+        // Tallo
+        const stalk = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        stalk.setAttribute("x1", topX); stalk.setAttribute("y1", topY);
+        stalk.setAttribute("x2", topX); stalk.setAttribute("y2", topY - vSize*2);
+        stalk.setAttribute("stroke", "#333");
+        stalk.setAttribute("stroke-width", 2);
         g.appendChild(stalk);
-        const head = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        head.setAttribute("x", vx - vW); head.setAttribute("y", yTop - vH);
-        head.setAttribute("width", vW*2); head.setAttribute("height", vW*0.6);
-        head.setAttribute("fill", "#111");
+        
+        // Cabeza
+        const head = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        head.setAttribute("cx", topX); head.setAttribute("cy", topY - vSize*2);
+        head.setAttribute("r", vSize);
+        head.setAttribute("fill", "#222");
         g.appendChild(head);
     }
 
+    // 8. Alertas de Seguridad
+    const chk = el.props.checklist || {};
+    const esSeguro = chk.valvulaAlivio && chk.indicadorLlenado;
+    
     if (!esSeguro) {
-        const alertSize = Math.min(alto, largo) * 0.6;
+        // Cambiamos el color del cuerpo a rojizo si falta seguridad
+        body.setAttribute("fill", "#ffe6e6");
+        body.setAttribute("stroke", "#cc0000");
+
         const textAlert = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        textAlert.setAttribute("x", screenPos.x);
-        textAlert.setAttribute("y", screenPos.y + (alertSize/3));
+        // Centro visual del tanque
+        const cx = (s1.x + s2.x) / 2;
+        const cy = (s1.y + s2.y) / 2;
+        textAlert.setAttribute("x", cx);
+        textAlert.setAttribute("y", cy);
         textAlert.setAttribute("text-anchor", "middle");
-        textAlert.setAttribute("font-size", alertSize);
-        textAlert.setAttribute("fill", "#cc0000");
-        textAlert.setAttribute("font-weight", "bold");
+        textAlert.setAttribute("dominant-baseline", "middle");
+        textAlert.setAttribute("font-size", radioScreen);
         textAlert.textContent = "⚠️";
         g.appendChild(textAlert);
     }
 
+    // 9. Etiqueta de texto
     if(el.props.tag) {
         const tag = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        tag.setAttribute("x", screenPos.x);
-        tag.setAttribute("y", screenPos.y + alto/2 + 15);
+        const cx = (s1.x + s2.x) / 2;
+        const cy = (s1.y + s2.y) / 2;
+        tag.setAttribute("x", cx);
+        tag.setAttribute("y", cy + radioScreen + 15);
         tag.setAttribute("text-anchor", "middle");
         tag.setAttribute("font-size", "10px");
         tag.setAttribute("fill", "#ccc");
@@ -439,7 +517,6 @@ function dibujarTanqueGLP(g, screenPos, el, colorBase) {
         g.appendChild(tag);
     }
 }
-
 // --- PANELES Y HELPERS UI ---
 function toggleConfig(key) {
     if(key === 'grid') window.CONFIG.showGrid = !window.CONFIG.showGrid; 
