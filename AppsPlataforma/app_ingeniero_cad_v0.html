@@ -2093,7 +2093,7 @@ function checkInsertType() {
     const sel = document.getElementById('ins-select'); if(!sel.options.length) return;
     const opt = sel.options[sel.selectedIndex]; const type = opt.getAttribute('data-type');
     const rowZ2 = document.getElementById('row-ins-z2'); if(type === 'tuberia') rowZ2.style.display = 'flex'; else rowZ2.style.display = 'none';
-}
+ejecutarInsercion
 function ejecutarInsercion() {
     const sel = document.getElementById('ins-select'); const valParts = sel.value.split('|'); const groupKey = valParts[0]; const itemId = valParts[1];
     const itemDef = CATALOGO[groupKey].find(x => x.id === itemId); if(!itemDef) return;
@@ -2104,7 +2104,7 @@ function ejecutarInsercion() {
         addEl({ tipo: 'tuberia', x: insertCoords.x, y: insertCoords.y, z: z1Meters, dx: 0, dy: 0, dz: z2Meters - z1Meters, props: props, layerId: activeLayerId, customColor: itemDef.color });
     } else {
         addEl({ tipo: itemDef.type, x: insertCoords.x, y: insertCoords.y, z: z1Meters, dx: 0, dy: 0, dz: 0, props: props, icon: itemDef.icon, layerId: activeLayerId, color: itemDef.color });
-
+}
 // --- INICIALIZACIÓN ---
 saveState(); renderGrid(); renderGizmo(); initLibrary();
 const rectInit = svg.getBoundingClientRect(); estado.view.x=rectInit.width/2; estado.view.y=rectInit.height/2; 
