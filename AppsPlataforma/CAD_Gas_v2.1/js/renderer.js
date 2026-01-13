@@ -51,16 +51,16 @@ function updateTransform() {
 }
 
 function updateZoomInput(val) {
-    let v = parseInputFloat(val); if(isNaN(v) || v < 10) v = 10; if(v > 2000) v = 2000;
+    let v = window.parseInputFloat(val); if(isNaN(v) || v < 10) v = 10; if(v > 2000) v = 2000;
     window.estado.view.scale = v / 100; updateTransform(); renderEffects();
 }
 
 function updateRotInput(val) {
-    let v = parseInputFloat(val); if(!isNaN(v)) { window.estado.view.angle = v * Math.PI / 180; updateTransform(); renderGrid(); renderScene(); renderEffects(); }
+    let v = window.parseInputFloat(val); if(!isNaN(v)) { window.estado.view.angle = v * Math.PI / 180; updateTransform(); renderGrid(); renderScene(); renderEffects(); }
 }
 
 function updateZInput(val) {
-    let v = parseInputFloat(val);
+    let v = window.parseInputFloat(val);
     if(!isNaN(v)) {
         window.estado.currentZ = v / window.UNITS[window.CONFIG.unit].factor;
         renderInterface();
@@ -119,7 +119,7 @@ function renderScene() {
         const s = isoToScreen(el.x, el.y, el.z);
         let col = el.props.customColor || el.props.color || lay.color; 
         let width = 2;
-        if(el.tipo === 'tuberia' && el.props.diametroNominal) width = parseDiameterToScale(el.props.diametroNominal);
+        if(el.tipo === 'tuberia' && el.props.diametroNominal) width = window.parseDiameterToScale(el.props.diametroNominal);
         else width = el.props.grosor || 2; 
         
         const showLabel = window.CONFIG.showTags || (el.props.mostrarEtiqueta === true);
@@ -152,9 +152,9 @@ function renderScene() {
                 tTop.textContent = txtTop;
                 g.appendChild(tTop);
 
-                const lenDisplay = `L=${formatLength(lenRaw)}`;
-                let hDisplay = `Z=${formatLength(el.z)}`;
-                if (Math.abs(el.dz) > 0.05) { hDisplay = `Z=${formatLength(el.z)}⮕${formatLength(el.z + el.dz)}`; }
+                const lenDisplay = `L=${window.formatLength(lenRaw)}`;
+                let hDisplay = `Z=${window.formatLength(el.z)}`;
+                if (Math.abs(el.dz) > 0.05) { hDisplay = `Z=${window.formatLength(el.z)}⮕${window.formatLength(el.z + el.dz)}`; }
                 const txtBottom = `${lenDisplay}  |  ${hDisplay}`;
                 const tBot = document.createElementNS("http://www.w3.org/2000/svg", "text");
                 tBot.setAttribute("x", midX); tBot.setAttribute("y", midY + 12); 
@@ -181,7 +181,7 @@ function renderScene() {
             l.setAttribute("x1",s.x); l.setAttribute("y1",s.y); l.setAttribute("x2",e.x); l.setAttribute("y2",e.y);
             l.setAttribute("class","dim-line"); l.setAttribute("stroke", "#aaa");
             const rawLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
-            const txtLen = formatLength(rawLen);
+            const txtLen = window.formatLength(rawLen);
             const midX = (s.x + e.x) / 2; const midY = (s.y + e.y) / 2;
             let angDeg = Math.atan2(e.y - s.y, e.x - s.x) * (180 / Math.PI);
             if (angDeg > 90 || angDeg < -90) { angDeg += 180; }
@@ -246,7 +246,6 @@ function renderScene() {
         cont.appendChild(g);
     });
 
-    // Validamos si la función analizarRed existe (está en index.html) antes de llamarla
     if (typeof window.analizarRed === 'function') {
         const autoFittings = window.analizarRed();
         autoFittings.forEach(fit => {
@@ -284,6 +283,138 @@ function renderScene() {
     renderEffects();
 }
 
+// --- DIBUJO DEL TANQUE 3D VOLUMÉTRICO ---
+function dibujarTanqueGLP(g, screenPos, el, colorBase) {
+    // 1. Configuraciones
+    const tileW = window.CONFIG.tileW; 
+    const diametroReal = parseFloat(el.props.diametro) || 2.0;
+    const longitudReal = parseFloat(el.props.longitud) || 6.0;
+    const radioScreen = (diametroReal / 2) * tileW; 
+    
+    // 2. Orientación 3D
+    const rotacionGrados = parseFloat(el.props.rotacion || 0);
+    const rads = rotacionGrados * Math.PI / 180;
+    
+    const dx = Math.cos(rads) * (longitudReal / 2);
+    const dy = Math.sin(rads) * (longitudReal / 2);
+    
+    // Extremos 3D
+    const p1_iso = { x: el.x + dx, y: el.y + dy, z: el.z };
+    const p2_iso = { x: el.x - dx, y: el.y - dy, z: el.z };
+    
+    // Proyección a Pantalla
+    const s1 = isoToScreen(p1_iso.x, p1_iso.y, p1_iso.z);
+    const s2 = isoToScreen(p2_iso.x, p2_iso.y, p2_iso.z);
+    
+    // Colores
+    const colorCuerpo = "#eeeeee"; 
+    const colorSombra = "#cccccc"; 
+    const strokeCol = colorBase || "#555";
+
+    // Geometría en pantalla (Perpendicular para el grosor)
+    const angleScreen = Math.atan2(s2.y - s1.y, s2.x - s1.x);
+    const perpX = Math.cos(angleScreen + Math.PI/2) * radioScreen;
+    const perpY = Math.sin(angleScreen + Math.PI/2) * radioScreen;
+
+    // --- A. DRENAJE (Fondo) ---
+    const chk = el.props.checklist || {};
+    if (chk.drenaje) {
+        const cx = (s1.x + s2.x) / 2;
+        const cy = (s1.y + s2.y) / 2;
+        // El vector "Abajo" en pantalla relativo al tanque es +perpX, +perpY
+        const drainX = cx + perpX; 
+        const drainY = cy + perpY; 
+
+        const drainW = radioScreen * 0.15;
+        const drainH = radioScreen * 0.25;
+
+        const drain = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        drain.setAttribute("d", `M ${drainX - drainW},${drainY} L ${drainX - drainW},${drainY + drainH} L ${drainX + drainW},${drainY + drainH} L ${drainX + drainW},${drainY} Z`);
+        drain.setAttribute("fill", "#333");
+        drain.setAttribute("stroke", strokeCol);
+        g.appendChild(drain);
+    }
+
+    // --- B. CUERPO ---
+    const bodyPath = `M ${s1.x + perpX},${s1.y + perpY} L ${s2.x + perpX},${s2.y + perpY} L ${s2.x - perpX},${s2.y - perpY} L ${s1.x - perpX},${s1.y - perpY} Z`;
+    const body = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    body.setAttribute("d", bodyPath);
+    body.setAttribute("fill", colorCuerpo);
+    body.setAttribute("stroke", strokeCol);
+    body.setAttribute("stroke-width", 2);
+    g.appendChild(body);
+    
+    // --- C. TAPAS ---
+    const tapa2 = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+    tapa2.setAttribute("cx", s2.x); tapa2.setAttribute("cy", s2.y);
+    tapa2.setAttribute("rx", radioScreen * 0.5); 
+    tapa2.setAttribute("ry", radioScreen);
+    tapa2.setAttribute("transform", `rotate(${angleScreen * 180 / Math.PI}, ${s2.x}, ${s2.y})`);
+    tapa2.setAttribute("fill", colorSombra);
+    tapa2.setAttribute("stroke", strokeCol);
+    g.appendChild(tapa2);
+
+    const tapa1 = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+    tapa1.setAttribute("cx", s1.x); tapa1.setAttribute("cy", s1.y);
+    tapa1.setAttribute("rx", radioScreen * 0.5); 
+    tapa1.setAttribute("ry", radioScreen);
+    tapa1.setAttribute("transform", `rotate(${angleScreen * 180 / Math.PI}, ${s1.x}, ${s1.y})`);
+    tapa1.setAttribute("fill", "#ffffff"); 
+    tapa1.setAttribute("stroke", strokeCol);
+    g.appendChild(tapa1);
+
+    // --- D. VÁLVULAS SUPERIORES ---
+    const numConexiones = parseInt(el.props.numConexiones) || 2;
+    const valveNeckW = radioScreen * 0.15; 
+    const valveNeckH = radioScreen * 0.35; 
+    const valveHeadR = radioScreen * 0.20;
+
+    for(let i = 1; i <= numConexiones; i++) {
+        const t = i / (numConexiones + 1);
+        const axisX = s1.x + (s2.x - s1.x) * t;
+        const axisY = s1.y + (s2.y - s1.y) * t;
+        
+        // "Arriba" es -perpX, -perpY (Opuesto al drenaje)
+        const topX = axisX - perpX * 0.9;
+        const topY = axisY - perpY * 0.9;
+        
+        // Cuello
+        const neck = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        neck.setAttribute("d", `M ${topX - valveNeckW},${topY} L ${topX - valveNeckW},${topY - valveNeckH} L ${topX + valveNeckW},${topY - valveNeckH} L ${topX + valveNeckW},${topY} Z`);
+        neck.setAttribute("fill", "#444");
+        g.appendChild(neck);
+        
+        // Cabeza
+        const head = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+        head.setAttribute("cx", topX); head.setAttribute("cy", topY - valveNeckH);
+        head.setAttribute("rx", valveHeadR * 1.5); head.setAttribute("ry", valveHeadR * 0.6);
+        head.setAttribute("fill", "#222");
+        g.appendChild(head);
+    }
+
+    // --- E. SEGURIDAD ---
+    const esSeguro = chk.valvulaAlivio && chk.indicadorLlenado;
+    if (!esSeguro) {
+        body.setAttribute("fill", "#ffe6e6"); body.setAttribute("stroke", "#cc0000");
+        const textAlert = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        const cx = (s1.x + s2.x) / 2; const cy = (s1.y + s2.y) / 2;
+        textAlert.setAttribute("x", cx); textAlert.setAttribute("y", cy);
+        textAlert.setAttribute("text-anchor", "middle"); textAlert.setAttribute("dominant-baseline", "middle");
+        textAlert.setAttribute("font-size", radioScreen); textAlert.textContent = "⚠️";
+        g.appendChild(textAlert);
+    }
+
+    // --- F. TAG ---
+    if(el.props.tag) {
+        const tag = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        const cx = (s1.x + s2.x) / 2; const cy = (s1.y + s2.y) / 2;
+        tag.setAttribute("x", cx); tag.setAttribute("y", cy + radioScreen + 20);
+        tag.setAttribute("text-anchor", "middle"); tag.setAttribute("font-size", "11px");
+        tag.setAttribute("fill", "#ccc"); tag.textContent = el.props.tag;
+        g.appendChild(tag);
+    }
+}
+
 function renderEffects() {
     const ch = document.getElementById('capa-hover'); ch.innerHTML='';
     const cs = document.getElementById('capa-seleccion'); cs.innerHTML='';
@@ -296,7 +427,10 @@ function renderEffects() {
             l.setAttribute("x1",s.x); l.setAttribute("y1",s.y); l.setAttribute("x2",e.x); l.setAttribute("y2",e.y);
             l.setAttribute("class", cls); root.appendChild(l);
         } else if (el.props.tipo === 'tanque_glp') {
-             // Efecto especial tanque si se desea
+             // El efecto de selección podría ser un rect envolvente simple
+             const g = document.createElementNS("http://www.w3.org/2000/svg","circle");
+             g.setAttribute("cx", s.x); g.setAttribute("cy", s.y); g.setAttribute("r", 20);
+             g.setAttribute("class", cls); root.appendChild(g);
         } else {
             const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
             c.setAttribute("cx",s.x); c.setAttribute("cy",s.y); c.setAttribute("r",10); 
@@ -369,205 +503,6 @@ function renderInterface() {
     }
 }
 
-// En js/renderer.js
-
-// --- EN js/renderer.js ---
-
-function dibujarTanqueGLP(g, screenPos, el, colorBase) {
-    // 1. Configuración y dimensiones
-    const tileW = window.CONFIG.tileW; 
-    const diametroReal = parseFloat(el.props.diametro) || 2.0;
-    const longitudReal = parseFloat(el.props.longitud) || 6.0;
-    
-    // El radio visual en pantalla (clave para las proporciones)
-    const radioScreen = (diametroReal / 2) * tileW; 
-    
-    // 2. Calcular orientación 3D
-    const rotacionGrados = parseFloat(el.props.rotacion || 0);
-    const rads = rotacionGrados * Math.PI / 180;
-    
-    // Vectores de dirección (Cabeza y Cola del tanque)
-    const dx = Math.cos(rads) * (longitudReal / 2);
-    const dy = Math.sin(rads) * (longitudReal / 2);
-    
-    // Puntos en el espacio 3D
-    const p1_iso = { x: el.x + dx, y: el.y + dy, z: el.z };
-    const p2_iso = { x: el.x - dx, y: el.y - dy, z: el.z };
-    
-    // Proyección a Pantalla
-    const s1 = isoToScreen(p1_iso.x, p1_iso.y, p1_iso.z);
-    const s2 = isoToScreen(p2_iso.x, p2_iso.y, p2_iso.z);
-    
-    // Colores (Estilo Industrial)
-    const colorCuerpo = "#f0f0f0"; // Blanco industrial
-    const colorSombra = "#d0d0d0"; // Sombra suave
-    const strokeCol = colorBase || "#555";
-
-    // Cálculos de geometría en pantalla para el cilindro
-    const angleScreen = Math.atan2(s2.y - s1.y, s2.x - s1.x);
-    // Perpendicular para el grosor del cilindro
-    const perpX = Math.cos(angleScreen + Math.PI/2) * radioScreen;
-    const perpY = Math.sin(angleScreen + Math.PI/2) * radioScreen;
-    
-    // Vector "Arriba" en visualización (Para poner válvulas en el lomo)
-    // En este sistema isométrico, "Arriba" en la superficie del tanque es simplemente restar Y en pantalla
-    // Ajustamos un poco con perpX/Y para seguir la curvatura si está rotado
-    const upX = 0; 
-    const upY = -radioScreen; // Hacia arriba en pantalla
-
-    // --- A. DIBUJAR CONEXIÓN INFERIOR (DRENAJE) ---
-    // Se dibuja PRIMERO para que quede "detrás" del tanque
-    const chk = el.props.checklist || {};
-    
-    if (chk.drenaje) {
-        const cx = (s1.x + s2.x) / 2;
-        const cy = (s1.y + s2.y) / 2;
-        
-        // Punto inferior (Vientre del tanque)
-        const drainX = cx - upX; 
-        const drainY = cy - upY; // Abajo en pantalla
-
-        const drainW = radioScreen * 0.15; // Proporcional al tanque
-        const drainH = radioScreen * 0.25;
-
-        const drain = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        // Dibujamos un pequeño tubo saliendo hacia abajo
-        drain.setAttribute("d", `
-            M ${drainX - drainW},${drainY} 
-            L ${drainX - drainW},${drainY + drainH} 
-            L ${drainX + drainW},${drainY + drainH} 
-            L ${drainX + drainW},${drainY} Z`
-        );
-        drain.setAttribute("fill", "#333");
-        drain.setAttribute("stroke", strokeCol);
-        g.appendChild(drain);
-    }
-
-    // --- B. DIBUJAR EL CUERPO PRINCIPAL ---
-    const bodyPath = `
-        M ${s1.x + perpX},${s1.y + perpY} 
-        L ${s2.x + perpX},${s2.y + perpY} 
-        L ${s2.x - perpX},${s2.y - perpY} 
-        L ${s1.x - perpX},${s1.y - perpY} 
-        Z
-    `;
-    
-    const body = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    body.setAttribute("d", bodyPath);
-    body.setAttribute("fill", colorCuerpo);
-    body.setAttribute("stroke", strokeCol);
-    body.setAttribute("stroke-width", 2);
-    g.appendChild(body);
-    
-    // --- C. DIBUJAR LAS TAPAS ---
-    // Tapa Trasera (Sombra)
-    const tapa2 = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-    tapa2.setAttribute("cx", s2.x); tapa2.setAttribute("cy", s2.y);
-    tapa2.setAttribute("rx", radioScreen * 0.5); // Perspectiva iso
-    tapa2.setAttribute("ry", radioScreen);
-    tapa2.setAttribute("transform", `rotate(${angleScreen * 180 / Math.PI}, ${s2.x}, ${s2.y})`);
-    tapa2.setAttribute("fill", colorSombra);
-    tapa2.setAttribute("stroke", strokeCol);
-    g.appendChild(tapa2);
-
-    // Tapa Frontal (Brillo)
-    const tapa1 = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-    tapa1.setAttribute("cx", s1.x); tapa1.setAttribute("cy", s1.y);
-    tapa1.setAttribute("rx", radioScreen * 0.5); 
-    tapa1.setAttribute("ry", radioScreen);
-    tapa1.setAttribute("transform", `rotate(${angleScreen * 180 / Math.PI}, ${s1.x}, ${s1.y})`);
-    tapa1.setAttribute("fill", "#ffffff"); 
-    tapa1.setAttribute("stroke", strokeCol);
-    g.appendChild(tapa1);
-
-    // --- D. DIBUJAR CONEXIONES SUPERIORES (VÁLVULAS) ---
-    const numConexiones = parseInt(el.props.numConexiones) || 2;
-    
-    // Dimensiones de la válvula proporcionales al tanque
-    const valveNeckW = radioScreen * 0.15; // Grosor del cuello
-    const valveNeckH = radioScreen * 0.25; // Altura del cuello
-    const valveHeadR = radioScreen * 0.20; // Radio de la perilla/brida
-
-    for(let i = 1; i <= numConexiones; i++) {
-        // Distribuir equitativamente a lo largo del lomo
-        const t = i / (numConexiones + 1);
-        
-        // Punto central en el eje del cilindro
-        const axisX = s1.x + (s2.x - s1.x) * t;
-        const axisY = s1.y + (s2.y - s1.y) * t;
-        
-        // Punto sobre el lomo (Surface Top)
-        const topX = axisX + upX;
-        const topY = axisY + upY;
-        
-        // 1. Cuello de la válvula (Rectángulo vertical)
-        const neck = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        neck.setAttribute("d", `
-            M ${topX - valveNeckW},${topY} 
-            L ${topX - valveNeckW},${topY - valveNeckH} 
-            L ${topX + valveNeckW},${topY - valveNeckH} 
-            L ${topX + valveNeckW},${topY} Z`
-        );
-        neck.setAttribute("fill", "#444"); // Gris oscuro metalico
-        neck.setAttribute("stroke", "none");
-        g.appendChild(neck);
-        
-        // 2. Cabeza de la válvula (Elipse para simular disco)
-        const head = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-        head.setAttribute("cx", topX); 
-        head.setAttribute("cy", topY - valveNeckH);
-        head.setAttribute("rx", valveHeadR * 1.5); 
-        head.setAttribute("ry", valveHeadR * 0.6); // Achatado
-        head.setAttribute("fill", "#222"); // Negro (Manivela)
-        head.setAttribute("stroke", "#000");
-        g.appendChild(head);
-        
-        // 3. Detalle brillo en la válvula (Opcional, para realismo)
-        const shine = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-        shine.setAttribute("cx", topX - valveHeadR*0.5); 
-        shine.setAttribute("cy", topY - valveNeckH - valveHeadR*0.1);
-        shine.setAttribute("rx", valveHeadR * 0.3); 
-        shine.setAttribute("ry", valveHeadR * 0.15);
-        shine.setAttribute("fill", "#666");
-        g.appendChild(shine);
-    }
-
-    // --- E. ALERTAS VISUALES ---
-    const esSeguro = chk.valvulaAlivio && chk.indicadorLlenado;
-    if (!esSeguro) {
-        body.setAttribute("fill", "#fff0f0"); // Tinte rojo suave
-        body.setAttribute("stroke", "#d00");
-
-        const textAlert = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        // Centro visual
-        const cx = (s1.x + s2.x) / 2; 
-        const cy = (s1.y + s2.y) / 2;
-        
-        textAlert.setAttribute("x", cx);
-        textAlert.setAttribute("y", cy);
-        textAlert.setAttribute("text-anchor", "middle");
-        textAlert.setAttribute("dominant-baseline", "middle");
-        textAlert.setAttribute("font-size", radioScreen); // Tamaño según tanque
-        textAlert.textContent = "⚠️";
-        g.appendChild(textAlert);
-    }
-
-    // --- F. ETIQUETA ---
-    if(el.props.tag) {
-        const tag = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        const cx = (s1.x + s2.x) / 2; 
-        const cy = (s1.y + s2.y) / 2;
-        tag.setAttribute("x", cx);
-        tag.setAttribute("y", cy + radioScreen + 20); // Debajo del tanque
-        tag.setAttribute("text-anchor", "middle");
-        tag.setAttribute("font-size", "11px");
-        tag.setAttribute("fill", "#ccc");
-        tag.setAttribute("font-family", "monospace");
-        tag.textContent = el.props.tag;
-        g.appendChild(tag);
-    }
-}
-// --- PANELES Y HELPERS UI ---
 function toggleConfig(key) {
     if(key === 'grid') window.CONFIG.showGrid = !window.CONFIG.showGrid; 
     if(key === 'snap') window.CONFIG.enableSnap = !window.CONFIG.enableSnap;
@@ -649,8 +584,10 @@ function initLibrary() {
         });
     };
     const C = window.CATALOGO;
-    fillGroup('grp-mat', C.mat); fillGroup('grp-comp', C.comp); fillGroup('grp-eq', C.eq);
-    fillGroup('grp-inst', C.inst); fillGroup('grp-perif', C.perif); fillGroup('grp-cons', C.cons); 
+    if(C) {
+        fillGroup('grp-mat', C.mat); fillGroup('grp-comp', C.comp); fillGroup('grp-eq', C.eq);
+        fillGroup('grp-inst', C.inst); fillGroup('grp-perif', C.perif); fillGroup('grp-cons', C.cons); 
+    }
     renderLayersUI();
 }
 
@@ -795,7 +732,6 @@ function updatePropsPanel() {
 }
 
 // --- HELPERS GLOBALES DE UI ---
-// Se asignan a window para que los eventos onclick HTML los encuentren
 window.togLay = (id) => { const l=window.layers.find(x=>x.id===id); l.visible=!l.visible; renderLayersUI(); renderScene(); }
 window.addLayer = () => { window.layers.push({id:'l'+Date.now(), name:'Nueva', color:'#fff', visible:true}); renderLayersUI(); }
 window.updateAlturaFinal = function(valUser) {
