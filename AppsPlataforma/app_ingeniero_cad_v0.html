@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v14.0 - Suite Completa + Tanque GLP Integrado</title>
+<title>CAD Gas v14.0 - Suite Completa + Tanque GLP (Corregido)</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ffff; }
@@ -900,8 +900,9 @@ function renderGrid() {
 
 // --- NUEVA FUNCIÓN DE DIBUJO DE TANQUE ---
 function dibujarTanqueGLP(g, screenPos, el, colorBase) {
-    // 1. Cálculos de dimensiones en pantalla (basado en zoom y metros reales)
-    const pixelesPorMetro = CONFIG.tileW * estado.view.scale; 
+    // 1. Cálculos de dimensiones en pantalla (basado solo en tiles para evitar doble escalado)
+    // FIX: Quitamos 'estado.view.scale' porque el SVG ya tiene transform scale
+    const pixelesPorMetro = CONFIG.tileW; 
     const largo = (parseFloat(el.props.longitud) || 1) * pixelesPorMetro;
     const alto = (parseFloat(el.props.diametro) || 1) * pixelesPorMetro;
     
@@ -2093,7 +2094,7 @@ function checkInsertType() {
     const sel = document.getElementById('ins-select'); if(!sel.options.length) return;
     const opt = sel.options[sel.selectedIndex]; const type = opt.getAttribute('data-type');
     const rowZ2 = document.getElementById('row-ins-z2'); if(type === 'tuberia') rowZ2.style.display = 'flex'; else rowZ2.style.display = 'none';
-ejecutarInsercion
+}
 function ejecutarInsercion() {
     const sel = document.getElementById('ins-select'); const valParts = sel.value.split('|'); const groupKey = valParts[0]; const itemId = valParts[1];
     const itemDef = CATALOGO[groupKey].find(x => x.id === itemId); if(!itemDef) return;
@@ -2104,7 +2105,13 @@ function ejecutarInsercion() {
         addEl({ tipo: 'tuberia', x: insertCoords.x, y: insertCoords.y, z: z1Meters, dx: 0, dy: 0, dz: z2Meters - z1Meters, props: props, layerId: activeLayerId, customColor: itemDef.color });
     } else {
         addEl({ tipo: itemDef.type, x: insertCoords.x, y: insertCoords.y, z: z1Meters, dx: 0, dy: 0, dz: 0, props: props, icon: itemDef.icon, layerId: activeLayerId, color: itemDef.color });
+    }
+    // FIX: Se agregaron las llaves de cierre y la lógica de reset que faltaba
+    document.getElementById('modal-insertar').style.display = 'none'; 
+    setTool('select'); 
+    renderScene();
 }
+
 // --- INICIALIZACIÓN ---
 saveState(); renderGrid(); renderGizmo(); initLibrary();
 const rectInit = svg.getBoundingClientRect(); estado.view.x=rectInit.width/2; estado.view.y=rectInit.height/2; 
