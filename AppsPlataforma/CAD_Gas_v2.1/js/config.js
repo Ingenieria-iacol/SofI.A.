@@ -1,7 +1,7 @@
 // js/config.js
 
 // CONFIGURACIÓN POR DEFECTO
-export const CONFIG = { 
+window. CONFIG = { 
     tileW: 100, 
     tileH: 50, 
     zStep: 1, 
@@ -13,7 +13,7 @@ export const CONFIG = {
 };
 
 // CONSTANTES DE UNIDADES
-export const UNITS = { 
+window. UNITS = { 
     'm': { factor: 1, label: 'm', precision: 2 }, 
     'dm': { factor: 10, label: 'cm', precision: 1 }, 
     'cm': { factor: 100, label: 'cm', precision: 1 }, 
@@ -21,7 +21,7 @@ export const UNITS = {
 };
 
 // DIÁMETROS DISPONIBLES
-export const DIAMETROS_DISPONIBLES = {
+window. DIAMETROS_DISPONIBLES = {
     'acero_sch40': ['1/4"', '1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '2-1/2"', '3"', '4"', '6"'],
     'acero_sch80': ['1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '3"', '4"'],
     'acero_sch160': ['1/2"', '3/4"', '1"', '2"'],
@@ -39,7 +39,7 @@ export const DIAMETROS_DISPONIBLES = {
 };
 
 // CATÁLOGO COMPLETO
-export const CATALOGO = {
+window. CATALOGO = {
     mat: [
         { subCat: 'Acero al Carbón', id: 't_ac_40', name: 'Sch40', color: '#444444', type: 'tuberia', props: { material: 'acero_sch40', diametroNominal: '1"' } },
         { subCat: 'Acero al Carbón', id: 't_ac_80', name: 'Sch80', color: '#222222', type: 'tuberia', props: { material: 'acero_sch80', diametroNominal: '1"' } },
