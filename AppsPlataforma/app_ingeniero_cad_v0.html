@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v14.0 - Suite Completa</title>
+<title>CAD Gas v14.0 - Suite Completa (Reparado)</title>
 <style>
     /* --- ESTILOS CORE --- */
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ffff; }
@@ -1070,10 +1070,7 @@ function renderEffects() {
     if(estado.selID) draw(estado.selID, cs, 'sel-halo');
 }
 
-// --- SNAP & EVENTS ---
-// ==========================================
-// REEMPLAZAR LA FUNCIÓN getSnapPoints ACTUAL
-// ==========================================
+// --- SNAP & EVENTS (MEJORADO: Puertos y Anchors) ---
 function getSnapPoints(el) {
     if(el.visible === false) return [];
     
@@ -1293,7 +1290,7 @@ function confirmarInput() {
 }
 document.getElementById('dynamic-len').addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmarInput(); if (e.key === 'Escape') { document.getElementById('dynamic-input-container').style.display = 'none'; estado.tempVector = null; } e.stopPropagation(); });
 
-// --- LOGICA CLICK ---
+// --- LOGICA CLICK (MEJORADO: Bloqueo de altura Z) ---
 function handleCanvasClick(e) {
     if(document.getElementById('dynamic-input-container').style.display === 'flex' ||
        document.getElementById('vertical-input-container').style.display === 'flex') return;
@@ -1346,34 +1343,23 @@ function handleCanvasClick(e) {
     }
     
     if(estado.activeItem?.type === 'tuberia' || estado.tool === 'cota') {
-        if(estado.activeItem?.type === 'tuberia' || estado.tool === 'cota') {
         if(!estado.drawing) { 
             // INICIO DEL DIBUJO
             estado.drawing = true; 
             
-            // CORRECCIÓN VISUAL CRÍTICA:
-            // Si hicimos 'snap' (tz viene del objeto), forzamos al sistema global
-            // a usar esa altura. Esto evita que la tubería se vaya al fondo al mover el mouse.
+            // --- CORRECCIÓN CRITICA DE ALTURA Z ---
             if (estado.snapped) {
-                estado.currentZ = tz; 
+                // Si conectamos a algo, forzamos la altura actual a la altura del objeto
+                estado.currentZ = tz;
+                syncZInput(); // Actualizamos el HUD para que el usuario lo vea
             }
             
             estado.inicio = {x:tx, y:ty, z:tz}; 
-            
-            // Actualizamos el input de la interfaz para que el usuario vea que la altura cambió
-            syncZInput();
-
         } else {
-            // FIN DEL DIBUJO (Confirmar tubería)
             let dx=tx-estado.inicio.x, dy=ty-estado.inicio.y, dz=tz-estado.inicio.z;
             const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-            if(dist > 0.01) { 
-                mostrarInputDinámico(e.clientX, e.clientY, dist, {dx, dy, dz}); 
-            } else { 
-                estado.drawing = false; 
-            }
+            if(dist > 0.01) { mostrarInputDinámico(e.clientX, e.clientY, dist, {dx, dy, dz}); } else { estado.drawing = false; }
         }
-    }
     } else if (estado.activeItem) {
         const props = JSON.parse(JSON.stringify(estado.activeItem.props)); 
         if (estado.snapDir && (estado.activeItem.type === 'valvula' || estado.activeItem.type === 'equipo')) { props.dirVector = estado.snapDir; delete props.rotacion; }
@@ -1817,7 +1803,7 @@ window.updateAltura = function(valUser) {
 }
 function ensureHex(c){ if(c.startsWith('#') && c.length===7) return c; return '#cccccc'; }
 
-// --- EXPORTAR A IMAGEN (NUEVO) ---
+// --- EXPORTAR A IMAGEN ---
 function descargarImagen() {
     const originalSvg = document.getElementById('lienzo-cad');
     const cloneSvg = originalSvg.cloneNode(true);
