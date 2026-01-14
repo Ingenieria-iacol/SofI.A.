@@ -1,4 +1,4 @@
-// js/renderer.js - Lógica de Visualización e Interfaz (Versión Ingeniería Corregida)
+// js/renderer.js - Lógica de Visualización e Interfaz (Soporte P&ID SVG)
 
 // ==========================================
 // 1. MATEMÁTICAS VISUALES (Proyecciones)
@@ -33,7 +33,7 @@ function getSnapPoints(el) {
     // Centro base
     const pts = [{x: el.x, y: el.y, z: el.z}]; 
 
-    // Puntos específicos para Tanques (Calculamos la posición 3D real de las boquillas para el snap)
+    // Puntos específicos para Tanques
     if(el.props.tipo === 'tanque_glp' && el.props.conexiones) {
         const diam = parseFloat(el.props.diametro) || 2.0;
         const len = parseFloat(el.props.longitud) || 6.0;
@@ -41,7 +41,6 @@ function getSnapPoints(el) {
         const dx = Math.cos(rads) * (len / 2);
         const dy = Math.sin(rads) * (len / 2);
         
-        // Extremos del eje central
         const p1 = { x: el.x + dx, y: el.y + dy, z: el.z };
         const p2 = { x: el.x - dx, y: el.y - dy, z: el.z };
         
@@ -125,7 +124,7 @@ function renderGizmo() {
 }
 
 // ==========================================
-// 3. RENDERIZADO PRINCIPAL (Scene)
+// 3. RENDERIZADO PRINCIPAL (Scene) - MEJORADO P&ID
 // ==========================================
 function renderScene() {
     const cont = document.getElementById('contenedor-elementos'); 
@@ -146,6 +145,7 @@ function renderScene() {
         
         const showLabel = window.CONFIG.showTags || (el.props.mostrarEtiqueta === true);
 
+        // --- TUBERÍAS ---
         if(el.tipo === 'tuberia') {
             const e = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz);
             const body = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -155,6 +155,7 @@ function renderScene() {
             else if(el.props.tipoLinea === 'dotted') body.setAttribute("stroke-dasharray", "2,2");
             g.appendChild(body);
             
+            // Etiquetas tubería
             const midX = (s.x + e.x)/2; const midY = (s.y + e.y)/2;
             let angDeg = Math.atan2(e.y - s.y, e.x - s.x) * (180 / Math.PI);
             if (angDeg > 90 || angDeg < -90) { angDeg += 180; }
@@ -171,6 +172,7 @@ function renderScene() {
                 tTop.setAttribute("transform", `rotate(${angDeg}, ${midX}, ${midY})`);
                 tTop.textContent = txtTop;
                 g.appendChild(tTop);
+                
                 const lenDisplay = `L=${window.formatLength(lenRaw)}`;
                 let hDisplay = `Z=${window.formatLength(el.z)}`;
                 if (Math.abs(el.dz) > 0.05) { hDisplay = `Z=${window.formatLength(el.z)}⮕${window.formatLength(el.z + el.dz)}`; }
@@ -193,7 +195,9 @@ function renderScene() {
                 tt.textContent = el.props.tag;
                 g.appendChild(tt);
             }
-        } else if(el.tipo === 'cota') {
+        } 
+        // --- COTAS ---
+        else if(el.tipo === 'cota') {
             const e = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz);
             const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
             l.setAttribute("x1",s.x); l.setAttribute("y1",s.y); l.setAttribute("x2",e.x); l.setAttribute("y2",e.y);
@@ -210,69 +214,110 @@ function renderScene() {
                 t.textContent = txtLen;
                 g.appendChild(l); g.appendChild(t);
             } else { g.appendChild(l); }
-        } else if (el.tipo === 'texto') {
+        } 
+        // --- TEXTOS ---
+        else if (el.tipo === 'texto') {
             const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
             t.setAttribute("x",s.x); t.setAttribute("y",s.y); t.setAttribute("class","dim-text");
             t.setAttribute("fill", col); t.setAttribute("font-size", "14px"); t.textContent = el.props.text;
             g.appendChild(t);
-        } else {
-            // === LOGICA TANQUE GLP MEJORADO ===
-            if (el.props.tipo === 'tanque_glp') {
-                dibujarTanqueGLP(g, s, el, col);
-            } else {
-                // LOGICA ORIGINAL PARA OTROS EQUIPOS
-                let rot = 0;
-                if (el.props.dirVector) {
-                    const p1 = isoToScreen(0, 0, 0); const p2 = isoToScreen(el.props.dirVector.dx, el.props.dirVector.dy, el.props.dirVector.dz);
-                    rot = Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180 / Math.PI);
-                } else { rot = parseFloat(el.props.rotacion || 0); }
-                g.setAttribute("transform", `translate(${s.x},${s.y}) rotate(${rot}) translate(${-s.x},${-s.y})`);
-                
+        } 
+        // --- OBJETOS COMPLEJOS (Válvulas, Equipos, Tanques) ---
+        else {
+             // 1. Calcular Rotación (orientado a tubería o rotación manual)
+             let rot = 0;
+             if (el.props.dirVector) {
+                 const p1 = isoToScreen(0, 0, 0); 
+                 const p2 = isoToScreen(el.props.dirVector.dx, el.props.dirVector.dy, el.props.dirVector.dz);
+                 rot = Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180 / Math.PI);
+             } else { 
+                 rot = parseFloat(el.props.rotacion || 0); 
+             }
+             
+             // 2. Aplicar Transformación al Grupo (Mover y Rotar)
+             g.setAttribute("transform", `translate(${s.x},${s.y}) rotate(${rot}) translate(${-s.x},${-s.y})`);
+
+             // 3. Renderizar según tipo
+             if (el.props.tipo === 'tanque_glp') {
+                 dibujarTanqueGLP(g, s, el, col);
+             } 
+             // 4. NUEVO SOPORTE SVG P&ID
+             else if (el.icon && el.icon.trim().startsWith('<svg')) {
+                 const scale = el.props.scaleFactor || 1.0;
+                 const size = 30 * scale; // Tamaño base del icono en pantalla
+                 const offset = size / 2;
+                 
+                 // Crear contenedor para el SVG
+                 const iconWrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                 iconWrapper.innerHTML = el.icon; // Inyectar SVG crudo
+                 
+                 const svgContent = iconWrapper.querySelector('svg');
+                 if(svgContent) {
+                     // Configurar dimensiones y posición (centrado)
+                     svgContent.setAttribute("width", size);
+                     svgContent.setAttribute("height", size);
+                     svgContent.setAttribute("x", s.x - offset);
+                     svgContent.setAttribute("y", s.y - offset);
+                     
+                     // Aplicar estilos de color
+                     svgContent.setAttribute("fill", "none"); 
+                     svgContent.setAttribute("stroke", col);
+                     svgContent.setAttribute("stroke-width", "2");
+                     svgContent.setAttribute("overflow", "visible"); // Permitir que salga un poco
+                     
+                     // Manejar partes rellenas (ej. válvulas compuerta)
+                     const fills = svgContent.querySelectorAll(".filled");
+                     fills.forEach(f => f.setAttribute("fill", col));
+                     
+                     g.appendChild(iconWrapper);
+                 }
+                 
+                 // Etiqueta (Tag)
+                 if(showLabel && el.props.tag) {
+                     const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                     // Ajustar posición del texto para que no pise el icono
+                     // Si rotamos, el texto gira con el icono. Para mantenerlo horizontal, revertimos rotación,
+                     // pero es común que el tag siga la línea. Lo dejamos girado por ahora.
+                     tt.setAttribute("x", s.x); tt.setAttribute("y", s.y - offset - 5); 
+                     tt.setAttribute("text-anchor","middle");
+                     tt.setAttribute("fill","#fff"); tt.setAttribute("font-size","10px"); 
+                     tt.textContent = el.props.tag;
+                     g.appendChild(tt);
+                 }
+             }
+             // 5. Fallback antiguo (Rectángulo + Emoji)
+             else {
                 const scaleFactor = el.props.scaleFactor || 1.0; 
                 const baseSize = (window.CONFIG.tileW * 0.25) * scaleFactor; 
                 const halfS = baseSize / 2;
                 
-                let drawOffsetX = 0;
-                const anchor = el.props.anchor || 'center';
-                if (anchor === 'start') { drawOffsetX = halfS; } else if (anchor === 'end') { drawOffsetX = -halfS; }
-                const drawX = s.x - halfS + drawOffsetX; const drawY = s.y - halfS;
+                const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
+                r.setAttribute("x", s.x - halfS); r.setAttribute("y", s.y - halfS); 
+                r.setAttribute("width", baseSize); r.setAttribute("height", baseSize);
+                r.setAttribute("fill", "#222"); r.setAttribute("stroke", col);
                 
-                if(el.tipo === 'valvula') {
-                        const p = document.createElementNS("http://www.w3.org/2000/svg","path");
-                        const cx = s.x + drawOffsetX; const cy = s.y;
-                        p.setAttribute("d", `M${cx-halfS},${cy-halfS/2} L${cx+halfS},${cy+halfS/2} L${cx+halfS},${cy-halfS/2} L${cx-halfS},${cy+halfS/2} Z`);
-                        p.setAttribute("fill", "#222"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", width);
-                        g.appendChild(p);
-                } else {
-                    const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
-                    r.setAttribute("x", drawX); r.setAttribute("y", drawY); r.setAttribute("width", baseSize); r.setAttribute("height", baseSize);
-                    r.setAttribute("fill", "#222"); r.setAttribute("stroke", col);
-                    const tx = document.createElementNS("http://www.w3.org/2000/svg","text");
-                    tx.setAttribute("x", s.x + drawOffsetX); tx.setAttribute("y", s.y + 4); 
-                    tx.setAttribute("text-anchor","middle");
-                    tx.setAttribute("fill",col); tx.setAttribute("font-size", (baseSize*0.6)+"px"); 
-                    tx.textContent = el.icon;
-                    g.appendChild(r); g.appendChild(tx);
-                }
-                if(showLabel && el.props.tag) {
-                        const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                        tt.setAttribute("x", s.x + drawOffsetX); tt.setAttribute("y", s.y - halfS - 5); 
-                        tt.setAttribute("text-anchor","middle");
-                        tt.setAttribute("fill","#fff"); tt.setAttribute("font-size","10px"); tt.textContent = el.props.tag;
-                        g.appendChild(tt);
-                }
-            }
+                const tx = document.createElementNS("http://www.w3.org/2000/svg","text");
+                tx.setAttribute("x", s.x); tx.setAttribute("y", s.y + 4); 
+                tx.setAttribute("text-anchor","middle");
+                tx.setAttribute("fill",col); tx.setAttribute("font-size", (baseSize*0.6)+"px"); 
+                tx.textContent = el.icon; // Esto imprimía el código SVG como texto
+                
+                g.appendChild(r); g.appendChild(tx);
+             }
         }
         cont.appendChild(g);
     });
+    
+    // Renderizado de fittings automáticos (codos)
     if (typeof window.analizarRed === 'function') {
         const autoFittings = window.analizarRed();
         autoFittings.forEach(fit => {
             const s = isoToScreen(fit.x, fit.y, fit.z);
             const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-            const scaleW = fit.width / window.CONFIG.tileW; 
-            const elbowRadius = Math.max(scaleW * 2.5, 0.02); 
+            
             if (fit.tipo === 'codo_auto') {
+                const scaleW = fit.width / window.CONFIG.tileW; 
+                const elbowRadius = Math.max(scaleW * 2.5, 0.02); 
                 const v1 = fit.dirs[0]; const v2 = fit.dirs[1];
                 const p1 = isoToScreen(fit.x + v1.x * elbowRadius, fit.y + v1.y * elbowRadius, fit.z + v1.z * elbowRadius);
                 const p2 = isoToScreen(fit.x + v2.x * elbowRadius, fit.y + v2.y * elbowRadius, fit.z + v2.z * elbowRadius);
@@ -280,8 +325,14 @@ function renderScene() {
                 const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 path.setAttribute("d", d); path.setAttribute("stroke", fit.color); path.setAttribute("stroke-width", fit.width); path.setAttribute("class", "fitting-auto");
                 g.appendChild(path);
+                
                 const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.6); c.setAttribute("fill", fit.color);
+                g.appendChild(c);
+            } else if (fit.tipo === 'tee_auto' || fit.tipo === 'cruz_auto') {
+                const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 1.2);
+                c.setAttribute("fill", "#222"); c.setAttribute("stroke", fit.color); c.setAttribute("stroke-width", fit.width);
                 g.appendChild(c);
             } else if (fit.tipo === 'reductor_auto') {
                 const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -289,11 +340,6 @@ function renderScene() {
                 const d = `M${s.x-r},${s.y-r/2} L${s.x+r},${s.y} L${s.x-r},${s.y+r/2} Z`;
                 p.setAttribute("d", d); p.setAttribute("fill", "#444"); p.setAttribute("stroke", fit.color); p.setAttribute("stroke-width", 1);
                 g.appendChild(p);
-            } else {
-                const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 1.2);
-                c.setAttribute("fill", "#222"); c.setAttribute("stroke", fit.color); c.setAttribute("stroke-width", fit.width);
-                g.appendChild(c);
             }
             capFit.appendChild(g);
         });
@@ -306,43 +352,38 @@ function renderScene() {
 // ==========================================
 
 function dibujarTanqueGLP(g, screenPos, el, colorBase) {
-    // 1. Configuraciones
     const tileW = window.CONFIG.tileW; 
     const diametroReal = parseFloat(el.props.diametro) || 2.0;
     const longitudReal = parseFloat(el.props.longitud) || 6.0;
     const radioScreen = (diametroReal / 2) * tileW; 
     const radioMeters = diametroReal / 2;
     
-    // 2. Orientación 3D del Tanque (Cuerpo Horizontal)
+    // Orientación 3D
     const rotacionGrados = parseFloat(el.props.rotacion || 0);
     const rads = rotacionGrados * Math.PI / 180;
     const dx = Math.cos(rads) * (longitudReal / 2);
     const dy = Math.sin(rads) * (longitudReal / 2);
     
-    // Coordenadas 3D de los extremos del cuerpo (Centrado en el.x, el.y, el.z)
     const p1_iso = { x: el.x + dx, y: el.y + dy, z: el.z };
     const p2_iso = { x: el.x - dx, y: el.y - dy, z: el.z };
     const s1 = isoToScreen(p1_iso.x, p1_iso.y, p1_iso.z);
     const s2 = isoToScreen(p2_iso.x, p2_iso.y, p2_iso.z);
     
-    // Colores
     const colorCuerpo = "#eeeeee"; 
     const colorSombra = "#cccccc"; 
     const strokeCol = colorBase || "#555";
 
-    // Cálculos para dibujar el cuerpo en pantalla
     const angleScreen = Math.atan2(s2.y - s1.y, s2.x - s1.x);
-    // Vectores perpendiculares en pantalla para el ancho del tanque
     const perpX = Math.cos(angleScreen + Math.PI/2) * radioScreen;
     const perpY = Math.sin(angleScreen + Math.PI/2) * radioScreen;
     
-    // --- 1. DIBUJO DEL CUERPO (Fondo) ---
+    // Cuerpo
     const bodyPath = `M ${s1.x + perpX},${s1.y + perpY} L ${s2.x + perpX},${s2.y + perpY} L ${s2.x - perpX},${s2.y - perpY} L ${s1.x - perpX},${s1.y - perpY} Z`;
     const body = document.createElementNS("http://www.w3.org/2000/svg", "path");
     body.setAttribute("d", bodyPath); body.setAttribute("fill", colorCuerpo); body.setAttribute("stroke", strokeCol); body.setAttribute("stroke-width", 2);
     g.appendChild(body);
     
-    // --- 2. TAPAS ---
+    // Tapas
     const tapa2 = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
     tapa2.setAttribute("cx", s2.x); tapa2.setAttribute("cy", s2.y);
     tapa2.setAttribute("rx", radioScreen * 0.5); tapa2.setAttribute("ry", radioScreen);
@@ -357,121 +398,49 @@ function dibujarTanqueGLP(g, screenPos, el, colorBase) {
     tapa1.setAttribute("fill", "#ffffff"); tapa1.setAttribute("stroke", strokeCol);
     g.appendChild(tapa1);
 
-    // --- 3. BOQUILLAS Y CONEXIONES (Basado en Altura Z Real) ---
+    // Conexiones
     const conexiones = el.props.conexiones || [];
-    const num = conexiones.length;
-    
     conexiones.forEach((conn, index) => {
-        // A. Calcular posición base en el eje central del tanque
-        const t = (index + 1) / (num + 1);
+        const t = (index + 1) / (conexiones.length + 1);
         const axisX = p1_iso.x + (p2_iso.x - p1_iso.x) * t;
         const axisY = p1_iso.y + (p2_iso.y - p1_iso.y) * t;
         const axisZ = el.z;
-
-        // B. Calcular altura Z de la conexión (Lomo vs Vientre)
         const isBottom = conn.posicion === 'bottom';
-        // Aquí está la corrección: Sumamos/Restamos el radio al eje Z
         const nozzleZBase = isBottom ? (axisZ - radioMeters) : (axisZ + radioMeters);
         
-        // C. Proyectar a pantalla la base de la boquilla
         const screenBase = isoToScreen(axisX, axisY, nozzleZBase);
-        
-        // D. Dimensiones de la boquilla
         const diamPix = window.parseDiameterToScale(conn.diametro); 
         const radiusConn = diamPix / 2;
         const heightConn = Math.max(8, diamPix * 1.5); 
-        
-        // E. Dibujar hacia Arriba o Abajo (Vertical estricto en pantalla)
-        // Como estamos en Z, el crecimiento es vertical en Y negativo
-        // Si es bottom, el tubo baja (Y positivo pantalla). Si es top, sube.
-        // Pero espera: En isometría, un tubo vertical sube recto.
-        // La "base" está en la superficie del tanque. El "final" está más lejos del centro.
-        
-        // Calculamos el punto final del tubo (Tip)
-        // Top: Z aumenta (Sube visualmente). Bottom: Z disminuye (Baja visualmente).
-        // Convertimos la altura del cuello (pixels) a metros aprox para proyectar, 
-        // O simplemente dibujamos vertical en pantalla que es más limpio para diagramas.
-        // Usaremos dibujo directo en pantalla para nitidez.
-        
-        const dirY = isBottom ? 1 : -1; // 1 = Baja, -1 = Sube
-        const tipX = screenBase.x;
-        const tipY = screenBase.y + (heightConn * dirY); // Extrusión vertical pura
+        const dirY = isBottom ? 1 : -1;
+        const tipY = screenBase.y + (heightConn * dirY);
 
-        const tipo = conn.tipo || 'macho';
-        
-        // DIBUJAR EL CUELLO
         const neck = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        // Centramos el rectángulo en X
         neck.setAttribute("x", screenBase.x - radiusConn);
-        // Si va hacia arriba, Y es tipY. Si va hacia abajo, Y es screenBase.y
         neck.setAttribute("y", isBottom ? screenBase.y : tipY);
-        neck.setAttribute("width", diamPix);
-        neck.setAttribute("height", heightConn);
-        neck.setAttribute("fill", "#555");
-        neck.setAttribute("stroke", "#222");
-        neck.setAttribute("stroke-width", "0.5");
-        
-        // Si es Bottom, queremos que (a veces) quede detrás del tanque. 
-        // Por simplicidad de SVG (sin z-index real), lo dibujamos después del cuerpo (encima)
-        // para que se vea claro dónde está la conexión.
+        neck.setAttribute("width", diamPix); neck.setAttribute("height", heightConn);
+        neck.setAttribute("fill", "#555"); neck.setAttribute("stroke", "#222"); neck.setAttribute("stroke-width", "0.5");
         g.appendChild(neck);
 
-        // DETALLES SEGÚN TIPO
-        if (tipo === 'brida') {
-            const fW = radiusConn * 2.5; 
-            const fH = 3;
+        if (conn.tipo === 'brida') {
+            const fW = radiusConn * 2.5; const fH = 3;
             const flange = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            flange.setAttribute("x", tipX - fW/2);
-            flange.setAttribute("y", tipY - (isBottom ? 0 : fH)); // Ajuste fino
-            flange.setAttribute("width", fW);
-            flange.setAttribute("height", fH);
+            flange.setAttribute("x", screenBase.x - fW/2);
+            flange.setAttribute("y", tipY - (isBottom ? 0 : fH));
+            flange.setAttribute("width", fW); flange.setAttribute("height", fH);
             flange.setAttribute("fill", "#333");
             g.appendChild(flange);
-            
-        } else if (tipo === 'hembra') {
-            const cW = radiusConn * 1.6;
-            const cH = heightConn * 0.5;
-            const cople = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            cople.setAttribute("x", tipX - cW/2);
-            // El cople va en la base o en la punta? Usualmente "hembra" es un cople soldado al tanque.
-            // Lo ponemos pegado al tanque.
-            cople.setAttribute("y", isBottom ? screenBase.y : (screenBase.y - cH));
-            cople.setAttribute("width", cW);
-            cople.setAttribute("height", cH);
-            cople.setAttribute("fill", "#444");
-            cople.setAttribute("stroke", "#222");
-            g.appendChild(cople);
         }
 
-        // Etiqueta ID
         const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        txt.setAttribute("x", tipX); 
-        txt.setAttribute("y", tipY + (isBottom ? 12 : -5));
+        txt.setAttribute("x", screenBase.x); txt.setAttribute("y", tipY + (isBottom ? 12 : -5));
         txt.setAttribute("text-anchor", "middle"); txt.setAttribute("font-size", "9px");
         txt.setAttribute("fill", "#0078d7"); txt.setAttribute("font-weight", "bold");
         txt.textContent = conn.id; 
         g.appendChild(txt);
     });
 
-    // --- E. SEGURIDAD (Drenaje general y Alertas) ---
-    // Si hay un drenaje genérico en checklist, lo dibujamos en el centro abajo
-    if (el.props.checklist?.drenaje) {
-        const cx = (s1.x + s2.x) / 2; const cy = (s1.y + s2.y) / 2;
-        // Calculamos el punto inferior central real
-        const centerZ = el.z - radioMeters;
-        // Interpolamos posición X,Y promedio (el centro del cilindro)
-        const centerX3D = (p1_iso.x + p2_iso.x)/2;
-        const centerY3D = (p1_iso.y + p2_iso.y)/2;
-        const drainPos = isoToScreen(centerX3D, centerY3D, centerZ);
-        
-        const dw = radioScreen * 0.05; const dh = radioScreen * 0.15;
-        const drain = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        drain.setAttribute("x", drainPos.x - dw); drain.setAttribute("y", drainPos.y);
-        drain.setAttribute("width", dw*2); drain.setAttribute("height", dh);
-        drain.setAttribute("fill", "#222");
-        g.appendChild(drain);
-    }
-
+    // Alertas y Tag
     const esSeguro = el.props.checklist?.valvulaAlivio && el.props.checklist?.indicadorLlenado;
     if (!esSeguro) {
         body.setAttribute("fill", "#ffe6e6"); body.setAttribute("stroke", "#cc0000");
@@ -482,8 +451,6 @@ function dibujarTanqueGLP(g, screenPos, el, colorBase) {
         textAlert.setAttribute("font-size", radioScreen); textAlert.textContent = "⚠️";
         g.appendChild(textAlert);
     }
-
-    // --- F. TAG ---
     if(el.props.tag) {
         const tag = document.createElementNS("http://www.w3.org/2000/svg", "text");
         const cx = (s1.x + s2.x) / 2; const cy = (s1.y + s2.y) / 2;
@@ -506,7 +473,6 @@ function renderEffects() {
             l.setAttribute("x1",s.x); l.setAttribute("y1",s.y); l.setAttribute("x2",e.x); l.setAttribute("y2",e.y);
             l.setAttribute("class", cls); root.appendChild(l);
         } else if (el.props.tipo === 'tanque_glp') {
-             // Efecto selección Tanque
              const g = document.createElementNS("http://www.w3.org/2000/svg","circle");
              g.setAttribute("cx", s.x); g.setAttribute("cy", s.y); g.setAttribute("r", 20);
              g.setAttribute("class", cls); root.appendChild(g);
@@ -647,7 +613,18 @@ function initLibrary() {
                 lastSubCat = it.subCat;
             }
             const div = document.createElement('div'); div.className='tool-item';
-            div.innerHTML = `<div class="tool-icon" style="color:${it.color||'#aaa'}">${it.icon||'▪'}</div><div class="tool-name">${it.name}</div>`;
+            
+            // Renderizar icono en biblioteca (SVG o texto)
+            let iconHtml = it.icon;
+            if(it.icon && it.icon.startsWith('<svg')) {
+                // Pequeño hack para ajustar SVG en botón
+                iconHtml = it.icon.replace('<svg', `<svg style="width:20px;height:20px;stroke:${it.color||'#aaa'};fill:none;"`);
+            } else {
+                iconHtml = `<div style="font-size:1.2rem;">${it.icon||'▪'}</div>`;
+            }
+            
+            div.innerHTML = `<div class="tool-icon">${iconHtml}</div><div class="tool-name">${it.name}</div>`;
+            
             if (it.info) {
                 const tip = document.createElement('div');
                 tip.className = 'lib-tooltip';
@@ -682,17 +659,90 @@ function renderLayersUI() {
     window.layers.forEach(l => { const opt = document.createElement('option'); opt.value=l.id; opt.innerText=l.name; sel.appendChild(opt); });
 }
 
-// --- FORMULARIO DE PROPIEDADES TANQUE ---
+function updatePropsPanel() {
+    const el = window.elementos.find(x=>x.id===window.estado.selID);
+    const f = document.getElementById('prop-form'); const v = document.getElementById('prop-vacio');
+    const divAdjust = document.getElementById('obj-adjust-controls');
+    const contDatos = document.getElementById('prop-datos-tecnicos-container'); contDatos.innerHTML = ''; 
+    if(!el) { f.style.display='none'; v.style.display='block'; return; }
+    f.style.display='block'; v.style.display='none';
+    
+    document.getElementById('p-visible').checked = (el.visible !== false); 
+    document.getElementById('p-color').value = ensureHex(el.props.customColor || el.props.color || '#cccccc');
+    document.getElementById('p-tag').value = el.props.tag || '';
+    document.getElementById('p-linestyle').value = el.props.tipoLinea || 'solid';
+    document.getElementById('p-capa').value = el.layerId;
+    document.getElementById('p-show-label').checked = el.props.mostrarEtiqueta === true;
+    
+    const u = window.UNITS[window.CONFIG.unit];
+    document.getElementById('lbl-unit-z').innerText = u.label; document.getElementById('p-altura').value = (el.z * u.factor).toFixed(u.precision);
+    const rowFinal = document.getElementById('row-altura-final'); document.getElementById('lbl-unit-z-final').innerText = u.label;
+    
+    if (el && el.props.tipo === 'tanque_glp') {
+        generarFormularioTanque(el, contDatos);
+        if(divAdjust) divAdjust.style.display = 'none';
+    } 
+    else if (el.tipo === 'tuberia' || el.tipo === 'cota') {
+        const finalZ = el.z + el.dz; document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
+        rowFinal.style.display = 'flex'; divAdjust.style.display = 'none'; document.getElementById('row-longitud').style.display = 'flex';
+        const rawLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+        document.getElementById('lbl-unit').innerText = u.label; document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
+    } else {
+        rowFinal.style.display = 'none'; document.getElementById('row-longitud').style.display = 'none';
+        if(el.tipo !== 'texto') {
+             divAdjust.style.display = 'block'; const scaleVal = el.props.scaleFactor || 1.0;
+             document.getElementById('p-scale').value = scaleVal; document.getElementById('p-scale-val').textContent = scaleVal;
+             document.getElementById('p-anchor').value = el.props.anchor || 'center';
+        } else { divAdjust.style.display = 'none'; }
+    }
+    
+    const divGrosor = document.getElementById('row-grosor');
+    if(el.tipo === 'tuberia' && el.props.material) { divGrosor.style.display = 'none'; } else { divGrosor.style.display = 'flex'; document.getElementById('p-grosor').value = el.props.grosor || 2; }
+    if(el.props.rotacion !== undefined) document.getElementById('p-rot').value = el.props.rotacion;
+    
+    if (el.tipo === 'tuberia' && el.props.material) {
+        // ... (lógica material igual) ...
+        const accGroup = document.createElement('div'); accGroup.className = 'acc-group'; accGroup.id = 'grp-tech';
+        const accHead = document.createElement('div'); accHead.className = 'acc-header'; accHead.innerText = 'Datos Técnicos';
+        accHead.onclick = function() { toggleAccordion('grp-tech'); };
+        const accContent = document.createElement('div'); accContent.className = 'acc-content';
+        const rowMat = document.createElement('div'); rowMat.className = 'prop-row';
+        const lblMat = document.createElement('label'); lblMat.innerText = "Material Tubería";
+        const selMat = document.createElement('select'); selMat.className = 'btn';
+        window.CATALOGO.mat.forEach(mItem => {
+            const opt = document.createElement('option'); opt.value = mItem.props.material; opt.innerText = mItem.name;
+            if(el.props.material === mItem.props.material) opt.selected = true;
+            selMat.appendChild(opt);
+        });
+        selMat.onchange = (e) => changeMaterial(e.target.value);
+        rowMat.appendChild(lblMat); rowMat.appendChild(selMat); accContent.appendChild(rowMat);
+        
+        if (window.DIAMETROS_DISPONIBLES[el.props.material]) {
+            const list = window.DIAMETROS_DISPONIBLES[el.props.material];
+            const rowDia = document.createElement('div'); rowDia.className = 'prop-row';
+            const labelDia = document.createElement('label'); labelDia.innerText = "Diámetro Nominal";
+            const selectDia = document.createElement('select'); selectDia.className = 'btn'; selectDia.style.width = '100%';
+            selectDia.onchange = function(e) { window.updateDiametro(e.target.value); };
+            list.forEach(nominal => {
+                const opt = document.createElement('option'); opt.value = nominal; opt.innerText = nominal; 
+                if(el.props.diametroNominal === nominal) opt.selected = true;
+                selectDia.appendChild(opt);
+            });
+            rowDia.appendChild(labelDia); rowDia.appendChild(selectDia); accContent.appendChild(rowDia);
+        }
+        accGroup.appendChild(accHead); accGroup.appendChild(accContent); contDatos.appendChild(accGroup);
+    }
+}
+
+// Generar Formulario Tanque (Mantenido)
 function generarFormularioTanque(el, container) {
     container.innerHTML = ''; 
     const props = el.props;
-    // Migración
     if (!props.conexiones) {
         const n = props.numConexiones || 2;
         props.conexiones = [];
         for(let i=0; i<n; i++) props.conexiones.push({ id: i+1, nombre: `Punto ${i+1}`, tipo: "brida", diametro: '2"', posicion: 'top' });
     }
-    // A. Dimensiones
     const grpDim = document.createElement('div');
     grpDim.className = 'acc-group';
     grpDim.innerHTML = `
@@ -704,7 +754,7 @@ function generarFormularioTanque(el, container) {
         </div>
     `;
     container.appendChild(grpDim);
-    // B. Conexiones
+
     const grpConn = document.createElement('div');
     grpConn.className = 'acc-group';
     const btnAdd = `<button class="btn" style="float:right; font-size:0.7rem; padding:2px 6px;" onclick="addConexionTanque()">+</button>`;
@@ -725,7 +775,6 @@ function generarFormularioTanque(el, container) {
                     <option value="brida" ${conn.tipo==='brida'?'selected':''}>Brida</option>
                     <option value="macho" ${conn.tipo==='macho'?'selected':''}>Macho</option>
                     <option value="hembra" ${conn.tipo==='hembra'?'selected':''}>Hembra</option>
-                    <option value="soldadura" ${conn.tipo==='soldadura'?'selected':''}>Soldadura</option>
                 </select>
                 <select class="btn conn-change" data-idx="${index}" data-field="posicion" style="width:70px; font-size:0.75rem;" title="Posición">
                     <option value="top" ${conn.posicion!=='bottom'?'selected':''}>⬆ Sup</option>
@@ -735,35 +784,30 @@ function generarFormularioTanque(el, container) {
             <div style="display:flex; gap:5px;">
                  <label style="font-size:0.7rem; align-self:center;">Diam:</label>
                  <select class="btn conn-change" data-idx="${index}" data-field="diametro" style="flex:1; font-size:0.75rem;">
-                    <option value='1/2"' ${conn.diametro==='1/2"'?'selected':''}>1/2"</option>
-                    <option value='3/4"' ${conn.diametro==='3/4"'?'selected':''}>3/4"</option>
                     <option value='1"' ${conn.diametro==='1"'?'selected':''}>1"</option>
-                    <option value='1-1/2"' ${conn.diametro==='1-1/2"'?'selected':''}>1.5"</option>
                     <option value='2"' ${conn.diametro==='2"'?'selected':''}>2"</option>
-                    <option value='3"' ${conn.diametro==='3"'?'selected':''}>3"</option>
                     <option value='4"' ${conn.diametro==='4"'?'selected':''}>4"</option>
-                    <option value='6"' ${conn.diametro==='6"'?'selected':''}>6"</option>
                 </select>
             </div>
         `;
         listConn.appendChild(row);
     });
-    // C. Checklist
+
+    // Checkboxes
     const grpChk = document.createElement('div');
     grpChk.className = 'acc-group';
     grpChk.innerHTML = `<div class="acc-header" onclick="this.parentElement.classList.toggle('collapsed')">Checklist Técnico</div><div class="acc-content" id="list-chk"></div>`;
     container.appendChild(grpChk);
     const listChk = grpChk.querySelector('#list-chk');
     const chk = props.checklist || {};
-    const itemsCheck = [ {k:'valvulaAlivio', l:'Válvula Alivio', crit: true}, {k:'indicadorLlenado', l:'Indicador Nivel', crit: true}, {k:'drenaje', l:'Drenaje'}, {k:'rotogate', l:'Rotogate'}, {k:'multivalvulas', l:'Multiválvulas'} ];
+    const itemsCheck = [ {k:'valvulaAlivio', l:'Válvula Alivio', crit: true}, {k:'indicadorLlenado', l:'Indicador Nivel', crit: true}, {k:'drenaje', l:'Drenaje'} ];
     itemsCheck.forEach(it => {
         const div = document.createElement('div');
         div.style.display = 'flex'; div.style.alignItems = 'center'; div.style.marginBottom = '4px';
-        const isMissingCrit = it.crit && !chk[it.k];
-        if(isMissingCrit) div.style.color = "#ff6666";
-        div.innerHTML = `<input type="checkbox" class="chk-tanque" data-key="${it.k}" ${chk[it.k] ? 'checked' : ''} style="margin-right:8px;"><span style="font-size:0.8rem">${it.l} ${it.crit ? '*' : ''}</span>`;
+        div.innerHTML = `<input type="checkbox" class="chk-tanque" data-key="${it.k}" ${chk[it.k] ? 'checked' : ''} style="margin-right:8px;"><span style="font-size:0.8rem">${it.l}</span>`;
         listChk.appendChild(div);
     });
+
     // Listeners
     container.querySelectorAll('.inp-tanque').forEach(inp => {
         inp.onchange = (e) => { el.props[e.target.dataset.key] = parseFloat(e.target.value); window.saveState(); renderScene(); updatePropsPanel(); };
@@ -779,7 +823,6 @@ function generarFormularioTanque(el, container) {
             window.saveState(); renderScene();
         };
     });
-    // Helpers locales
     window.addConexionTanque = () => {
         const id = el.props.conexiones.length + 1;
         el.props.conexiones.push({ id: id, nombre: "Nuevo", tipo: "macho", diametro: '1"', posicion: 'top' });
@@ -790,73 +833,7 @@ function generarFormularioTanque(el, container) {
         window.saveState(); updatePropsPanel(); renderScene();
     };
 }
-function updatePropsPanel() {
-    const el = window.elementos.find(x=>x.id===window.estado.selID);
-    const f = document.getElementById('prop-form'); const v = document.getElementById('prop-vacio');
-    const divAdjust = document.getElementById('obj-adjust-controls');
-    const contDatos = document.getElementById('prop-datos-tecnicos-container'); contDatos.innerHTML = ''; 
-    if(!el) { f.style.display='none'; v.style.display='block'; return; }
-    f.style.display='block'; v.style.display='none';
-    document.getElementById('p-visible').checked = (el.visible !== false); 
-    document.getElementById('p-color').value = ensureHex(el.props.customColor || el.props.color || '#cccccc');
-    document.getElementById('p-tag').value = el.props.tag || '';
-    document.getElementById('p-linestyle').value = el.props.tipoLinea || 'solid';
-    document.getElementById('p-capa').value = el.layerId;
-    document.getElementById('p-show-label').checked = el.props.mostrarEtiqueta === true;
-    const u = window.UNITS[window.CONFIG.unit];
-    document.getElementById('lbl-unit-z').innerText = u.label; document.getElementById('p-altura').value = (el.z * u.factor).toFixed(u.precision);
-    const rowFinal = document.getElementById('row-altura-final'); document.getElementById('lbl-unit-z-final').innerText = u.label;
-    if (el && el.props.tipo === 'tanque_glp') {
-        generarFormularioTanque(el, contDatos);
-        if(divAdjust) divAdjust.style.display = 'none';
-    } 
-    else if (el.tipo === 'tuberia' || el.tipo === 'cota') {
-        const finalZ = el.z + el.dz; document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
-        rowFinal.style.display = 'flex'; divAdjust.style.display = 'none'; document.getElementById('row-longitud').style.display = 'flex';
-        const rawLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
-        document.getElementById('lbl-unit').innerText = u.label; document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
-    } else {
-        rowFinal.style.display = 'none'; document.getElementById('row-longitud').style.display = 'none';
-        if(el.tipo !== 'texto') {
-             divAdjust.style.display = 'block'; const scaleVal = el.props.scaleFactor || 1.0;
-             document.getElementById('p-scale').value = scaleVal; document.getElementById('p-scale-val').textContent = scaleVal;
-             document.getElementById('p-anchor').value = el.props.anchor || 'center';
-        } else { divAdjust.style.display = 'none'; }
-    }
-    const divGrosor = document.getElementById('row-grosor');
-    if(el.tipo === 'tuberia' && el.props.material) { divGrosor.style.display = 'none'; } else { divGrosor.style.display = 'flex'; document.getElementById('p-grosor').value = el.props.grosor || 2; }
-    if(el.props.rotacion !== undefined) document.getElementById('p-rot').value = el.props.rotacion;
-    if (el.tipo === 'tuberia' && el.props.material) {
-        const accGroup = document.createElement('div'); accGroup.className = 'acc-group'; accGroup.id = 'grp-tech';
-        const accHead = document.createElement('div'); accHead.className = 'acc-header'; accHead.innerText = 'Datos Técnicos';
-        accHead.onclick = function() { toggleAccordion('grp-tech'); };
-        const accContent = document.createElement('div'); accContent.className = 'acc-content';
-        const rowMat = document.createElement('div'); rowMat.className = 'prop-row';
-        const lblMat = document.createElement('label'); lblMat.innerText = "Material Tubería";
-        const selMat = document.createElement('select'); selMat.className = 'btn';
-        window.CATALOGO.mat.forEach(mItem => {
-            const opt = document.createElement('option'); opt.value = mItem.props.material; opt.innerText = mItem.name;
-            if(el.props.material === mItem.props.material) opt.selected = true;
-            selMat.appendChild(opt);
-        });
-        selMat.onchange = (e) => changeMaterial(e.target.value);
-        rowMat.appendChild(lblMat); rowMat.appendChild(selMat); accContent.appendChild(rowMat);
-        if (window.DIAMETROS_DISPONIBLES[el.props.material]) {
-            const list = window.DIAMETROS_DISPONIBLES[el.props.material];
-            const rowDia = document.createElement('div'); rowDia.className = 'prop-row';
-            const labelDia = document.createElement('label'); labelDia.innerText = "Diámetro Nominal";
-            const selectDia = document.createElement('select'); selectDia.className = 'btn'; selectDia.style.width = '100%';
-            selectDia.onchange = function(e) { window.updateDiametro(e.target.value); };
-            list.forEach(nominal => {
-                const opt = document.createElement('option'); opt.value = nominal; opt.innerText = nominal; 
-                if(el.props.diametroNominal === nominal) opt.selected = true;
-                selectDia.appendChild(opt);
-            });
-            rowDia.appendChild(labelDia); rowDia.appendChild(selectDia); accContent.appendChild(rowDia);
-        }
-        accGroup.appendChild(accHead); accGroup.appendChild(accContent); contDatos.appendChild(accGroup);
-    }
-}
+
 // --- HELPERS GLOBALES ---
 window.togLay = (id) => { const l=window.layers.find(x=>x.id===id); l.visible=!l.visible; renderLayersUI(); renderScene(); }
 window.addLayer = () => { window.layers.push({id:'l'+Date.now(), name:'Nueva', color:'#fff', visible:true}); renderLayersUI(); }
@@ -896,4 +873,4 @@ window.updateAltura = function(valUser) {
     const u = window.UNITS[window.CONFIG.unit]; el.z = num / u.factor;
     window.saveState(); renderScene(); renderEffects(); updatePropsPanel();
 }
-console.log("✅ Renderer cargado");
+console.log("✅ Renderer cargado con soporte P&ID SVG");
