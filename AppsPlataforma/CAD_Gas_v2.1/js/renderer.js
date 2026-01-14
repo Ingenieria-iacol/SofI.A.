@@ -33,12 +33,8 @@ function getSnapPoints(el) {
     // Centro base
     const pts = [{x: el.x, y: el.y, z: el.z}]; 
 
-    // Puntos específicos para Tanques (Las conexiones definidas)
-    if(el.props.tipo === 'tanque_glp' && el.props.conexiones) {
-        // Debemos recalcular la posición 3D de cada nozzle para que el snap funcione ahí
-        // (Nota: Esto es cálculo avanzado, por simplicidad mantenemos centro por ahora,
-        // pero aquí es donde agregarías la lógica si quieres que el snap "imante" a las válvulas)
-    }
+    // TODO: Calcular coordenadas 3D exactas de las boquillas para snap magnético
+    // Por ahora mantiene el snap al centro y extremos del cuerpo
 
     if(el.tipo === 'valvula' || el.tipo === 'equipo') {
         const scale = el.props.scaleFactor || 1.0;
@@ -305,7 +301,7 @@ function renderScene() {
 }
 
 // ==========================================
-// 4. DIBUJO AVANZADO: TANQUE 3D CONFIGURABLE
+// 4. DIBUJO AVANZADO: TANQUE 3D CON CONEXIONES
 // ==========================================
 
 function dibujarTanqueGLP(g, screenPos, el, colorBase) {
@@ -318,6 +314,7 @@ function dibujarTanqueGLP(g, screenPos, el, colorBase) {
     // 2. Orientación 3D
     const rotacionGrados = parseFloat(el.props.rotacion || 0);
     const rads = rotacionGrados * Math.PI / 180;
+    
     const dx = Math.cos(rads) * (longitudReal / 2);
     const dy = Math.sin(rads) * (longitudReal / 2);
     
@@ -327,36 +324,24 @@ function dibujarTanqueGLP(g, screenPos, el, colorBase) {
     const s2 = isoToScreen(p2_iso.x, p2_iso.y, p2_iso.z);
     
     // Colores
-    const colorCuerpo = "#eeeeee"; const colorSombra = "#cccccc"; const strokeCol = colorBase || "#555";
+    const colorCuerpo = "#eeeeee"; 
+    const colorSombra = "#cccccc"; 
+    const strokeCol = colorBase || "#555";
 
-    // Geometría en pantalla
+    // Geometría en pantalla (Perpendicular para el grosor)
     const angleScreen = Math.atan2(s2.y - s1.y, s2.x - s1.x);
+    // Vector Perpendicular (Radio)
     const perpX = Math.cos(angleScreen + Math.PI/2) * radioScreen;
     const perpY = Math.sin(angleScreen + Math.PI/2) * radioScreen;
     
-    // Vector "Arriba" en visualización (perpendicular al eje del cilindro en pantalla)
-    // Para que las válvulas giren CON el tanque, usamos perpX y perpY pero invertidos para "arriba"
+    // IMPORTANTE: Definir el vector "ARRIBA" en el lomo del tanque.
+    // Como estamos en proyección isométrica de un cilindro horizontal, 
+    // el punto más alto del círculo (lomo) siempre está opuesto al vector perpendicular inferior.
+    // Usaremos -perpX, -perpY como dirección "Arriba" relativa al eje.
     const upX = -perpX; 
     const upY = -perpY;
 
-    // --- A. DRENAJE ---
-    const chk = el.props.checklist || {};
-    if (chk.drenaje) {
-        const cx = (s1.x + s2.x) / 2; const cy = (s1.y + s2.y) / 2;
-        // Drenaje hacia abajo (opuesto a upX, upY)
-        const drainX = cx - (upX * 0.9); 
-        const drainY = cy - (upY * 0.9); 
-
-        const drainW = radioScreen * 0.1; const drainH = radioScreen * 0.2;
-        // Pequeño tubo hacia abajo absoluto (simulando gravedad)
-        const drain = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        drain.setAttribute("d", `M ${drainX},${drainY} L ${drainX},${drainY + drainH} L ${drainX + drainW},${drainY + drainH} L ${drainX + drainW},${drainY} Z`);
-        drain.setAttribute("fill", "#333");
-        drain.setAttribute("stroke", strokeCol);
-        g.appendChild(drain);
-    }
-
-    // --- B. CUERPO ---
+    // --- B. DIBUJAR CUERPO (Fondo) ---
     const bodyPath = `M ${s1.x + perpX},${s1.y + perpY} L ${s2.x + perpX},${s2.y + perpY} L ${s2.x - perpX},${s2.y - perpY} L ${s1.x - perpX},${s1.y - perpY} Z`;
     const body = document.createElementNS("http://www.w3.org/2000/svg", "path");
     body.setAttribute("d", bodyPath); body.setAttribute("fill", colorCuerpo); body.setAttribute("stroke", strokeCol); body.setAttribute("stroke-width", 2);
@@ -377,7 +362,7 @@ function dibujarTanqueGLP(g, screenPos, el, colorBase) {
     tapa1.setAttribute("fill", "#ffffff"); tapa1.setAttribute("stroke", strokeCol);
     g.appendChild(tapa1);
 
-    // --- D. CONEXIONES CONFIGURABLES ---
+    // --- D. DIBUJAR CONEXIONES CONFIGURABLES ---
     const conexiones = el.props.conexiones || [];
     const num = conexiones.length;
     
@@ -387,67 +372,92 @@ function dibujarTanqueGLP(g, screenPos, el, colorBase) {
         const axisX = s1.x + (s2.x - s1.x) * t;
         const axisY = s1.y + (s2.y - s1.y) * t;
         
-        // Posición sobre la superficie (Top)
-        const topX = axisX + upX; 
-        const topY = axisY + upY;
+        // Determinar posición (Lomo o Vientre)
+        const isBottom = conn.posicion === 'bottom';
+        // Si es bottom, sumamos perpX (bajamos), si es top, restamos (subimos/upX)
+        const posX = axisX + (isBottom ? perpX * 0.9 : upX * 0.9);
+        const posY = axisY + (isBottom ? perpY * 0.9 : upY * 0.9);
         
         // Escala real según diámetro
         const diamPix = window.parseDiameterToScale(conn.diametro); 
         const radiusConn = diamPix / 2;
-        const heightConn = Math.max(10, diamPix * 1.2); 
+        const heightConn = Math.max(8, diamPix * 1.5); 
         
+        // Vector dirección del tubo de conexión (hacia afuera del tanque)
+        // Si es Top, va hacia upX. Si es Bottom, va hacia perpX.
+        // Normalizamos vector up
+        const lenUp = Math.sqrt(upX*upX + upY*upY);
+        const normUpX = upX / lenUp; const normUpY = upY / lenUp;
+        
+        // Vector de extrusión de la boquilla
+        const extX = isBottom ? (-normUpX * heightConn) : (normUpX * heightConn);
+        const extY = isBottom ? (-normUpY * heightConn) : (normUpY * heightConn);
+
+        // Punto final de la boquilla
+        const endX = posX + extX;
+        const endY = posY + extY;
+
         const tipo = conn.tipo || 'macho';
         
-        // Dibujo según tipo
+        // DIBUJO DEL CUELLO (NECK)
+        // Usamos path para que siga la dirección correcta
+        // Vector perpendicular al cuello (para el ancho)
+        const pNeckX = -normUpY * radiusConn;
+        const pNeckY = normUpX * radiusConn;
+
+        const neck = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        neck.setAttribute("d", `
+            M ${posX + pNeckX},${posY + pNeckY} 
+            L ${endX + pNeckX},${endY + pNeckY} 
+            L ${endX - pNeckX},${endY - pNeckY} 
+            L ${posX - pNeckX},${posY - pNeckY} Z
+        `);
+        neck.setAttribute("fill", "#555");
+        neck.setAttribute("stroke", "#222");
+        neck.setAttribute("stroke-width", "0.5");
+        
+        // Si es bottom, lo dibujamos ANTES que el cuerpo (append antes?), 
+        // pero como ya dibujamos el cuerpo, usamos insertBefore si queremos que quede atrás.
+        // Por ahora lo dibujamos encima para que se vea claro.
+        g.appendChild(neck);
+
+        // DETALLES SEGÚN TIPO
         if (tipo === 'brida') {
-            // Cuello
-            const neck = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            neck.setAttribute("x", topX - radiusConn); neck.setAttribute("y", topY - heightConn);
-            neck.setAttribute("width", diamPix); neck.setAttribute("height", heightConn);
-            neck.setAttribute("fill", "#555");
-            g.appendChild(neck);
-            // Plato Brida
-            const flange = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-            flange.setAttribute("cx", topX); flange.setAttribute("cy", topY - heightConn);
-            flange.setAttribute("rx", radiusConn * 2.2); flange.setAttribute("ry", radiusConn * 0.8);
+            // Plato Brida en el extremo
+            const fW = radiusConn * 2.2; 
+            const fH = 3; // Grosor del plato
+            // Dibujamos un rectangulo perpendicular en el extremo
+            const fPX = -normUpY * fW; const fPY = normUpX * fW;
+            const flange = document.createElementNS("http://www.w3.org/2000/svg", "path");
+             flange.setAttribute("d", `
+                M ${endX + fPX},${endY + fPY} 
+                L ${endX + fPX + normUpX*fH},${endY + fPY + normUpY*fH} 
+                L ${endX - fPX + normUpX*fH},${endY - fPY + normUpY*fH} 
+                L ${endX - fPX},${endY - fPY} Z
+            `);
             flange.setAttribute("fill", "#333");
             g.appendChild(flange);
             
         } else if (tipo === 'hembra') {
-            // Cople (más ancho que el tubo nominal)
-            const copleW = diamPix * 1.4;
-            const cople = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            cople.setAttribute("x", topX - copleW/2); cople.setAttribute("y", topY - heightConn/2);
-            cople.setAttribute("width", copleW); cople.setAttribute("height", heightConn/2);
-            cople.setAttribute("fill", "#444"); cople.setAttribute("stroke", "#222");
-            g.appendChild(cople);
+            // Cople (más ancho que el tubo nominal) en la base
+            const cW = radiusConn * 1.4;
+            const cPX = -normUpY * cW; const cPY = normUpX * cW;
+            const midX = posX + extX * 0.5; const midY = posY + extY * 0.5;
             
-        } else if (tipo === 'soldadura') {
-             // Filete cónico abajo
-             const fillet = document.createElementNS("http://www.w3.org/2000/svg", "path");
-             fillet.setAttribute("d", `M ${topX - radiusConn*1.5},${topY} L ${topX + radiusConn*1.5},${topY} L ${topX},${topY - heightConn/3} Z`);
-             fillet.setAttribute("fill", "#777");
-             g.appendChild(fillet);
-             // Tubo
-             const tube = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-             tube.setAttribute("x", topX - radiusConn); tube.setAttribute("y", topY - heightConn);
-             tube.setAttribute("width", diamPix); tube.setAttribute("height", heightConn);
-             tube.setAttribute("fill", "#666");
-             g.appendChild(tube);
-             
-        } else { // Macho (Default)
-             const tube = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-             tube.setAttribute("x", topX - radiusConn); tube.setAttribute("y", topY - heightConn);
-             tube.setAttribute("width", diamPix); tube.setAttribute("height", heightConn);
-             tube.setAttribute("fill", "#888"); tube.setAttribute("stroke", "#444");
-             // Rayas de rosca
-             tube.setAttribute("stroke-dasharray", "2,2");
-             g.appendChild(tube);
+            const cople = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            cople.setAttribute("d", `
+                M ${posX + cPX},${posY + cPY} 
+                L ${midX + cPX},${midY + cPY} 
+                L ${midX - cPX},${midY - cPY} 
+                L ${posX - cPX},${posY - cPY} Z
+            `);
+            cople.setAttribute("fill", "#444");
+            g.appendChild(cople);
         }
 
-        // Etiqueta número conexión
+        // Etiqueta ID
         const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        txt.setAttribute("x", topX); txt.setAttribute("y", topY - heightConn - 5);
+        txt.setAttribute("x", endX); txt.setAttribute("y", endY + (isBottom ? 10 : -5));
         txt.setAttribute("text-anchor", "middle"); txt.setAttribute("font-size", "9px");
         txt.setAttribute("fill", "#0078d7"); txt.setAttribute("font-weight", "bold");
         txt.textContent = conn.id; 
@@ -455,7 +465,7 @@ function dibujarTanqueGLP(g, screenPos, el, colorBase) {
     });
 
     // --- E. SEGURIDAD ---
-    const esSeguro = chk.valvulaAlivio && chk.indicadorLlenado;
+    const esSeguro = el.props.checklist?.valvulaAlivio && el.props.checklist?.indicadorLlenado;
     if (!esSeguro) {
         body.setAttribute("fill", "#ffe6e6"); body.setAttribute("stroke", "#cc0000");
         const textAlert = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -489,7 +499,6 @@ function renderEffects() {
             l.setAttribute("x1",s.x); l.setAttribute("y1",s.y); l.setAttribute("x2",e.x); l.setAttribute("y2",e.y);
             l.setAttribute("class", cls); root.appendChild(l);
         } else if (el.props.tipo === 'tanque_glp') {
-             // Efecto selección Tanque
              const g = document.createElementNS("http://www.w3.org/2000/svg","circle");
              g.setAttribute("cx", s.x); g.setAttribute("cy", s.y); g.setAttribute("r", 20);
              g.setAttribute("class", cls); root.appendChild(g);
@@ -678,7 +687,7 @@ function generarFormularioTanque(el, container) {
     if (!props.conexiones) {
         const n = props.numConexiones || 2;
         props.conexiones = [];
-        for(let i=0; i<n; i++) props.conexiones.push({ id: i+1, nombre: `Punto ${i+1}`, tipo: "brida", diametro: '2"' });
+        for(let i=0; i<n; i++) props.conexiones.push({ id: i+1, nombre: `Punto ${i+1}`, tipo: "brida", diametro: '2"', posicion: 'top' });
     }
 
     // A. Dimensiones
@@ -718,14 +727,21 @@ function generarFormularioTanque(el, container) {
                 <span style="font-weight:bold; color:#0078d7; font-size:0.8rem;">#${index+1} ${conn.nombre}</span>
                 <span style="cursor:pointer; color:#d44;" onclick="delConexionTanque(${index})">✕</span>
             </div>
-            <div style="display:flex; gap:5px;">
+            <div style="display:flex; gap:5px; margin-bottom:4px;">
                 <select class="btn conn-change" data-idx="${index}" data-field="tipo" style="flex:1; font-size:0.75rem;">
                     <option value="brida" ${conn.tipo==='brida'?'selected':''}>Brida</option>
-                    <option value="macho" ${conn.tipo==='macho'?'selected':''}>Macho (Rosca)</option>
-                    <option value="hembra" ${conn.tipo==='hembra'?'selected':''}>Hembra (Cople)</option>
+                    <option value="macho" ${conn.tipo==='macho'?'selected':''}>Macho</option>
+                    <option value="hembra" ${conn.tipo==='hembra'?'selected':''}>Hembra</option>
                     <option value="soldadura" ${conn.tipo==='soldadura'?'selected':''}>Soldadura</option>
                 </select>
-                <select class="btn conn-change" data-idx="${index}" data-field="diametro" style="width:70px; font-size:0.75rem;">
+                <select class="btn conn-change" data-idx="${index}" data-field="posicion" style="width:70px; font-size:0.75rem;" title="Posición">
+                    <option value="top" ${conn.posicion!=='bottom'?'selected':''}>⬆ Sup</option>
+                    <option value="bottom" ${conn.posicion==='bottom'?'selected':''}>⬇ Inf</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:5px;">
+                 <label style="font-size:0.7rem; align-self:center;">Diam:</label>
+                 <select class="btn conn-change" data-idx="${index}" data-field="diametro" style="flex:1; font-size:0.75rem;">
                     <option value='1/2"' ${conn.diametro==='1/2"'?'selected':''}>1/2"</option>
                     <option value='3/4"' ${conn.diametro==='3/4"'?'selected':''}>3/4"</option>
                     <option value='1"' ${conn.diametro==='1"'?'selected':''}>1"</option>
@@ -733,6 +749,7 @@ function generarFormularioTanque(el, container) {
                     <option value='2"' ${conn.diametro==='2"'?'selected':''}>2"</option>
                     <option value='3"' ${conn.diametro==='3"'?'selected':''}>3"</option>
                     <option value='4"' ${conn.diametro==='4"'?'selected':''}>4"</option>
+                    <option value='6"' ${conn.diametro==='6"'?'selected':''}>6"</option>
                 </select>
             </div>
         `;
@@ -776,7 +793,7 @@ function generarFormularioTanque(el, container) {
     // Helpers locales asignados a window para los botones + y x
     window.addConexionTanque = () => {
         const id = el.props.conexiones.length + 1;
-        el.props.conexiones.push({ id: id, nombre: "Nuevo", tipo: "macho", diametro: '1"' });
+        el.props.conexiones.push({ id: id, nombre: "Nuevo", tipo: "macho", diametro: '1"', posicion: 'top' });
         window.saveState(); updatePropsPanel(); renderScene();
     };
     window.delConexionTanque = (idx) => {
@@ -858,7 +875,7 @@ function updatePropsPanel() {
     }
 }
 
-// --- HELPERS GLOBALES ---
+// --- HELPERS GLOBALES DE UI ---
 window.togLay = (id) => { const l=window.layers.find(x=>x.id===id); l.visible=!l.visible; renderLayersUI(); renderScene(); }
 window.addLayer = () => { window.layers.push({id:'l'+Date.now(), name:'Nueva', color:'#fff', visible:true}); renderLayersUI(); }
 window.updateAlturaFinal = function(valUser) {
