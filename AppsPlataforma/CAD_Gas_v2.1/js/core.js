@@ -32,7 +32,7 @@ window.estado = {
 let historyStack = [];
 let historyIndex = -1;
 const MAX_HISTORY = 50;
-let insertCoords = { x:0, y:0 }; // Variable auxiliar para inserción
+let insertCoords = { x:0, y:0 }; 
 
 // ==========================================
 // 2. SISTEMA DE HISTORIAL (UNDO/REDO)
@@ -41,7 +41,6 @@ window.saveState = function() {
     if (historyIndex < historyStack.length - 1) {
         historyStack = historyStack.slice(0, historyIndex + 1);
     }
-    // Guardamos una copia profunda de los elementos
     const state = JSON.stringify(window.elementos);
     historyStack.push(state);
     if (historyStack.length > MAX_HISTORY) historyStack.shift();
@@ -69,7 +68,6 @@ function restaurarEstado(jsonState) {
     window.elementos = JSON.parse(jsonState);
     window.estado.selID = null; 
     
-    // Actualizamos la vista (funciones de renderer.js)
     if(typeof renderScene === 'function') renderScene();
     if(typeof updatePropsPanel === 'function') updatePropsPanel();
     
@@ -88,7 +86,6 @@ function updateUndoRedoUI() {
 // 3. GESTIÓN DE ELEMENTOS (CRUD)
 // ==========================================
 window.addEl = function(data) { 
-    // Heredar diámetro si no existe y está en el ítem activo
     if(!data.props.diametroNominal && window.estado.activeItem?.props?.diametroNominal) { 
         data.props.diametroNominal = window.estado.activeItem.props.diametroNominal; 
     }
@@ -126,7 +123,6 @@ window.setTool = function(t) {
     
     if(typeof renderEffects === 'function') renderEffects(); 
     
-    // Actualizar UI de botones
     document.querySelectorAll('.tool-item').forEach(x => x.classList.remove('active'));
     ['btn-select','btn-cota','btn-texto', 'btn-insert','btn-cut'].forEach(id => { 
         const btn = document.getElementById(id); 
@@ -151,7 +147,6 @@ window.moverConConexiones = function(idElemento, dx, dy, dz) {
     
     el.x += dx; el.y += dy; el.z += dz;
 
-    // Helper para comparar puntos (de utils.js)
     const check = window.arePointsEqual;
 
     window.elementos.forEach(vecino => {
@@ -181,10 +176,8 @@ window.cortarTuberia = function(idTuberia, xCorte, yCorte, zCorte) {
     const finalOriginal = { x: el.x + el.dx, y: el.y + el.dy, z: el.z + el.dz };
     const propsOriginal = JSON.parse(JSON.stringify(el.props));
     
-    // Modificar actual
     el.dx = xCorte - el.x; el.dy = yCorte - el.y; el.dz = zCorte - el.z;
     
-    // Crear nueva
     const dx2 = finalOriginal.x - xCorte; 
     const dy2 = finalOriginal.y - yCorte; 
     const dz2 = finalOriginal.z - zCorte;
@@ -199,8 +192,10 @@ window.cortarTuberia = function(idTuberia, xCorte, yCorte, zCorte) {
     });
 }
 
+// --- AQUÍ ESTABA EL ERROR: CORREGIDO ---
 window.analizarRed = function() {
-    const mapNodos = new Map(); const accesorios = [];
+    const mapNodos = new Map(); 
+    const accesorios = [];
     
     window.elementos.forEach(el => {
         if (el.tipo !== 'tuberia' || el.visible === false) return;
@@ -226,26 +221,31 @@ window.analizarRed = function() {
         const parts = key.split('_').map(p => parseFloat(p) * window.EPSILON_GRID);
         const x = parts[0], y = parts[1], z = parts[2]; 
         
+        // CORRECCIÓN: Definimos las propiedades base usando la primera conexión disponible
+        const baseProps = conns[0] || { color: '#ccc', width: 2 };
+        
         if (conns.length === 2) {
             const c1 = conns[0]; const c2 = conns[1];
             const dot = c1.dir.x * c2.dir.x + c1.dir.y * c2.dir.y + c1.dir.z * c2.dir.z;
             
+            const maxWidth = Math.max(c1.width, c2.width);
+
             if (dot < -0.99 && Math.abs(c1.width - c2.width) > 0.5) { 
-                accesorios.push({ tipo: 'reductor_auto', x, y, z, dirs: [c1.dir, c2.dir], color: base.color, width: Math.max(c1.width, c2.width) }); 
+                accesorios.push({ tipo: 'reductor_auto', x, y, z, dirs: [c1.dir, c2.dir], color: baseProps.color, width: maxWidth }); 
             } else if (dot > -0.99 && dot < 0.99) { 
-                accesorios.push({ tipo: 'codo_auto', x, y, z, dirs: [c1.dir, c2.dir], color: base.color, width: Math.max(c1.width, c2.width) }); 
+                accesorios.push({ tipo: 'codo_auto', x, y, z, dirs: [c1.dir, c2.dir], color: baseProps.color, width: maxWidth }); 
             }
         } else if (conns.length === 3) { 
-            accesorios.push({ tipo: 'tee_auto', x, y, z, dirs: conns.map(c=>c.dir), color: base.color, width: base.width }); 
+            accesorios.push({ tipo: 'tee_auto', x, y, z, dirs: conns.map(c=>c.dir), color: baseProps.color, width: baseProps.width }); 
         } else if (conns.length === 4) { 
-            accesorios.push({ tipo: 'cruz_auto', x, y, z, dirs: conns.map(c=>c.dir), color: base.color, width: base.width }); 
+            accesorios.push({ tipo: 'cruz_auto', x, y, z, dirs: conns.map(c=>c.dir), color: baseProps.color, width: baseProps.width }); 
         }
     });
     return accesorios;
 }
 
 // ==========================================
-// 5. HELPERS DE INTERACCIÓN (Inputs, Clicks, Insertar)
+// 5. HELPERS DE INTERACCIÓN
 // ==========================================
 window.mostrarInputDinámico = function(xScreen, yScreen, distActual, vectorData) {
     const box = document.getElementById('dynamic-input-container'); 
@@ -342,7 +342,6 @@ window.handleCanvasClick = function(e) {
     let lockedAxis = null;
     
     if (window.estado.drawing && window.estado.inicio && !window.estado.snapped) {
-        // Lógica de ejes ortogonales
         const gridX = Math.round(window.estado.mouseIso.x * 10) / 10;
         const gridY = Math.round(window.estado.mouseIso.y * 10) / 10;
         const dx = gridX - window.estado.inicio.x; 
@@ -391,17 +390,19 @@ window.abrirModalInsertar = function(x, y, zDefault) {
     const sel = document.getElementById('ins-select'); sel.innerHTML = '';
     const groupNames = { mat: 'Materiales (Tuberías)', comp: 'Componentes', eq: 'Equipos', inst: 'Instrumentos', perif: 'Periféricos / Válvulas', cons: 'Consumibles' };
     
-    Object.keys(window.CATALOGO).forEach(key => {
-        const group = document.createElement('optgroup'); group.label = groupNames[key] || key.toUpperCase();
-        window.CATALOGO[key].forEach(item => { 
-            const opt = document.createElement('option'); 
-            opt.value = key + '|' + item.id; 
-            opt.innerText = item.name; 
-            opt.setAttribute('data-type', item.type); 
-            group.appendChild(opt); 
+    if (window.CATALOGO) {
+        Object.keys(window.CATALOGO).forEach(key => {
+            const group = document.createElement('optgroup'); group.label = groupNames[key] || key.toUpperCase();
+            window.CATALOGO[key].forEach(item => { 
+                const opt = document.createElement('option'); 
+                opt.value = key + '|' + item.id; 
+                opt.innerText = item.name; 
+                opt.setAttribute('data-type', item.type); 
+                group.appendChild(opt); 
+            });
+            sel.appendChild(group);
         });
-        sel.appendChild(group);
-    });
+    }
     
     const u = window.UNITS[window.CONFIG.unit]; 
     document.getElementById('ins-z1').value = (zDefault * u.factor).toFixed(u.precision); 
@@ -445,16 +446,14 @@ window.ejecutarInsercion = function() {
 }
 
 // ==========================================
-// 6. GESTIÓN DE ARCHIVOS Y REPORTES (¡REPARADO!)
+// 6. GESTIÓN DE ARCHIVOS Y REPORTES
 // ==========================================
 
-// Guardar Proyecto (Abre Modal)
 window.guardarProyecto = function() { 
     document.getElementById('modal-guardar').style.display = 'flex'; 
     document.getElementById('input-filename').focus(); 
 }
 
-// Confirmar Descarga JSON
 window.confirmarDescarga = function() {
     let nombre = document.getElementById('input-filename').value || 'proyecto_gas'; 
     if (!nombre.endsWith('.json')) { nombre += '.json'; }
@@ -476,7 +475,6 @@ window.confirmarDescarga = function() {
     document.getElementById('modal-guardar').style.display = 'none';
 }
 
-// Guardar en Navegador (LocalStorage)
 window.guardarEnNavegador = function() { 
     try { 
         const datos = JSON.stringify({ 
@@ -498,7 +496,6 @@ window.guardarEnNavegador = function() {
     } 
 }
 
-// Cargar Proyecto (Desde Archivo)
 window.cargarProyecto = function(inputElement){ 
     if (!inputElement.files.length) return;
     const r = new FileReader(); 
@@ -519,7 +516,6 @@ window.cargarProyecto = function(inputElement){
     r.readAsText(inputElement.files[0]); 
 }
 
-// Limpiar Lienzo
 window.limpiarTodo = function(){ 
     if(confirm("¿Estás seguro de borrar todo?")){
         window.elementos = []; 
@@ -528,7 +524,7 @@ window.limpiarTodo = function(){
     } 
 }
 
-// Mostrar Reporte (Tabla)
+// --- FUNCIÓN DE REPORTE CORREGIDA ---
 window.mostrarReporte = function(){
     let html=""; let counts={};
     window.elementos.forEach(el=>{
@@ -543,13 +539,17 @@ window.mostrarReporte = function(){
             counts[key]=(counts[key]||0)+l; 
         } else if (el.tipo !== 'cota' && el.tipo !== 'texto') { 
             let key = el.name || el.tipo; 
+            if(el.props && el.props.modelo) key += ` (${el.props.modelo})`;
             counts[key]=(counts[key]||0)+1; 
         }
     });
     
-    // Agregar accesorios auto
+    // Ahora que analizarRed está arreglado, esto funcionará
     if(typeof window.analizarRed === 'function') {
         const autoFittings = window.analizarRed();
+        const baseColor = '#ccc';
+        const baseWidth = 2;
+        
         autoFittings.forEach(fit => { 
             let key = ""; 
             if (fit.tipo === 'codo_auto') key = "Codo 90° (Auto)"; 
@@ -577,7 +577,7 @@ window.mostrarReporte = function(){
     }
 }
 
-// Exportar CSV
+// --- FUNCIÓN DE EXPORTAR CSV CORREGIDA ---
 window.exportarCSV = function() {
     let csvContent = "data:text/csv;charset=utf-8,"; csvContent += "Tipo,Descripcion,Detalle,Cantidad/Longitud,Unidad\r\n";
     let counts = {};
@@ -593,7 +593,10 @@ window.exportarCSV = function() {
             val = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2); 
             unit = "m";
         } else if (el.tipo === 'cota' || el.tipo === 'texto') { return; } 
-        else { detail = el.props.modelo || el.props.tipo || ""; }
+        else { 
+            detail = el.props.modelo || el.props.tipo || ""; 
+            if (el.props.tipo === 'tanque_glp') { desc = "Tanque GLP"; detail = `Cap: ${el.props.capacidadGalones || 0} gl`; }
+        }
         
         let key = `${type}|${desc}|${detail}|${unit}`; 
         if(!counts[key]) counts[key] = 0; counts[key] += val;
@@ -617,8 +620,16 @@ window.exportarCSV = function() {
 
     for (let key in counts) {
         let parts = key.split('|'); 
-        let valStr = counts[key]; 
-        if(parts[3] === 'm') valStr = window.formatLength(counts[key]).replace(' m','');
+        let rawVal = counts[key];
+        let valStr = rawVal.toString().replace('.',','); // Formato Excel (coma decimal)
+        
+        // Si es metros, lo convertimos a la unidad de visualización si es necesario, 
+        // pero para CSV es mejor dejarlo limpio o formatearlo bien.
+        if(parts[3] === 'm') {
+             // Opcional: usar formatLength y quitar la 'm'
+             valStr = window.formatLength(rawVal).replace(/[^\d.,]/g,'').trim();
+        }
+        
         csvContent += `${parts[0]},${parts[1]},${parts[2]},${valStr},${parts[3]}\r\n`;
     }
     
@@ -631,4 +642,4 @@ window.exportarCSV = function() {
     document.body.removeChild(link);
 }
 
-console.log("✅ Core Logic (Full) cargado");
+console.log("✅ Core Logic (Full) cargado y CORREGIDO");
