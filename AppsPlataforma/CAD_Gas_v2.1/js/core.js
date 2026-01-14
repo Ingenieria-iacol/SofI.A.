@@ -32,7 +32,7 @@ window.estado = {
 let historyStack = [];
 let historyIndex = -1;
 const MAX_HISTORY = 50;
-let insertCoords = { x:0, y:0 }; 
+let insertCoords = { x:0, y:0 }; // Variable auxiliar para inserción
 
 // ==========================================
 // 2. SISTEMA DE HISTORIAL (UNDO/REDO)
@@ -41,6 +41,7 @@ window.saveState = function() {
     if (historyIndex < historyStack.length - 1) {
         historyStack = historyStack.slice(0, historyIndex + 1);
     }
+    // Guardamos una copia profunda de los elementos
     const state = JSON.stringify(window.elementos);
     historyStack.push(state);
     if (historyStack.length > MAX_HISTORY) historyStack.shift();
@@ -68,6 +69,7 @@ function restaurarEstado(jsonState) {
     window.elementos = JSON.parse(jsonState);
     window.estado.selID = null; 
     
+    // Actualizamos la vista (funciones de renderer.js)
     if(typeof renderScene === 'function') renderScene();
     if(typeof updatePropsPanel === 'function') updatePropsPanel();
     
@@ -86,6 +88,7 @@ function updateUndoRedoUI() {
 // 3. GESTIÓN DE ELEMENTOS (CRUD)
 // ==========================================
 window.addEl = function(data) { 
+    // Heredar diámetro si no existe y está en el ítem activo
     if(!data.props.diametroNominal && window.estado.activeItem?.props?.diametroNominal) { 
         data.props.diametroNominal = window.estado.activeItem.props.diametroNominal; 
     }
@@ -123,6 +126,7 @@ window.setTool = function(t) {
     
     if(typeof renderEffects === 'function') renderEffects(); 
     
+    // Actualizar UI de botones
     document.querySelectorAll('.tool-item').forEach(x => x.classList.remove('active'));
     ['btn-select','btn-cota','btn-texto', 'btn-insert','btn-cut'].forEach(id => { 
         const btn = document.getElementById(id); 
@@ -147,6 +151,7 @@ window.moverConConexiones = function(idElemento, dx, dy, dz) {
     
     el.x += dx; el.y += dy; el.z += dz;
 
+    // Helper para comparar puntos (de utils.js)
     const check = window.arePointsEqual;
 
     window.elementos.forEach(vecino => {
@@ -176,8 +181,10 @@ window.cortarTuberia = function(idTuberia, xCorte, yCorte, zCorte) {
     const finalOriginal = { x: el.x + el.dx, y: el.y + el.dy, z: el.z + el.dz };
     const propsOriginal = JSON.parse(JSON.stringify(el.props));
     
+    // Modificar actual
     el.dx = xCorte - el.x; el.dy = yCorte - el.y; el.dz = zCorte - el.z;
     
+    // Crear nueva
     const dx2 = finalOriginal.x - xCorte; 
     const dy2 = finalOriginal.y - yCorte; 
     const dz2 = finalOriginal.z - zCorte;
@@ -192,10 +199,9 @@ window.cortarTuberia = function(idTuberia, xCorte, yCorte, zCorte) {
     });
 }
 
-// --- AQUÍ ESTABA EL ERROR: CORREGIDO ---
+// CORRECCIÓN: Función analizarRed arreglada para evitar errores de referencia
 window.analizarRed = function() {
-    const mapNodos = new Map(); 
-    const accesorios = [];
+    const mapNodos = new Map(); const accesorios = [];
     
     window.elementos.forEach(el => {
         if (el.tipo !== 'tuberia' || el.visible === false) return;
@@ -221,9 +227,11 @@ window.analizarRed = function() {
         const parts = key.split('_').map(p => parseFloat(p) * window.EPSILON_GRID);
         const x = parts[0], y = parts[1], z = parts[2]; 
         
-        // CORRECCIÓN: Definimos las propiedades base usando la primera conexión disponible
+        // CORRECCIÓN: Usar propiedades de la primera conexión disponible como base
         const baseProps = conns[0] || { color: '#ccc', width: 2 };
-        
+        const baseColor = baseProps.color;
+        const baseWidth = baseProps.width;
+
         if (conns.length === 2) {
             const c1 = conns[0]; const c2 = conns[1];
             const dot = c1.dir.x * c2.dir.x + c1.dir.y * c2.dir.y + c1.dir.z * c2.dir.z;
@@ -231,21 +239,21 @@ window.analizarRed = function() {
             const maxWidth = Math.max(c1.width, c2.width);
 
             if (dot < -0.99 && Math.abs(c1.width - c2.width) > 0.5) { 
-                accesorios.push({ tipo: 'reductor_auto', x, y, z, dirs: [c1.dir, c2.dir], color: baseProps.color, width: maxWidth }); 
+                accesorios.push({ tipo: 'reductor_auto', x, y, z, dirs: [c1.dir, c2.dir], color: baseColor, width: maxWidth }); 
             } else if (dot > -0.99 && dot < 0.99) { 
-                accesorios.push({ tipo: 'codo_auto', x, y, z, dirs: [c1.dir, c2.dir], color: baseProps.color, width: maxWidth }); 
+                accesorios.push({ tipo: 'codo_auto', x, y, z, dirs: [c1.dir, c2.dir], color: baseColor, width: maxWidth }); 
             }
         } else if (conns.length === 3) { 
-            accesorios.push({ tipo: 'tee_auto', x, y, z, dirs: conns.map(c=>c.dir), color: baseProps.color, width: baseProps.width }); 
+            accesorios.push({ tipo: 'tee_auto', x, y, z, dirs: conns.map(c=>c.dir), color: baseColor, width: baseWidth }); 
         } else if (conns.length === 4) { 
-            accesorios.push({ tipo: 'cruz_auto', x, y, z, dirs: conns.map(c=>c.dir), color: baseProps.color, width: baseProps.width }); 
+            accesorios.push({ tipo: 'cruz_auto', x, y, z, dirs: conns.map(c=>c.dir), color: baseColor, width: baseWidth }); 
         }
     });
     return accesorios;
 }
 
 // ==========================================
-// 5. HELPERS DE INTERACCIÓN
+// 5. HELPERS DE INTERACCIÓN (Inputs, Clicks, Insertar)
 // ==========================================
 window.mostrarInputDinámico = function(xScreen, yScreen, distActual, vectorData) {
     const box = document.getElementById('dynamic-input-container'); 
@@ -342,6 +350,7 @@ window.handleCanvasClick = function(e) {
     let lockedAxis = null;
     
     if (window.estado.drawing && window.estado.inicio && !window.estado.snapped) {
+        // Lógica de ejes ortogonales
         const gridX = Math.round(window.estado.mouseIso.x * 10) / 10;
         const gridY = Math.round(window.estado.mouseIso.y * 10) / 10;
         const dx = gridX - window.estado.inicio.x; 
@@ -351,7 +360,7 @@ window.handleCanvasClick = function(e) {
         
         if (Math.abs(dy) < th && Math.abs(dz) < th) { ty = window.estado.inicio.y; tz = window.estado.inicio.z; tx = gridX; } 
         else if (Math.abs(dx) < th && Math.abs(dz) < th) { tx = window.estado.inicio.x; tz = window.estado.inicio.z; ty = gridY; } 
-        else if (Math.abs(dx) < th && Math.abs(diffY) < th) { tx = window.estado.inicio.x; ty = window.estado.inicio.y; tz = window.estado.inicio.z; }
+        else if (Math.abs(dx) < th && Math.abs(dy) < th) { tx = window.estado.inicio.x; ty = window.estado.inicio.y; tz = window.estado.inicio.z; }
         else { tx = gridX; ty = gridY; }
     }
 
@@ -449,11 +458,13 @@ window.ejecutarInsercion = function() {
 // 6. GESTIÓN DE ARCHIVOS Y REPORTES
 // ==========================================
 
+// Guardar Proyecto (Abre Modal)
 window.guardarProyecto = function() { 
     document.getElementById('modal-guardar').style.display = 'flex'; 
     document.getElementById('input-filename').focus(); 
 }
 
+// Confirmar Descarga JSON
 window.confirmarDescarga = function() {
     let nombre = document.getElementById('input-filename').value || 'proyecto_gas'; 
     if (!nombre.endsWith('.json')) { nombre += '.json'; }
@@ -475,6 +486,7 @@ window.confirmarDescarga = function() {
     document.getElementById('modal-guardar').style.display = 'none';
 }
 
+// Guardar en Navegador (LocalStorage)
 window.guardarEnNavegador = function() { 
     try { 
         const datos = JSON.stringify({ 
@@ -496,6 +508,7 @@ window.guardarEnNavegador = function() {
     } 
 }
 
+// Cargar Proyecto (Desde Archivo)
 window.cargarProyecto = function(inputElement){ 
     if (!inputElement.files.length) return;
     const r = new FileReader(); 
@@ -516,6 +529,7 @@ window.cargarProyecto = function(inputElement){
     r.readAsText(inputElement.files[0]); 
 }
 
+// Limpiar Lienzo
 window.limpiarTodo = function(){ 
     if(confirm("¿Estás seguro de borrar todo?")){
         window.elementos = []; 
@@ -524,7 +538,7 @@ window.limpiarTodo = function(){
     } 
 }
 
-// --- FUNCIÓN DE REPORTE CORREGIDA ---
+// Mostrar Reporte (Tabla)
 window.mostrarReporte = function(){
     let html=""; let counts={};
     window.elementos.forEach(el=>{
@@ -544,12 +558,9 @@ window.mostrarReporte = function(){
         }
     });
     
-    // Ahora que analizarRed está arreglado, esto funcionará
+    // Agregar accesorios auto
     if(typeof window.analizarRed === 'function') {
         const autoFittings = window.analizarRed();
-        const baseColor = '#ccc';
-        const baseWidth = 2;
-        
         autoFittings.forEach(fit => { 
             let key = ""; 
             if (fit.tipo === 'codo_auto') key = "Codo 90° (Auto)"; 
@@ -577,7 +588,7 @@ window.mostrarReporte = function(){
     }
 }
 
-// --- FUNCIÓN DE EXPORTAR CSV CORREGIDA ---
+// Exportar CSV
 window.exportarCSV = function() {
     let csvContent = "data:text/csv;charset=utf-8,"; csvContent += "Tipo,Descripcion,Detalle,Cantidad/Longitud,Unidad\r\n";
     let counts = {};
@@ -621,12 +632,9 @@ window.exportarCSV = function() {
     for (let key in counts) {
         let parts = key.split('|'); 
         let rawVal = counts[key];
-        let valStr = rawVal.toString().replace('.',','); // Formato Excel (coma decimal)
+        let valStr = rawVal.toString().replace('.',','); // Formato decimal coma para Excel ES
         
-        // Si es metros, lo convertimos a la unidad de visualización si es necesario, 
-        // pero para CSV es mejor dejarlo limpio o formatearlo bien.
         if(parts[3] === 'm') {
-             // Opcional: usar formatLength y quitar la 'm'
              valStr = window.formatLength(rawVal).replace(/[^\d.,]/g,'').trim();
         }
         
@@ -642,4 +650,4 @@ window.exportarCSV = function() {
     document.body.removeChild(link);
 }
 
-console.log("✅ Core Logic (Full) cargado y CORREGIDO");
+console.log("✅ Core Logic (Full) cargado");
