@@ -76,6 +76,7 @@ window. CATALOGO = {
         { subCat: 'Soportes', id: 'p_sop', name: 'Soporte', icon: '⚓', type: 'equipo', props: { tipo: 'soporte' } },
        // En js/config.js -> Dentro de CATALOGO.perif
 
+// ... en js/config.js ...
 { 
     subCat: 'Tanques', 
     id: 'p_tanque', 
@@ -87,21 +88,23 @@ window. CATALOGO = {
         diametro: 2.0,       
         longitud: 6.0,       
         capacidadGalones: 1000,
+        numConexiones: 2,
         rotacion: 0,
-        // NUEVO: Array de conexiones específicas
         conexiones: [
-            { id: 1, nombre: "Llenado", tipo: "brida", diametro: '2"' },
-            { id: 2, nombre: "Servicio", tipo: "macho", diametro: '1"' },
-            { id: 3, nombre: "Retorno", tipo: "hembra", diametro: '3/4"' }
+            // posicion: 'top' (Lomo) o 'bottom' (Vientre)
+            { id: 1, nombre: "Llenado", tipo: "brida", diametro: '2"', posicion: 'top' },
+            { id: 2, nombre: "Servicio", tipo: "macho", diametro: '1"', posicion: 'top' },
+            { id: 3, nombre: "Drenaje", tipo: "hembra", diametro: '2"', posicion: 'bottom' }
         ],
         checklist: {         
             rotogate: false,
             indicadorLlenado: true,
-            drenaje: true,
+            drenaje: true, // Este es el checkbox general, pero ahora usaremos conexiones reales
             valvulaAlivio: true
         }
     } 
-}
+},
+// ...
     ],
     cons: [
         { subCat: 'Sellantes', id: 'cs_teflon', name: 'Cinta Teflón', icon: '🧶', type: 'consumible', props: { tipo: 'teflon' } },
