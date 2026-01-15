@@ -1,4 +1,4 @@
-// js/renderer.js - Lógica de Visualización e Interfaz (Soporte P&ID SVG)
+// js/renderer.js - Lógica de Visualización e Interfaz (Soporte P&ID SVG + Anchor Fix)
 
 // ==========================================
 // 1. MATEMÁTICAS VISUALES (Proyecciones)
@@ -241,31 +241,37 @@ function renderScene() {
              if (el.props.tipo === 'tanque_glp') {
                  dibujarTanqueGLP(g, s, el, col);
              } 
-             // 4. NUEVO SOPORTE SVG P&ID
+             // 4. NUEVO SOPORTE SVG P&ID CON PUNTO DE ACOPLE
              else if (el.icon && el.icon.trim().startsWith('<svg')) {
                  const scale = el.props.scaleFactor || 1.0;
-                 const size = 30 * scale; // Tamaño base del icono en pantalla
-                 const offset = size / 2;
-                 
+                 const size = 30 * scale; 
+                 const halfSize = size / 2;
+
                  // Crear contenedor para el SVG
                  const iconWrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
-                 iconWrapper.innerHTML = el.icon; // Inyectar SVG crudo
+                 iconWrapper.innerHTML = el.icon; 
                  
                  const svgContent = iconWrapper.querySelector('svg');
                  if(svgContent) {
-                     // Configurar dimensiones y posición (centrado)
+                     // Calcular Offset según Anchor (Punto de Acople)
+                     let dx = -halfSize; // Default: Centro
+                     if (el.props.anchor === 'start') dx = 0; // Inicio
+                     if (el.props.anchor === 'end') dx = -size; // Fin
+                     
+                     let dy = -halfSize; // Siempre centrado verticalmente respecto al eje
+                     
+                     // Aplicar dimensiones y posición
                      svgContent.setAttribute("width", size);
                      svgContent.setAttribute("height", size);
-                     svgContent.setAttribute("x", s.x - offset);
-                     svgContent.setAttribute("y", s.y - offset);
+                     svgContent.setAttribute("x", s.x + dx);
+                     svgContent.setAttribute("y", s.y + dy);
                      
-                     // Aplicar estilos de color
+                     // Estilos
                      svgContent.setAttribute("fill", "none"); 
                      svgContent.setAttribute("stroke", col);
                      svgContent.setAttribute("stroke-width", "2");
-                     svgContent.setAttribute("overflow", "visible"); // Permitir que salga un poco
+                     svgContent.setAttribute("overflow", "visible");
                      
-                     // Manejar partes rellenas (ej. válvulas compuerta)
                      const fills = svgContent.querySelectorAll(".filled");
                      fills.forEach(f => f.setAttribute("fill", col));
                      
@@ -275,17 +281,14 @@ function renderScene() {
                  // Etiqueta (Tag)
                  if(showLabel && el.props.tag) {
                      const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                     // Ajustar posición del texto para que no pise el icono
-                     // Si rotamos, el texto gira con el icono. Para mantenerlo horizontal, revertimos rotación,
-                     // pero es común que el tag siga la línea. Lo dejamos girado por ahora.
-                     tt.setAttribute("x", s.x); tt.setAttribute("y", s.y - offset - 5); 
+                     tt.setAttribute("x", s.x); tt.setAttribute("y", s.y - halfSize - 5); 
                      tt.setAttribute("text-anchor","middle");
                      tt.setAttribute("fill","#fff"); tt.setAttribute("font-size","10px"); 
                      tt.textContent = el.props.tag;
                      g.appendChild(tt);
                  }
              }
-             // 5. Fallback antiguo (Rectángulo + Emoji)
+             // 5. Fallback antiguo
              else {
                 const scaleFactor = el.props.scaleFactor || 1.0; 
                 const baseSize = (window.CONFIG.tileW * 0.25) * scaleFactor; 
@@ -300,7 +303,7 @@ function renderScene() {
                 tx.setAttribute("x", s.x); tx.setAttribute("y", s.y + 4); 
                 tx.setAttribute("text-anchor","middle");
                 tx.setAttribute("fill",col); tx.setAttribute("font-size", (baseSize*0.6)+"px"); 
-                tx.textContent = el.icon; // Esto imprimía el código SVG como texto
+                tx.textContent = el.icon; 
                 
                 g.appendChild(r); g.appendChild(tx);
              }
@@ -308,7 +311,7 @@ function renderScene() {
         cont.appendChild(g);
     });
     
-    // Renderizado de fittings automáticos (codos)
+    // Renderizado de fittings automáticos
     if (typeof window.analizarRed === 'function') {
         const autoFittings = window.analizarRed();
         autoFittings.forEach(fit => {
@@ -873,4 +876,4 @@ window.updateAltura = function(valUser) {
     const u = window.UNITS[window.CONFIG.unit]; el.z = num / u.factor;
     window.saveState(); renderScene(); renderEffects(); updatePropsPanel();
 }
-console.log("✅ Renderer cargado con soporte P&ID SVG");
+console.log("✅ Renderer cargado con soporte P&ID SVG + Fix Anchor");
