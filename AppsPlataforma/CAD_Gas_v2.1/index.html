@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v14.1 - Suite Pro (PDF + Polyline)</title>
+<title>CAD Gas v14.2 - Suite Pro (Cálculos + PDF Técnico)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -122,7 +122,7 @@
 <body>
 
 <header>
-    <div class="brand"><span>CAD</span> GAS v14.1</div>
+    <div class="brand"><span>CAD</span> GAS v14.2</div>
     <div class="toolbar-sep"></div>
     <button class="btn" id="btn-undo" onclick="undo()" title="Deshacer (Ctrl+Z)">↩</button>
     <button class="btn" id="btn-redo" onclick="redo()" title="Rehacer (Ctrl+Y)">↪</button>
@@ -253,6 +253,11 @@
     <div class="prop-row"><label>ID / Código de Proyecto <span class="required-star">*</span></label><input type="text" id="pdf-id" class="btn-input" placeholder="Ej: PRJ-2024-001"></div>
     <div class="prop-row"><label>Responsable / Ingeniero</label><input type="text" id="pdf-autor" class="btn-input" placeholder="Ing. Juan Pérez"></div>
     
+    <div class="prop-row row-h" style="margin-top:15px; border-top:1px solid #444; padding-top:10px;">
+        <label style="cursor:pointer; flex:1;" for="pdf-include-eq">Incluir Anexo de Ecuaciones (Mueller)</label>
+        <input type="checkbox" id="pdf-include-eq" style="width:auto; cursor:pointer;">
+    </div>
+    
     <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
         <button class="btn primary" onclick="generarPDF()">📄 Generar Documento</button>
         <button class="btn" onclick="document.getElementById('modal-pdf').style.display='none'">Cancelar</button>
@@ -267,7 +272,7 @@
 
 <script>
     window.onload = function() {
-        console.log("🚀 Iniciando CAD Gas v14.1 (Pro)...");
+        console.log("🚀 Iniciando CAD Gas v14.2 (Suite Pro)...");
         if(typeof window.saveState === 'function') window.saveState(); 
         if(typeof renderGrid === 'function') renderGrid(); 
         if(typeof renderGizmo === 'function') renderGizmo(); 
