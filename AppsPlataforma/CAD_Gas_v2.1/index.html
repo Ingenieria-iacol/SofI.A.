@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v1.1 - Suite Completa + Tanque GLP (Arquitectura Modular)</title>
+<title>CAD Gas v14.0 - Suite Completa + Tanque GLP (Arquitectura Modular)</title>
 <style>
     :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ffff; }
     body { font-family: 'Segoe UI', Consolas, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
@@ -42,10 +42,16 @@
     .lib-items { display: none; padding: 5px; background: #1e1e1e; max-height: 400px; overflow-y: auto; } 
     .lib-items.open { display: block; animation: fadeIn 0.3s; }
     .lib-subheader { font-size: 0.7rem; color: var(--accent); font-weight: bold; margin: 10px 0 4px 5px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 2px; }
+    
+    /* ESTILOS DE ICONOS SVG P&ID */
     .tool-item { position: relative; display: flex; align-items: center; gap: 10px; padding: 6px 10px; margin: 2px 0; cursor: pointer; border-radius: 4px; transition: 0.1s; border: 1px solid transparent; }
     .tool-item:hover { background: #383838; } 
     .tool-item.active { background: #37373d; border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
-    .tool-icon { width: 20px; text-align: center; font-size: 1.1rem; } .tool-name { font-size: 0.85rem; }
+    .tool-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+    .tool-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2px; stroke-linecap: round; stroke-linejoin: round; }
+    .tool-icon svg.filled { fill: currentColor; }
+    .tool-name { font-size: 0.85rem; }
+
     .lib-tooltip { display: none; position: absolute; left: 100%; top: 0; width: 280px; background: rgba(30, 30, 30, 0.98); border: 1px solid var(--accent); padding: 12px; z-index: 1000; font-size: 0.8rem; color: #ddd; box-shadow: 4px 4px 15px rgba(0,0,0,0.7); white-space: normal; border-radius: 0 4px 4px 4px; backdrop-filter: blur(4px); pointer-events: none; }
     .tool-item:hover .lib-tooltip { display: block; }
     .tooltip-title { font-weight: bold; color: #fff; font-size: 0.9rem; margin-bottom: 4px; display:block; border-bottom: 1px solid #444; padding-bottom: 4px;}
@@ -103,12 +109,18 @@
     #vertical-input-container { border-color: #0f0; flex-direction: column; align-items: flex-start; padding: 10px; min-width: 150px; }
     #v-title { color: #0f0; font-weight: bold; font-size: 0.8rem; margin-bottom: 5px; display:flex; gap:5px; align-items:center;}
     #hover-tooltip { position: absolute; display: none; pointer-events: none; z-index: 2000; background: rgba(0, 0, 0, 0.85); border: 1px solid #777; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; color: #fff; font-family: monospace; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); white-space: nowrap; backdrop-filter: blur(2px); }
+
+    /* ESTILOS NUEVOS PARA REPORTE */
+    .table-header { background-color: #333; color: #fff; font-weight: bold; text-transform: uppercase; font-size: 0.85rem; border-bottom: 2px solid #555; }
+    .table-header td { padding: 8px 5px; margin-top: 10px; }
+    #tabla-res tr:not(.table-header) td { padding: 5px; border-bottom: 1px solid #2a2a2a; }
+    #tabla-res { width: 100%; border-collapse: collapse; }
 </style>
 </head>
 <body>
 
 <header>
-    <div class="brand"><span>CAD</span> GAS v1.1</div>
+    <div class="brand"><span>CAD</span> GAS v14.0</div>
     <div class="toolbar-sep"></div>
     <button class="btn" id="btn-undo" onclick="undo()" title="Deshacer (Ctrl+Z)">↩</button>
     <button class="btn" id="btn-redo" onclick="redo()" title="Rehacer (Ctrl+Y)">↪</button>
@@ -233,11 +245,8 @@
 
 <script src="./js/config.js"></script>
 <script src="./js/utils.js"></script>
-
 <script src="./js/core.js"></script>
-
 <script src="./js/renderer.js"></script>
-
 <script src="./js/events.js"></script>
 
 <script>
