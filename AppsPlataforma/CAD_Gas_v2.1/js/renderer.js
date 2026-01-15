@@ -516,6 +516,62 @@ function updatePropsPanel() {
         } else { divAdjust.style.display = 'none'; }
     }
     
+    // --- NUEVO: ACORDEÓN DE CONEXIONES Y FLUJO (PARA ELEMENTOS NO TUBERÍA) ---
+    if (el.tipo !== 'tuberia' && el.tipo !== 'cota' && el.tipo !== 'texto' && el.props.tipo !== 'tanque_glp') {
+        const grpFlow = document.createElement('div'); grpFlow.className = 'acc-group'; grpFlow.id='grp-flow';
+        const headFlow = document.createElement('div'); headFlow.className = 'acc-header'; headFlow.innerText = 'Conexiones y Flujo';
+        headFlow.onclick = function() { toggleAccordion('grp-flow'); };
+        
+        const contentFlow = document.createElement('div'); contentFlow.className = 'acc-content';
+        
+        // Botón Invertir Flujo
+        const btnInvert = document.createElement('div'); btnInvert.className = 'prop-row';
+        btnInvert.innerHTML = `<button class="btn" style="width:100%" onclick="window.invertirFlujo()">🔄 Invertir Sentido Flujo</button>`;
+        contentFlow.appendChild(btnInvert);
+
+        // ENTRADA
+        const titleIn = document.createElement('div'); titleIn.style = "font-size:0.7rem; color:#aaa; margin:5px 15px; border-bottom:1px solid #444;"; titleIn.innerText = "ENTRADA (INLET)";
+        contentFlow.appendChild(titleIn);
+        
+        const rowIn = document.createElement('div'); rowIn.className = 'prop-row row-h';
+        rowIn.innerHTML = `
+            <select class="btn" style="flex:1" onchange="updateStyleProp('diamIn', this.value)">
+                <option value='1/4"' ${el.props.diamIn==='1/4"'?'selected':''}>1/4"</option>
+                <option value='1/2"' ${el.props.diamIn==='1/2"'?'selected':''}>1/2"</option>
+                <option value='3/4"' ${el.props.diamIn==='3/4"'?'selected':''}>3/4"</option>
+                <option value='1"' ${el.props.diamIn==='1"'?'selected':''}>1"</option>
+            </select>
+            <select class="btn" style="flex:1" onchange="updateStyleProp('typeIn', this.value)">
+                <option value='hembra' ${el.props.typeIn==='hembra'?'selected':''}>Hembra</option>
+                <option value='macho' ${el.props.typeIn==='macho'?'selected':''}>Macho</option>
+                <option value='brida' ${el.props.typeIn==='brida'?'selected':''}>Brida</option>
+            </select>
+        `;
+        contentFlow.appendChild(rowIn);
+
+        // SALIDA
+        const titleOut = document.createElement('div'); titleOut.style = "font-size:0.7rem; color:#aaa; margin:5px 15px; border-bottom:1px solid #444;"; titleOut.innerText = "SALIDA (OUTLET)";
+        contentFlow.appendChild(titleOut);
+        
+        const rowOut = document.createElement('div'); rowOut.className = 'prop-row row-h';
+        rowOut.innerHTML = `
+            <select class="btn" style="flex:1" onchange="updateStyleProp('diamOut', this.value)">
+                <option value='1/4"' ${el.props.diamOut==='1/4"'?'selected':''}>1/4"</option>
+                <option value='1/2"' ${el.props.diamOut==='1/2"'?'selected':''}>1/2"</option>
+                <option value='3/4"' ${el.props.diamOut==='3/4"'?'selected':''}>3/4"</option>
+                <option value='1"' ${el.props.diamOut==='1"'?'selected':''}>1"</option>
+            </select>
+            <select class="btn" style="flex:1" onchange="updateStyleProp('typeOut', this.value)">
+                <option value='hembra' ${el.props.typeOut==='hembra'?'selected':''}>Hembra</option>
+                <option value='macho' ${el.props.typeOut==='macho'?'selected':''}>Macho</option>
+                <option value='brida' ${el.props.typeOut==='brida'?'selected':''}>Brida</option>
+            </select>
+        `;
+        contentFlow.appendChild(rowOut);
+
+        grpFlow.appendChild(headFlow); grpFlow.appendChild(contentFlow); contDatos.appendChild(grpFlow);
+    }
+    
     const divGrosor = document.getElementById('row-grosor');
     if(el.tipo === 'tuberia' && el.props.material) { divGrosor.style.display = 'none'; } else { divGrosor.style.display = 'flex'; document.getElementById('p-grosor').value = el.props.grosor || 2; }
     if(el.props.rotacion !== undefined) document.getElementById('p-rot').value = el.props.rotacion;
@@ -695,6 +751,14 @@ window.updateStyleProp = function(k,v) {
         else { el.props[k]=v; }
         window.saveState(); renderScene(); if(k==='anchor' || k==='scaleFactor') renderEffects(); 
     } 
+}
+window.invertirFlujo = function() {
+    const el = window.elementos.find(x => x.id === window.estado.selID);
+    if (el && el.props) {
+        el.props.rotacion = (parseFloat(el.props.rotacion || 0) + 180) % 360;
+        document.getElementById('p-rot').value = el.props.rotacion;
+        window.saveState(); renderScene();
+    }
 }
 window.updateBooleanProp = function(k, val) { const el = window.elementos.find(x=>x.id===window.estado.selID); if(el){ el.props[k] = val; window.saveState(); renderScene(); } }
 window.updateRootProp = function(k, val) { const el = window.elementos.find(x=>x.id===window.estado.selID); if(el){ el[k] = val; window.saveState(); renderScene(); renderEffects(); } }
