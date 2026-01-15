@@ -117,4 +117,48 @@ window.arePointsEqual = function(p1, p2) {
     return Math.abs(p1.x - p2.x) < e && Math.abs(p1.y - p2.y) < e && Math.abs(p1.z - p2.z) < e;
 };
 
-console.log("✅ Utils cargados correctamente");
+// --- NUEVA FUNCIÓN: ARRASTRE DE ELEMENTOS ---
+window.makeDraggable = function(el) {
+    const header = el.querySelector('.pc-header') || el;
+    let isDragging = false;
+    let startX, startY, initialLeft, initialTop;
+
+    header.onmousedown = function(e) {
+        if(e.target.classList.contains('pc-close')) return; // No iniciar si clica cerrar
+        e.preventDefault();
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        
+        const rect = el.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+    };
+
+    function elementDrag(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        // Establecer nueva posición
+        el.style.left = (initialLeft + dx) + "px";
+        el.style.top = (initialTop + dy) + "px";
+        
+        // Resetear transforms para que position absolute funcione bien
+        el.style.transform = "none"; 
+        el.style.opacity = "1";
+    }
+
+    function closeDragElement() {
+        isDragging = false;
+        document.onmouseup = null;
+        document.onmousemove = null;
+    }
+};
+
+console.log("✅ Utils cargados correctamente (incluye Drag)");
