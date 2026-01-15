@@ -1,6 +1,6 @@
 // js/config.js
-console.log("🔹 Cargando Config...");
 
+// CONFIGURACIÓN POR DEFECTO
 window.CONFIG = { 
     tileW: 100, 
     tileH: 50, 
@@ -12,6 +12,7 @@ window.CONFIG = {
     showTags: true 
 };
 
+// CONSTANTES DE UNIDADES
 window.UNITS = { 
     'm': { factor: 1, label: 'm', precision: 2 }, 
     'dm': { factor: 10, label: 'cm', precision: 1 }, 
@@ -19,7 +20,7 @@ window.UNITS = {
     'mm': { factor: 1000, label: 'mm', precision: 0 } 
 };
 
-// DIÁMETROS DISPONIBLES (Completo)
+// DIÁMETROS DISPONIBLES
 window.DIAMETROS_DISPONIBLES = {
     'acero_sch40': ['1/4"', '1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '2-1/2"', '3"', '4"', '6"'],
     'acero_sch80': ['1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '3"', '4"'],
@@ -37,15 +38,17 @@ window.DIAMETROS_DISPONIBLES = {
     'pe_metric': ['20mm', '25mm', '32mm', '40mm', '50mm', '63mm', '90mm', '110mm', '160mm']
 };
 
-// ICONOS SVG (Estilo P&ID Original)
-window.ICONS = {
+// ==========================================
+// ICONOS SVG (Estilo P&ID)
+// ==========================================
+const ICONS = {
     PIPE: `<svg viewBox="0 0 24 24"><line x1="2" y1="20" x2="22" y2="4" /></svg>`,
     PIPE_FLEX: `<svg viewBox="0 0 24 24"><path d="M2,20 C8,20 8,12 12,12 S16,4 22,4" /></svg>`,
     UNION: `<svg viewBox="0 0 24 24"><path d="M7,12 L17,12 M7,8 L7,16 M17,8 L17,16" /></svg>`, 
     BRIDA: `<svg viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="20" stroke-width="3"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="16" x2="16" y2="16"/></svg>`,
     V_GATE: `<svg viewBox="0 0 24 24"><path d="M2,8 L12,16 L22,8 L22,16 L12,8 L2,16 Z" class="filled" fill="currentColor" stroke="none"/></svg>`, 
     V_BOLA: `<svg viewBox="0 0 24 24"><path d="M2,7 L12,12 L2,17 Z" /><path d="M22,7 L12,12 L22,17 Z" /><circle cx="12" cy="12" r="3" /></svg>`, 
-    V_ACTUADA: `<svg viewBox="0 0 24 24"><path d="M2,8 L12,13 L2,18 Z" /><path d="M22,8 L12,13 L22,18 Z" /><line x1="12" y1="13" x2="12" y2="6" stroke-width="1.5"/><rect x="8" y="2" width="8" height="5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`, 
+    V_MACHO: `<svg viewBox="0 0 24 24"><path d="M2,7 L12,17 L22,7 Z" /><line x1="12" y1="7" x2="12" y2="12"/></svg>`, 
     V_GLOBO: `<svg viewBox="0 0 24 24"><path d="M2,7 L12,12 L2,17 Z" /><path d="M22,7 L12,12 L22,17 Z" /><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>`, 
     V_AGUJA: `<svg viewBox="0 0 24 24"><path d="M2,12 L22,12 M12,12 L12,20 M8,16 L16,16" /><path d="M12,12 L8,4 L16,4 Z" /></svg>`, 
     V_CHECK: `<svg viewBox="0 0 24 24"><path d="M4,17 L14,12 L4,7 Z" /><line x1="14" y1="7" x2="14" y2="17" /></svg>`, 
@@ -64,10 +67,10 @@ window.ICONS = {
     BROCHA: `<svg viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="6" /><line x1="8" y1="10" x2="8" y2="13" /><line x1="11" y1="10" x2="11" y2="13" /><line x1="13" y1="10" x2="13" y2="13" /><line x1="16" y1="10" x2="16" y2="13" /><path d="M10,13 L14,13 L13,20 L11,20 Z" /></svg>`
 };
 
+// Props Default para Flujo
 const defaultFlow = { diamIn: '1/2"', typeIn: 'hembra', diamOut: '1/2"', typeOut: 'hembra' };
-const ICONS = window.ICONS; // Atajo local
 
-// CATÁLOGO COMPLETO (Recuperado)
+// CATÁLOGO COMPLETO
 window.CATALOGO = {
     mat: [
         { subCat: 'Acero al Carbón', id: 't_ac_40', name: 'Sch40', color: '#444444', icon: ICONS.PIPE, type: 'tuberia', props: { material: 'acero_sch40', diametroNominal: '1"' } },
@@ -84,26 +87,7 @@ window.CATALOGO = {
         { subCat: 'Uniones', id: 'c_union', name: 'Unión Universal', icon: ICONS.UNION, type: 'equipo', props: { tipo: 'accesorio', ...defaultFlow } },
         { subCat: 'Uniones', id: 'c_brida', name: 'Brida', icon: ICONS.BRIDA, type: 'equipo', props: { tipo: 'accesorio', diamIn:'2"', typeIn:'brida', diamOut:'2"', typeOut:'brida' } },
         { subCat: 'Válvulas (Aislamiento)', id: 'v_bola', name: 'V. Bola', icon: ICONS.V_BOLA, type: 'valvula', props: { tipo: 'bola', rotacion: 0, ...defaultFlow }, info: { title: "Válvula de Bola", desc: "Cierre rápido 90°." } },
-        { 
-            subCat: 'Válvulas (Aislamiento)', 
-            id: 'v_actuada', 
-            name: 'V. Actuada', 
-            icon: ICONS.V_ACTUADA, 
-            type: 'valvula', 
-            props: { 
-                tipo: 'actuada', 
-                rotacion: 0,
-                voltaje: '24V',
-                corriente: 'DC',
-                estadoCompuerta: 'N/C',
-                referencia: '',
-                diametro: '1/2"',
-                tipoAcople: 'Hembra',
-                tipoUnion: 'NPT',
-                mpo: '125 PSI'
-            }, 
-            info: { title: "Válvula Actuada", desc: "Control eléctrico/neumático." } 
-        },
+        { subCat: 'Válvulas (Aislamiento)', id: 'v_macho', name: 'V. Macho', icon: ICONS.V_MACHO, type: 'valvula', props: { tipo: 'macho', rotacion: 0, ...defaultFlow }, info: { title: "Válvula Macho", desc: "Cono metálico con grasa." } },
         { subCat: 'Válvulas (Regulación)', id: 'v_aguja', name: 'V. Aguja', icon: ICONS.V_AGUJA, type: 'valvula', props: { tipo: 'aguja', rotacion: 0, ...defaultFlow }, info: { title: "V. Aguja", desc: "Control fino." } },
         { subCat: 'Válvulas (Regulación)', id: 'v_globo', name: 'V. Globo', icon: ICONS.V_GLOBO, type: 'valvula', props: { tipo: 'globo', rotacion: 0, ...defaultFlow }, info: { title: "V. Globo", desc: "Estrangulamiento." } },
         { subCat: 'Válvulas (Seguridad)', id: 'v_check', name: 'V. Cheque', icon: ICONS.V_CHECK, type: 'valvula', props: { tipo: 'retencion', rotacion: 0, ...defaultFlow }, info: { title: "V. Cheque", desc: "Una vía." } },
