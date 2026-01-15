@@ -2,21 +2,17 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v2.0 - Suite Ingeniería (Blue Stream UI)</title>
+<title>CAD Gas v2.0 - Fixed Edition</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <style>
     :root { 
-        --bg: #141414; /* Fondo casi negro */
+        --bg: #141414; 
         --panel: #1f1f1f; 
         --border: #333; 
-        --accent: #0071eb; /* AZUL ELÉCTRICO */
+        --accent: #0071eb; 
         --text: #e5e5e5; 
-        --snap: #00ffff; 
-        --ok: #4caf50; 
-        --err: #f44336; 
-        --warn: #ff9800; 
         --input-bg: #2b2b2b;
     }
     body { font-family: 'Segoe UI', Consolas, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
@@ -31,26 +27,22 @@
     button.primary { background: var(--accent); border-color: #005a9e; font-weight:600; color:#fff; }
     button.primary:hover { background: #fff; color:var(--accent); box-shadow: 0 0 10px var(--accent); }
     button.danger { background: #922; border-color: #600; }
-    button.btn:disabled { opacity: 0.5; cursor: default; pointer-events: none; }
     button.active, .tool-item.active { background: #444; border-color: var(--accent); color: #fff; box-shadow: 0 0 5px var(--accent); }
     
     .toolbar-sep { width: 1px; height: 24px; background: #444; margin: 0 5px; }
     
-    /* Layout Principal */
+    /* Layout */
     #workspace { flex-grow: 1; display: flex; position: relative; overflow: hidden; }
-    
-    /* Panel Izquierdo (Biblioteca) */
-    #left-panel { width: 260px; background-color: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 90; transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); flex-shrink: 0; }
+    #left-panel { width: 260px; background-color: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 90; transition: all 0.4s; flex-shrink: 0; }
     .closed { width: 0 !important; min-width: 0 !important; border: none !important; opacity: 0; pointer-events: none; }
     
-    .panel-handle { position: absolute; top: 50%; transform: translateY(-50%); width: 20px; height: 60px; background: #2d2d2d; border: 1px solid #444; color: var(--accent); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 92; border-radius: 0 8px 8px 0; transition: 0.2s; font-size: 12px; box-shadow: 2px 0 5px rgba(0,0,0,0.3); }
+    .panel-handle { position: absolute; top: 50%; transform: translateY(-50%); width: 20px; height: 60px; background: #2d2d2d; border: 1px solid #444; color: var(--accent); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 92; border-radius: 0 8px 8px 0; transition: 0.2s; font-size: 12px; }
     .panel-handle:hover { background: #444; width: 25px; color: #fff; }
     .handle-left { left: 0; }
-    #left-panel:not(.closed) + .handle-left { left: 260px; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; margin-left: -10px; }
+    #left-panel:not(.closed) + .handle-left { left: 260px; border-radius: 50%; width: 20px; height: 20px; margin-left: -10px; }
 
-    .panel-header { padding: 10px; background: #000; font-weight:600; color:#fff; border-bottom:1px solid var(--border); display:flex; justify-content: space-between; align-items: center; text-transform:uppercase; letter-spacing:1px; font-size:0.85rem; }
+    .panel-header { padding: 10px; background: #000; font-weight:600; color:#fff; border-bottom:1px solid var(--border); display:flex; justify-content: space-between; align-items: center; text-transform:uppercase; font-size:0.85rem; }
     
-    /* Biblioteca Items */
     .lib-group { border-bottom: 1px solid var(--border); }
     .lib-group-title { padding: 8px 12px; cursor: pointer; font-size:0.8rem; font-weight:bold; color:#888; text-transform:uppercase; display:flex; justify-content:space-between; transition: 0.2s;}
     .lib-group-title:hover { color: #fff; background: #333; }
@@ -64,160 +56,70 @@
     .tool-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2px; }
     .tool-name { font-size: 0.85rem; }
 
-    /* === NUEVA VENTANA EMERGENTE "BLUE-STREAM" === */
+    /* ESTILOS DEL LIENZO CAD (IMPORTANTE: FALTABAN ESTOS) */
+    #main-area { flex-grow: 1; position: relative; background: #111; cursor: crosshair; }
+    svg { display: block; width: 100%; height: 100%; }
+
+    .grid-minor { stroke: #222; stroke-width: 0.5; fill: none; vector-effect: non-scaling-stroke; }
+    .grid-path { stroke: #333; stroke-width: 1; fill: none; vector-effect: non-scaling-stroke; }
+    .grid-axis { stroke: #555; stroke-width: 2; fill: none; vector-effect: non-scaling-stroke; }
+    
+    .tuberia { fill: none; cursor: pointer; vector-effect: non-scaling-stroke; stroke-linecap: round; }
+    .tuberia:hover { stroke-opacity: 0.8; }
+    .fitting-auto { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+    .hover-halo { stroke: rgba(255,255,255,0.2); stroke-width: 10px; fill: none; stroke-linecap: round; pointer-events: none; vector-effect: non-scaling-stroke; }
+    .sel-halo { stroke: var(--accent); stroke-width: 3px; stroke-dasharray: 4,2; fill: none; pointer-events: none; vector-effect: non-scaling-stroke; }
+    
+    .label-tech { font-size: 10px; fill: #aaa; font-family: sans-serif; pointer-events: none; text-shadow: 1px 1px 2px #000; }
+    .dim-line { stroke: #777; stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .dim-text { fill: #ffd700; font-size: 10px; font-family: monospace; }
+    
+    .snap-marker { fill:none; stroke:cyan; stroke-width:2; vector-effect: non-scaling-stroke; }
+    .cursor-crosshair { stroke: white; stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .z-ref-line { stroke: #666; stroke-dasharray: 3,3; pointer-events: none; }
+    /* FIN ESTILOS LIENZO */
+
+    /* UI Flotante */
     #prop-card {
-        position: absolute;
-        top: 60px;
-        right: 20px;
-        width: 320px;
-        max-height: 85vh;
-        background: rgba(20, 20, 20, 0.95); /* Fondo oscuro semitransparente */
-        backdrop-filter: blur(10px); /* Efecto Glass */
-        border: 1px solid #333;
-        border-top: 3px solid var(--accent); /* Línea azul superior */
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
-        border-radius: 6px;
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        opacity: 0;
-        transform: scale(0.95) translateY(10px);
-        pointer-events: none;
-        transition: opacity 0.3s cubic-bezier(0.25, 1, 0.5, 1), transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-        overflow: hidden;
+        position: absolute; top: 60px; right: 20px; width: 320px; max-height: 85vh;
+        background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(10px);
+        border: 1px solid #333; border-top: 3px solid var(--accent);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); border-radius: 6px; z-index: 1000;
+        display: flex; flex-direction: column; opacity: 0; transform: scale(0.95) translateY(10px);
+        pointer-events: none; transition: opacity 0.3s, transform 0.3s;
     }
-
-    #prop-card.active {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-        pointer-events: auto;
-    }
-
-    .pc-header {
-        padding: 15px 20px;
-        background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .pc-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #fff;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    }
-
-    .pc-close {
-        background: transparent;
-        border: none;
-        color: #888;
-        font-size: 1.2rem;
-        cursor: pointer;
-        transition: color 0.2s;
-    }
-    .pc-close:hover { color: #fff; }
-
-    .pc-hero {
-        padding: 15px;
-        display: flex;
-        justify-content: center;
-        background: radial-gradient(circle at center, #2b2b2b 0%, #141414 100%);
-        border-bottom: 1px solid #333;
-        margin-bottom: 0;
-    }
+    #prop-card.active { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; }
+    .pc-header { padding: 15px 20px; background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%); display: flex; justify-content: space-between; align-items: center; }
+    .pc-title { font-size: 1.1rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
+    .pc-close { background: transparent; border: none; color: #888; font-size: 1.2rem; cursor: pointer; }
+    .pc-hero { padding: 15px; display: flex; justify-content: center; background: radial-gradient(circle at center, #2b2b2b 0%, #141414 100%); border-bottom: 1px solid #333; }
+    .pc-hero-icon svg { width: 80px; height: 80px; filter: drop-shadow(0 0 15px rgba(0, 113, 235, 0.5)); stroke: #fff !important; }
+    .pc-content { overflow-y: auto; padding: 15px; flex: 1; }
     
-    .pc-hero-icon svg {
-        width: 80px;
-        height: 80px;
-        filter: drop-shadow(0 0 15px rgba(0, 113, 235, 0.5)); /* Resplandor azul */
-        stroke: #fff !important;
-        stroke-width: 1.5;
-    }
-
-    .pc-content {
-        overflow-y: auto;
-        padding: 15px;
-        flex: 1;
-    }
-    
-    /* Scrollbar minimalista */
-    .pc-content::-webkit-scrollbar { width: 6px; }
-    .pc-content::-webkit-scrollbar-track { background: #141414; }
-    .pc-content::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
-    .pc-content::-webkit-scrollbar-thumb:hover { background: var(--accent); }
-
-    /* Estilos de inputs modernizados */
     .prop-row { margin-bottom: 12px; }
     .prop-row.row-h { display: flex; gap: 10px; align-items: center; }
-    
-    .prop-row label {
-        font-size: 0.75rem;
-        color: #aaa;
-        margin-bottom: 5px;
-        display: block;
-        font-weight: 500;
+    .prop-row label { font-size: 0.75rem; color: #aaa; margin-bottom: 5px; display: block; font-weight: 500; }
+    .prop-row input[type="text"], .prop-row input[type="number"], .prop-row select {
+        background: var(--input-bg); border: 1px solid transparent; color: #fff; padding: 8px 10px; border-radius: 3px; width: 100%; box-sizing: border-box; font-size: 0.9rem;
     }
-
-    .prop-row input[type="text"], 
-    .prop-row input[type="number"], 
-    .prop-row select {
-        background: var(--input-bg);
-        border: 1px solid transparent;
-        color: #fff;
-        padding: 8px 10px;
-        border-radius: 3px;
-        width: 100%;
-        transition: 0.2s;
-        font-family: 'Segoe UI', sans-serif;
-        font-size: 0.9rem;
-        box-sizing: border-box;
-    }
-
-    .prop-row input:focus, .prop-row select:focus {
-        background: #383838;
-        border-color: var(--accent);
-        outline: none;
-        box-shadow: 0 0 8px rgba(0, 113, 235, 0.3);
-    }
+    .prop-row input:focus, .prop-row select:focus { background: #383838; border-color: var(--accent); outline: none; }
     
     .acc-group { margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 5px; }
-    .acc-header {
-        background: transparent;
-        color: #ddd;
-        font-weight: 600;
-        padding: 10px 5px;
-        cursor: pointer;
-        text-transform: uppercase;
-        font-size: 0.8rem;
-        display: flex; justify-content: space-between;
-    }
-    .acc-header:hover { color: var(--accent); }
-    .acc-header::after { content: '▼'; font-size: 0.7rem; transition: transform 0.2s; }
-    .acc-group.collapsed .acc-header::after { transform: rotate(-90deg); }
+    .acc-header { background: transparent; color: #ddd; font-weight: 600; padding: 10px 5px; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; display: flex; justify-content: space-between; }
     .acc-content { display: block; padding: 5px 0; }
     .acc-group.collapsed .acc-content { display: none; }
 
-    /* Area Principal */
-    #main-area { flex-grow: 1; position: relative; background: #111; cursor: none; }
-    svg { display: block; width: 100%; height: 100%; }
-    
-    /* HUD y Comandos */
     #cmd-panel { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(30, 30, 30, 0.9); border: 1px solid #444; padding: 5px; border-radius: 6px; display: flex; gap: 5px; backdrop-filter: blur(5px); z-index: 95; }
     .hud-overlay { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 5px 10px; border-radius: 4px; color: #ccc; font-family: monospace; display: flex; gap: 12px; border: 1px solid #444; }
     .hud-input { width: 50px; background: transparent; border: none; border-bottom: 1px solid #555; color: var(--accent); text-align: center; outline: none; }
 
-    /* Modales */
     .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:200; justify-content:center; align-items:center; backdrop-filter: blur(2px); }
     .modal-box { background: #1f1f1f; padding:25px; border:1px solid #444; width:500px; border-radius:6px; box-shadow: 0 20px 50px rgba(0,0,0,0.7); max-height: 90vh; overflow-y: auto;}
     
-    /* Elementos Flotantes */
     #dynamic-input-container, #vertical-input-container { position: absolute; background: rgba(30, 30, 30, 0.95); border: 1px solid var(--accent); padding: 5px 8px; border-radius: 4px; display: none; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
     .float-input { width: 70px; background: #000; border: 1px solid #444; color: #fff; padding: 2px 5px; outline: none; }
     
-    /* Capas */
     .layer-dropdown { position: relative; display: inline-block; }
     .layer-content { display: none; position: absolute; top: 35px; left: 0; background-color: #1f1f1f; min-width: 160px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); border: 1px solid #333; z-index: 200; border-radius: 4px; padding: 5px; }
     .layer-content.show { display: block; }
@@ -258,7 +160,7 @@
     <div class="toolbar-sep"></div>
     <select class="btn" onchange="setUnit(this.value)">
         <option value="m">Metros (m)</option>
-        <option value="dm">cm</option> <option value="mm">mm</option>
+        <option value="dm">dm</option> <option value="cm">cm</option> <option value="mm">mm</option>
     </select>
     <div class="toolbar-sep"></div>
     <button class="btn" onclick="mostrarReporte()">📋 Lista</button>
@@ -367,7 +269,7 @@
 
 <script>
     window.onload = function() {
-        console.log("🚀 Iniciando CAD Gas v15.0 (Blue Stream UI)...");
+        console.log("🚀 Iniciando CAD Gas v2.0 FIXED...");
         if(typeof window.saveState === 'function') window.saveState(); 
         if(typeof renderGrid === 'function') renderGrid(); 
         if(typeof renderGizmo === 'function') renderGizmo(); 
