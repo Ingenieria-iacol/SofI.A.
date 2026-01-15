@@ -1,13 +1,17 @@
-// js/utils.js - Funciones Matemáticas y de Formato
+// js/utils.js - Matemáticas, Formato y Física de Fluidos (Motor Mueller)
+
+// ==========================================
+// 1. UTILIDADES GENERALES Y FORMATO
+// ==========================================
 
 function parseInputFloat(val) {
     if (typeof val === 'number') return val;
     if (!val) return 0;
+    // Soporta coma y punto decimal
     return parseFloat(val.toString().replace(',', '.'));
 }
 
 function getKey(x, y, z) {
-    // Usamos EPSILON_GRID global (definido en index) o un valor fijo
     const gridEpsilon = (typeof window.EPSILON_GRID !== 'undefined') ? window.EPSILON_GRID : 0.001;
     return `${Math.round(x/gridEpsilon)}_${Math.round(y/gridEpsilon)}_${Math.round(z/gridEpsilon)}`;
 }
@@ -19,6 +23,7 @@ function arePointsEqual(p1, p2) {
            Math.abs(p1.z - p2.z) < ep;
 }
 
+// Convierte diámetros nominales (ej: "1-1/2") a escala visual en píxeles
 function parseDiameterToScale(valStr) {
     if(!valStr) return 2; 
     let meters = 0;
@@ -28,6 +33,7 @@ function parseDiameterToScale(valStr) {
         if (match) { meters = parseFloat(match[1]) / 1000; } 
         else { meters = parseFloat(valStr) / 1000; }
     } else {
+        // Conversión fracciones pulgada
         let clean = valStr.replace(/"/g, '').replace('IPS','').replace('CTS','').trim();
         let parts = clean.split(/[- ]/);
         let inches = 0;
@@ -44,8 +50,8 @@ function parseDiameterToScale(valStr) {
     }
     
     if(isNaN(meters) || meters === 0) return 2;
-    // Usa CONFIG global
-    let pixelWidth = meters * window.CONFIG.tileW;
+    // Usa la configuración global de escala visual
+    let pixelWidth = meters * (window.CONFIG ? window.CONFIG.tileW : 100);
     return Math.max(1.5, pixelWidth);
 }
 
@@ -61,56 +67,177 @@ function parseToMeters(valUser) {
 }
 
 function ensureHex(c){ 
-    if(c.startsWith('#') && c.length===7) return c; 
+    if(c && c.startsWith('#') && c.length===7) return c; 
     return '#cccccc'; 
 }
 
 // ==========================================
-// CÁLCULOS DE INGENIERÍA (GAS)
+// 2. BASE DE DATOS DE INGENIERÍA
 // ==========================================
 
-// Base de datos de Diámetros Internos (Aprox para Sch40)
-window.DIAMETROS_INTERNOS_MM = {
-    '1/2"': 15.8, '3/4"': 20.9, '1"': 26.6,
-    '1-1/4"': 35.0, '1-1/2"': 40.9, '2"': 52.5,
-    '2-1/2"': 62.7, '3"': 77.9, '4"': 102.3
+// Propiedades de Gases Comunes
+window.GAS_PROPS = {
+    'natural': { s: 0.60, nombre: 'Gas Natural (Metano)', pcs: 10.35 }, // PCS kWh/m3 aprox
+    'glp':     { s: 1.52, nombre: 'GLP (Propano/Butano)', pcs: 25.9 }
 };
 
-// Datos de Gases
-window.GAS_PROPS = {
-    'natural': { s: 0.6, nombre: 'Gas Natural' },
-    'glp': { s: 1.52, nombre: 'GLP (Propano)' }
+// Diámetros Internos Reales (Milímetros) - Referencia ASTM / Normas
+// Nota: Para cálculos precisos, estos valores deben coincidir con la cédula (Sch40, PE, etc)
+window.DIAMETROS_INTERNOS_MM = {
+    // Acero / Galvanizado (Sch 40 estándar)
+    '1/4"': 9.2,   '3/8"': 12.5,
+    '1/2"': 15.8,  '3/4"': 20.9,
+    '1"': 26.6,    '1-1/4"': 35.1,
+    '1-1/2"': 40.9,'2"': 52.5,
+    '2-1/2"': 62.7,'3"': 77.9,
+    '4"': 102.3,   '6"': 154.1,
+    
+    // Cobre Tipo L (Rígido)
+    '1/4" L': 6.35, '3/8" L': 10.9, '1/2" L': 13.8,
+    '5/8" L': 16.9, '3/4" L': 19.9, '1" L': 26.0,
+    
+    // Polietileno (PE) Referencia SDR 11
+    '1/2" IPS': 15.0, '3/4" IPS': 20.0, '1" IPS': 26.0,
+    '20mm': 16.0, '25mm': 20.0, '32mm': 26.0, '40mm': 32.6, '63mm': 51.4
 };
+
+// ==========================================
+// 3. MOTOR DE CÁLCULO DE FLUJO (MUELLER)
+// ==========================================
 
 /**
- * Calcula la caída de presión usando RENOUARD Lineal (Baja Presión < 100mbar)
- * Fórmula: DeltaP (mmcda) = 23200 * S * L * Q^1.82 * D^-4.82
+ * Calcula Caída de Presión y Velocidad usando Ecuaciones de Mueller.
+ * Automáticamente selecciona la fórmula según si es Baja o Media presión.
+ * * @param {string} diamNominal - Identificador (ej: '1"').
+ * @param {number} longitud_m - Longitud del tramo en metros.
+ * @param {number} caudal_m3h - Caudal en metros cúbicos estándar por hora.
+ * @param {string} tipoGas - Clave ('natural' o 'glp').
+ * @param {number} presionEntrada_mbar - Presión al inicio del tramo (manométrica) en mbar.
+ * * @returns {object} Resultados técnicos o error.
  */
-window.calcularGas = function(diamNominal, longitud, caudal, tipoGas = 'natural') {
-    // 1. Obtener diámetro interno en mm
-    const D = window.DIAMETROS_INTERNOS_MM[diamNominal];
-    if (!D) return { error: "Diámetro no registrado en DB interna" };
+window.calcularFlujoGas = function(diamNominal, longitud_m, caudal_m3h, tipoGas = 'natural', presionEntrada_mbar = 23) {
+    
+    // A. Validaciones Iniciales
+    const D_mm = window.DIAMETROS_INTERNOS_MM[diamNominal];
+    if (!D_mm) return { error: `Diámetro '${diamNominal}' no catalogado para cálculo.` };
+    if (longitud_m <= 0 || caudal_m3h <= 0) return { error: "Longitud y Caudal deben ser mayores a 0." };
 
-    // 2. Propiedades del gas
-    const S = window.GAS_PROPS[tipoGas].s;
+    const gas = window.GAS_PROPS[tipoGas];
+    if (!gas) return { error: "Tipo de gas no válido." };
 
-    // 3. Fórmula Renouard Lineal
-    // Convertimos de mmcda (mmH2O) a mbar dividiendo por 10.2
-    const factorRenouard = 23200; 
-    let caida_mmH2O = factorRenouard * S * longitud * Math.pow(caudal, 1.82) * Math.pow(D, -4.82);
-    let caida_mbar = caida_mmH2O / 10.2; 
+    // B. Conversión de Unidades (Sistema Métrico -> Imperial para Fórmula)
+    // Mueller usa: Caudal (CFH), Longitud (Pies), Diámetro (Pulgadas)
+    const Q_cfh = caudal_m3h * 35.3147; 
+    const L_ft = longitud_m * 3.28084;
+    const D_in = D_mm / 25.4;
+    const S = gas.s;
 
-    // 4. Calcular Velocidad (V = 354 * Q / D^2)
-    let velocidad = (354 * caudal) / Math.pow(D, 2);
+    // C. Selección de Fórmula por Rango de Presión
+    // Umbral típico: 70 mbar (~1 psi). Por debajo es "Baja", por encima "Media/Alta".
+    
+    let caida_mbar = 0;
+    let P_salida_mbar = 0;
+    let regimen = "";
+
+    if (presionEntrada_mbar < 70) {
+        // --- MUELLER BAJA PRESIÓN ---
+        // h = ( Q / (2971 * D^2.725 / S^0.425) ) ^ (1 / 0.575) * L
+        // h resultante es en Pulgadas de Columna de Agua (in.w.c)
+        
+        regimen = "Baja Presión (Mueller Low)";
+        
+        const term1 = 2971 * Math.pow(D_in, 2.725);
+        const term2 = Math.pow(S, 0.425);
+        const factor = Q_cfh / (term1 / term2); // Q / K
+        
+        // Elevamos al inverso de 0.575 (aprox 1.7391)
+        const h_in_per_ft = Math.pow(factor, (1 / 0.575)); 
+        
+        const h_total_in_wc = h_in_per_ft * L_ft;
+        
+        // Convertir in.w.c a mbar (1 in.w.c = 2.4908 mbar)
+        caida_mbar = h_total_in_wc * 2.4908;
+        
+    } else {
+        // --- MUELLER MEDIA/ALTA PRESIÓN ---
+        // Q = 2826 * (D^2.725 / S^0.425) * ((P1^2 - P2^2)/L)^0.575
+        // Despejamos (P1^2 - P2^2):
+        // (P1^2 - P2^2) = ( Q / (2826 * D^2.725 / S^0.425) ) ^ (1/0.575) * L
+        // Ojo: P1 y P2 son ABSOLUTAS en PSI (psia).
+        
+        regimen = "Media Presión (Mueller High)";
+        
+        const P_atm_psi = 14.696; // Presión atmosférica estándar
+        // Convertir mbar a psi (1 mbar = 0.0145038 psi)
+        const P1_man_psi = presionEntrada_mbar * 0.0145038;
+        const P1_abs_psi = P1_man_psi + P_atm_psi;
+
+        const term1 = 2826 * Math.pow(D_in, 2.725);
+        const term2 = Math.pow(S, 0.425);
+        const factor = Q_cfh / (term1 / term2);
+        
+        const diff_sq_psi = Math.pow(factor, (1 / 0.575)) * L_ft; // Esto es P1^2 - P2^2
+        
+        // P2^2 = P1^2 - diff
+        const P2_sq_abs = Math.pow(P1_abs_psi, 2) - diff_sq_psi;
+        
+        if (P2_sq_abs < 0) {
+            return { error: "La caída de presión excede la presión de entrada (Flujo imposible)." };
+        }
+        
+        const P2_abs_psi = Math.sqrt(P2_sq_abs);
+        const caida_psi = P1_abs_psi - P2_abs_psi;
+        
+        // Convertir psi a mbar
+        caida_mbar = caida_psi * 68.9476; 
+    }
+
+    P_salida_mbar = presionEntrada_mbar - caida_mbar;
+
+    // D. Cálculo de Velocidad (Física General)
+    // v = Q_actual / Area
+    // Q_actual depende de la presión media en el tubo.
+    // Q_act = Q_std * (P_std / P_media_abs)
+    // Para simplificar en diseño básico, usaremos Q estándar corregido a presión media.
+    
+    const P_atm_mbar = 1013.25;
+    const P_media_mbar = P_atm_mbar + (presionEntrada_mbar + P_salida_mbar) / 2;
+    const factor_compresion = P_atm_mbar / P_media_mbar; // Gas se comprime, ocupa menos volumen
+    
+    const caudal_real_m3s = (caudal_m3h * factor_compresion) / 3600;
+    const area_m2 = Math.PI * Math.pow(D_mm / 1000 / 2, 2);
+    const velocidad_ms = caudal_real_m3s / area_m2;
+
+    // E. Evaluación Normativa (Genérica)
+    let estado = "OK";
+    let alertas = [];
+    
+    // Criterio Velocidad (típico < 30 m/s, ideal < 20 m/s para evitar ruido/erosión)
+    if (velocidad_ms > 30) { estado = "CRÍTICO"; alertas.push("Velocidad excesiva (>30m/s)"); }
+    else if (velocidad_ms > 20) { estado = "ALERTA"; alertas.push("Velocidad alta (>20m/s)"); }
+    
+    // Criterio Caída Presión (típico < 5% o < 10% según norma local)
+    // Para Baja (23 mbar), max caída 1-2 mbar.
+    const porcentajeCaida = (caida_mbar / presionEntrada_mbar) * 100;
+    if (presionEntrada_mbar < 70 && caida_mbar > 1.5) { alertas.push("Caída > 1.5 mbar (Norma Baja)"); }
+    if (porcentajeCaida > 10) { alertas.push("Caída > 10%"); }
+
+    if (alertas.length > 0 && estado === "OK") estado = "OBSERVAR";
 
     return {
-        gas: window.GAS_PROPS[tipoGas].nombre,
-        diametroInterno: D + " mm",
+        formula: regimen,
+        gas: gas.nombre,
+        diametro: diamNominal + ` (${D_mm}mm int)`,
+        longitud: longitud_m.toFixed(2) + " m",
+        caudal: caudal_m3h.toFixed(2) + " m³/h",
+        presionEntrada: presionEntrada_mbar.toFixed(2) + " mbar",
         caidaPresion: caida_mbar.toFixed(4) + " mbar",
-        velocidad: velocidad.toFixed(2) + " m/s",
-        longitud: longitud,
-        caudal: caudal
+        porcentajeCaida: porcentajeCaida.toFixed(2) + "%",
+        presionSalida: P_salida_mbar.toFixed(2) + " mbar",
+        velocidad: velocidad_ms.toFixed(2) + " m/s",
+        estado: estado,
+        alertas: alertas.join(", ")
     };
 };
 
-console.log("✅ Utilidades matemáticas + Física Gas cargadas (js/utils.js)");
+console.log("✅ Utils: Motor de Cálculo Mueller (Baja/Media) Cargado.");
