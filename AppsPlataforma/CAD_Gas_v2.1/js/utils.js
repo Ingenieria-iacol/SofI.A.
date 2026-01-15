@@ -65,4 +65,52 @@ function ensureHex(c){
     return '#cccccc'; 
 }
 
-console.log("✅ Utilidades matemáticas cargadas (js/utils.js)");
+// ==========================================
+// CÁLCULOS DE INGENIERÍA (GAS)
+// ==========================================
+
+// Base de datos de Diámetros Internos (Aprox para Sch40)
+window.DIAMETROS_INTERNOS_MM = {
+    '1/2"': 15.8, '3/4"': 20.9, '1"': 26.6,
+    '1-1/4"': 35.0, '1-1/2"': 40.9, '2"': 52.5,
+    '2-1/2"': 62.7, '3"': 77.9, '4"': 102.3
+};
+
+// Datos de Gases
+window.GAS_PROPS = {
+    'natural': { s: 0.6, nombre: 'Gas Natural' },
+    'glp': { s: 1.52, nombre: 'GLP (Propano)' }
+};
+
+/**
+ * Calcula la caída de presión usando RENOUARD Lineal (Baja Presión < 100mbar)
+ * Fórmula: DeltaP (mmcda) = 23200 * S * L * Q^1.82 * D^-4.82
+ */
+window.calcularGas = function(diamNominal, longitud, caudal, tipoGas = 'natural') {
+    // 1. Obtener diámetro interno en mm
+    const D = window.DIAMETROS_INTERNOS_MM[diamNominal];
+    if (!D) return { error: "Diámetro no registrado en DB interna" };
+
+    // 2. Propiedades del gas
+    const S = window.GAS_PROPS[tipoGas].s;
+
+    // 3. Fórmula Renouard Lineal
+    // Convertimos de mmcda (mmH2O) a mbar dividiendo por 10.2
+    const factorRenouard = 23200; 
+    let caida_mmH2O = factorRenouard * S * longitud * Math.pow(caudal, 1.82) * Math.pow(D, -4.82);
+    let caida_mbar = caida_mmH2O / 10.2; 
+
+    // 4. Calcular Velocidad (V = 354 * Q / D^2)
+    let velocidad = (354 * caudal) / Math.pow(D, 2);
+
+    return {
+        gas: window.GAS_PROPS[tipoGas].nombre,
+        diametroInterno: D + " mm",
+        caidaPresion: caida_mbar.toFixed(4) + " mbar",
+        velocidad: velocidad.toFixed(2) + " m/s",
+        longitud: longitud,
+        caudal: caudal
+    };
+};
+
+console.log("✅ Utilidades matemáticas + Física Gas cargadas (js/utils.js)");
