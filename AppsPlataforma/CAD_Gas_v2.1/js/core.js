@@ -17,7 +17,7 @@ window.estado = {
     drawing: false, 
     startPt: null, 
     selID: null, 
-    multiSel: [], // NUEVO: Array para selección múltiple
+    multiSel: [], // Array para selección múltiple
     hoverID: null,
     view: { x: 0, y: 0, scale: 1, angle: Math.PI/4 },
     action: null, 
@@ -231,7 +231,6 @@ window.analizarRed = function() {
 // ==========================================
 // 5. HELPERS DE INTERACCIÓN
 // ==========================================
-// ... (Input dinámico y handleCanvasClick - se mantienen igual, solo actualizamos handleCanvasClick para multi-select con shift)
 
 window.mostrarInputDinámico = function(xScreen, yScreen, distActual, vectorData) {
     const box = document.getElementById('dynamic-input-container'); 
@@ -305,15 +304,16 @@ window.handleCanvasClick = function(e) {
     if(document.getElementById('dynamic-input-container').style.display === 'flex' || 
        document.getElementById('vertical-input-container').style.display === 'flex') return;
     
-    // Lógica para herramientas que no son SELECT ni DRAW
-    if(window.estado.tool === 'cut' && window.estado.hoverID) { /* ... cortado igual ... */ 
+    // CORTAR
+    if(window.estado.tool === 'cut' && window.estado.hoverID) {
         const tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
         const ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
         const tz = window.estado.snapped ? window.estado.snapped.z : window.estado.currentZ;
         window.cortarTuberia(window.estado.hoverID, tx, ty, tz); 
         window.saveState(); if(typeof renderScene === 'function') renderScene(); return;
     }
-    if(window.estado.tool === 'insert') { /* ... insertar igual ... */ 
+    // INSERTAR
+    if(window.estado.tool === 'insert') {
         const tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
         const ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
         const tz = window.estado.snapped ? window.estado.snapped.z : window.estado.currentZ;
@@ -326,15 +326,13 @@ window.handleCanvasClick = function(e) {
         const pickedID = window.selectElementAt(e.clientX - rect.left, e.clientY - rect.top);
         
         if (e.shiftKey) {
-            // Modo Aditivo
             if (pickedID) {
                 const idx = window.estado.multiSel.indexOf(pickedID);
-                if (idx > -1) window.estado.multiSel.splice(idx, 1); // Deseleccionar
-                else window.estado.multiSel.push(pickedID); // Seleccionar
-                window.estado.selID = pickedID; // El ultimo es el activo para props
+                if (idx > -1) window.estado.multiSel.splice(idx, 1); 
+                else window.estado.multiSel.push(pickedID);
+                window.estado.selID = pickedID; 
             }
         } else {
-            // Modo Único
             window.estado.selID = pickedID;
             window.estado.multiSel = pickedID ? [pickedID] : [];
             if(window.estado.selID) { 
@@ -356,7 +354,6 @@ window.handleCanvasClick = function(e) {
     let tz = window.estado.snapped ? window.estado.snapped.z : window.estado.currentZ;
     
     if (window.estado.drawing && window.estado.inicio && !window.estado.snapped) {
-        // ... (Ortogonalidad igual que antes) ...
         const gridX = Math.round(window.estado.mouseIso.x * 10) / 10;
         const gridY = Math.round(window.estado.mouseIso.y * 10) / 10;
         const dx = gridX - window.estado.inicio.x; 
@@ -369,7 +366,11 @@ window.handleCanvasClick = function(e) {
         else { tx = gridX; ty = gridY; }
     }
 
-    if(window.estado.tool === 'texto') { /* ... */ }
+    if(window.estado.tool === 'texto') { 
+        const txt = prompt("Texto:", "Etiqueta"); 
+        if(txt) { window.addEl({tipo:'texto', x:tx, y:ty, z:tz, props:{text:txt}}); } 
+        return; 
+    }
     
     if(window.estado.activeItem?.type === 'tuberia' || window.estado.tool === 'cota') {
         if(!window.estado.drawing) { 
@@ -391,10 +392,197 @@ window.handleCanvasClick = function(e) {
     if(typeof renderInterface === 'function') renderInterface();
 }
 
-// ... (Funciones de Modal Insertar, Guardar, Cargar, Limpiar, Reporte y Exportar CSV se mantienen igual) ...
-// Asegurarse de mantenerlas al copiar. Resumo aquí para el ejemplo de cálculo.
+window.abrirModalInsertar = function(x, y, zDefault) {
+    insertCoords = { x, y };
+    const sel = document.getElementById('ins-select'); sel.innerHTML = '';
+    const groupNames = { mat: 'Materiales (Tuberías)', comp: 'Componentes', eq: 'Equipos', inst: 'Instrumentos', perif: 'Periféricos / Válvulas', cons: 'Consumibles' };
+    
+    if (window.CATALOGO) {
+        Object.keys(window.CATALOGO).forEach(key => {
+            const group = document.createElement('optgroup'); group.label = groupNames[key] || key.toUpperCase();
+            window.CATALOGO[key].forEach(item => { 
+                const opt = document.createElement('option'); 
+                opt.value = key + '|' + item.id; 
+                opt.innerText = item.name; 
+                opt.setAttribute('data-type', item.type); 
+                group.appendChild(opt); 
+            });
+            sel.appendChild(group);
+        });
+    }
+    
+    const u = window.UNITS[window.CONFIG.unit]; 
+    document.getElementById('ins-z1').value = (zDefault * u.factor).toFixed(u.precision); 
+    document.getElementById('ins-z2').value = (zDefault * u.factor).toFixed(u.precision);
+    window.checkInsertType(); 
+    document.getElementById('modal-insertar').style.display = 'flex';
+}
 
-// --- CÁLCULO DE TRAYECTO COMPLETO ---
+window.cerrarModalInsertar = function() { 
+    document.getElementById('modal-insertar').style.display = 'none'; 
+    window.setTool('select'); 
+}
+
+window.checkInsertType = function() {
+    const sel = document.getElementById('ins-select'); if(!sel.options.length) return;
+    const opt = sel.options[sel.selectedIndex]; const type = opt.getAttribute('data-type');
+    const rowZ2 = document.getElementById('row-ins-z2'); 
+    if(type === 'tuberia') rowZ2.style.display = 'flex'; else rowZ2.style.display = 'none';
+}
+
+window.ejecutarInsercion = function() {
+    const sel = document.getElementById('ins-select'); const valParts = sel.value.split('|'); const groupKey = valParts[0]; const itemId = valParts[1];
+    const itemDef = window.CATALOGO[groupKey].find(x => x.id === itemId); if(!itemDef) return;
+    const rawZ1 = window.parseInputFloat(document.getElementById('ins-z1').value); 
+    const rawZ2 = window.parseInputFloat(document.getElementById('ins-z2').value);
+    const u = window.UNITS[window.CONFIG.unit]; 
+    const z1Meters = rawZ1 / u.factor; 
+    const z2Meters = rawZ2 / u.factor;
+    const props = JSON.parse(JSON.stringify(itemDef.props));
+    
+    if (itemDef.type === 'tuberia' && Math.abs(z1Meters - z2Meters) > 0.001) { 
+        window.addEl({ tipo: 'tuberia', x: insertCoords.x, y: insertCoords.y, z: z1Meters, dx: 0, dy: 0, dz: z2Meters - z1Meters, props: props, layerId: window.activeLayerId, customColor: itemDef.color }); 
+    } else { 
+        window.addEl({ tipo: itemDef.type, x: insertCoords.x, y: insertCoords.y, z: z1Meters, dx: 0, dy: 0, dz: 0, props: props, icon: itemDef.icon, layerId: window.activeLayerId, color: itemDef.color }); 
+    }
+    document.getElementById('modal-insertar').style.display = 'none'; 
+    window.setTool('select'); 
+    if(typeof renderScene === 'function') renderScene();
+}
+
+// ==========================================
+// 6. GESTIÓN DE ARCHIVOS Y REPORTES
+// ==========================================
+
+window.guardarProyecto = function() { 
+    document.getElementById('modal-guardar').style.display = 'flex'; 
+    document.getElementById('input-filename').focus(); 
+}
+
+window.confirmarDescarga = function() {
+    let nombre = document.getElementById('input-filename').value || 'proyecto_gas'; 
+    if (!nombre.endsWith('.json')) { nombre += '.json'; }
+    const datos = JSON.stringify({ layers: window.layers, elementos: window.elementos });
+    const blob = new Blob([datos], { type: "application/json" }); 
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = nombre; a.click();
+    URL.revokeObjectURL(url); 
+    document.getElementById('modal-guardar').style.display = 'none';
+}
+
+window.guardarEnNavegador = function() { 
+    try { 
+        const datos = JSON.stringify({ layers: window.layers, elementos: window.elementos }); 
+        localStorage.setItem('backup_cad_gas', datos); 
+        const msg = document.getElementById('msg-guardado'); 
+        if(msg) {
+            msg.style.display = 'block'; 
+            setTimeout(() => { msg.style.display = 'none'; document.getElementById('modal-guardar').style.display = 'none'; }, 1500); 
+        }
+    } catch (e) { alert("Error: Almacenamiento lleno."); } 
+}
+
+window.cargarProyecto = function(inputElement){ 
+    if (!inputElement.files.length) return;
+    const r = new FileReader(); 
+    r.onload = function(e) {
+        try {
+            const d = JSON.parse(e.target.result); 
+            if(d.layers) window.layers = d.layers; 
+            if(d.elementos) window.elementos = d.elementos; 
+            window.saveState(); 
+            if(typeof renderScene === 'function') renderScene(); 
+            if(typeof renderLayersUI === 'function') renderLayersUI();
+        } catch(err) { alert("Error al leer el archivo."); }
+    }; 
+    r.readAsText(inputElement.files[0]); 
+}
+
+window.limpiarTodo = function(){ 
+    if(confirm("¿Estás seguro de borrar todo?")){
+        window.elementos = []; window.saveState(); if(typeof renderScene === 'function') renderScene();
+    } 
+}
+
+window.mostrarReporte = function() {
+    const tuberias = {}; const accesorios = {}; const equipos = {};
+    window.elementos.forEach(el => {
+        if (el.visible === false) return;
+        if (el.tipo === 'tuberia') {
+            let matStr = el.props.material ? el.props.material.replace('_', ' ').toUpperCase() : "GENÉRICO";
+            let diamStr = el.props.diametroNominal || "?";
+            let key = `${matStr} [${diamStr}]`;
+            let len = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+            tuberias[key] = (tuberias[key] || 0) + len;
+        } else if (el.tipo === 'cota' || el.tipo === 'texto') {
+            return;
+        } else {
+            let cat = "Otros";
+            if (el.tipo === 'valvula') cat = "Válvulas";
+            if (el.props.tipo === 'tanque_glp') cat = "Tanques";
+            if (el.props.tipo === 'accesorio') cat = "Accesorios";
+            let name = el.name || el.props.nombre || el.tipo;
+            let det = el.props.modelo || el.props.diametro || "";
+            let key = `${name} ${det}`;
+            equipos[cat] = equipos[cat] || {}; equipos[cat][key] = (equipos[cat][key] || 0) + 1;
+        }
+    });
+
+    if (typeof window.analizarRed === 'function') {
+        const autoFittings = window.analizarRed();
+        autoFittings.forEach(fit => {
+            let name = "Accesorio Auto";
+            if (fit.tipo === 'codo_auto') name = "Codo 90°";
+            else if (fit.tipo === 'tee_auto') name = "Tee Recta";
+            else if (fit.tipo === 'reductor_auto') name = "Reductor";
+            else if (fit.tipo === 'cruz_auto') name = "Cruz";
+            let key = `${name} (Generado)`;
+            accesorios[key] = (accesorios[key] || 0) + 1;
+        });
+    }
+
+    let html = "";
+    if (Object.keys(tuberias).length > 0) {
+        html += `<tr class="table-header"><td colspan="2">🔵 TUBERÍAS Y DUCTOS</td></tr>`;
+        for (let key in tuberias) html += `<tr><td>${key}</td><td align='right'><b>${window.formatLength(tuberias[key])}</b></td></tr>`;
+    }
+    let hayAccesorios = Object.keys(accesorios).length > 0 || (equipos['Accesorios'] && Object.keys(equipos['Accesorios']).length > 0);
+    if (hayAccesorios) {
+        html += `<tr class="table-header"><td colspan="2">🟠 ACCESORIOS Y CONEXIONES</td></tr>`;
+        for (let key in accesorios) html += `<tr><td>${key}</td><td align='right'>${accesorios[key]} und</td></tr>`;
+        if (equipos['Accesorios']) {
+            for (let key in equipos['Accesorios']) html += `<tr><td>${key}</td><td align='right'>${equipos['Accesorios'][key]} und</td></tr>`;
+            delete equipos['Accesorios']; 
+        }
+    }
+    for (let cat in equipos) {
+        html += `<tr class="table-header"><td colspan="2">🟢 ${cat.toUpperCase()}</td></tr>`;
+        for (let key in equipos[cat]) html += `<tr><td>${key}</td><td align='right'>${equipos[cat][key]} und</td></tr>`;
+    }
+
+    const table = document.getElementById('tabla-res');
+    if (table) { table.innerHTML = html; document.getElementById('modal-reporte').style.display = 'flex'; }
+};
+
+window.exportarCSV = function() {
+    let csvContent = "data:text/csv;charset=utf-8,"; csvContent += "Categoria,Elemento,Cantidad/Longitud,Unidad\r\n";
+    window.elementos.forEach(el => {
+        if(el.visible === false || el.tipo === 'cota' || el.tipo === 'texto') return;
+        let cat = "Otros", desc = el.name || el.tipo, val = 1, unit = "und";
+        if(el.tipo === 'tuberia') {
+            cat = "Tuberia"; desc = (el.props.material || "Generico") + " " + (el.props.diametroNominal || "");
+            val = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2); unit = "m";
+        } else if (el.props.tipo === 'tanque_glp') { cat = "Tanques"; desc = `Tanque GLP ${el.props.capacidadGalones}gl`; } 
+        else if (el.tipo === 'valvula') { cat = "Valvulas"; }
+        let valStr = val.toString().replace('.', ',');
+        csvContent += `${cat},${desc},${valStr},${unit}\r\n`;
+    });
+    const encodedUri = encodeURI(csvContent); 
+    const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "reporte_materiales_gas.csv"); 
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+
+// --- CÁLCULO DE TRAYECTO COMPLETO (NETWORK) ---
 window.calcularTrayectoCompleto = function() {
     const ids = window.estado.multiSel;
     if (ids.length === 0) { alert("Seleccione el trayecto de tuberías primero."); return; }
@@ -409,15 +597,9 @@ window.calcularTrayectoCompleto = function() {
 
     if (Q_total <= 0 || P_inicial <= 0) { alert("Datos de entrada inválidos."); return; }
 
-    // 2. Ordenamiento simple (Heurística: Por altura Z descendente o seleccionando la más cercana al origen si hubiera)
-    // Para simplificar en V14.4, asumiremos que el orden es el de creación o selección, 
-    // pero idealmente deberíamos ordenar por conectividad.
-    // Vamos a sumar longitudes y calcular caída TOTAL como si fuera una sola tubería larga (Método Longitud Equivalente)
-    
     let L_total = 0;
-    // Validar homogeneidad (opcional, advertir si hay cambios de diámetro)
-    let diametroBase = tuberias[0].props.diametroNominal;
     let diametrosDistintos = false;
+    let diametroBase = tuberias[0].props.diametroNominal;
 
     tuberias.forEach(t => {
         L_total += Math.sqrt(t.dx**2 + t.dy**2 + t.dz**2);
@@ -429,30 +611,17 @@ window.calcularTrayectoCompleto = function() {
         htmlRes += `<div class="calc-result-box calc-alert">⚠ Diámetros mixtos. Se calcula tramo a tramo (aprox).</div>`;
     }
 
-    // 3. Cálculo Iterativo (Tramo a Tramo)
     let P_actual = P_inicial;
     let P_final = P_inicial;
     let maxVel = 0;
-    let log = "";
 
-    // Si ordenamos arbitrariamente, el resultado puede variar si los diámetros cambian.
-    // Asumiremos un cálculo simplificado de Longitud Total con el diámetro predominante o promedio si son distintos,
-    // o iteramos array (suponiendo orden lógico).
-    
-    // Iteración
     tuberias.forEach((t, idx) => {
         const L_i = Math.sqrt(t.dx**2 + t.dy**2 + t.dz**2);
-        // Calcula caída de este segmento con la presión de entrada actual
         const resTramo = window.calcularFlujoGas(t.props.diametroNominal, L_i, Q_total, Gas, P_actual);
         
-        if (resTramo.error) {
-            log += `Tramo ${idx+1}: Error (${resTramo.error})<br>`;
-        } else {
-            // Actualizar presión para el siguiente (restando la caída convertida)
-            // resTramo.caidaPresion es string "X mbar". Parseamos.
+        if (!resTramo.error) {
             const dP = parseFloat(resTramo.caidaPresion);
             P_actual -= dP;
-            
             const vel = parseFloat(resTramo.velocidad);
             if(vel > maxVel) maxVel = vel;
         }
@@ -479,85 +648,50 @@ window.calcularTrayectoCompleto = function() {
     document.getElementById('calc-result').innerHTML = htmlRes;
 }
 
-// --- Funciones de Reporte y PDF (Mantener las anteriores completas) ---
-window.mostrarReporte = function() { /* ... código anterior ... */ 
-    // (Asegúrate de copiar la función mostrarReporte del paso anterior aquí)
-    const tuberias = {}; const accesorios = {}; const equipos = {};
-    window.elementos.forEach(el => {
-        if (el.visible === false) return;
-        if (el.tipo === 'tuberia') {
-            let matStr = el.props.material ? el.props.material.replace('_', ' ').toUpperCase() : "GENÉRICO";
-            let diamStr = el.props.diametroNominal || "?";
-            let key = `${matStr} [${diamStr}]`;
-            let len = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
-            tuberias[key] = (tuberias[key] || 0) + len;
-        } else if (el.tipo === 'cota' || el.tipo === 'texto') {
-            return;
-        } else {
-            let cat = "Otros";
-            if (el.tipo === 'valvula') cat = "Válvulas";
-            if (el.props.tipo === 'tanque_glp') cat = "Tanques";
-            if (el.props.tipo === 'accesorio') cat = "Accesorios";
-            let name = el.name || el.props.nombre || el.tipo;
-            let det = el.props.modelo || el.props.diametro || "";
-            let key = `${name} ${det}`;
-            equipos[cat] = equipos[cat] || {}; equipos[cat][key] = (equipos[cat][key] || 0) + 1;
-        }
-    });
-    if (typeof window.analizarRed === 'function') {
-        const autoFittings = window.analizarRed();
-        autoFittings.forEach(fit => {
-            let name = "Accesorio Auto";
-            if (fit.tipo === 'codo_auto') name = "Codo 90°";
-            else if (fit.tipo === 'tee_auto') name = "Tee Recta";
-            else if (fit.tipo === 'reductor_auto') name = "Reductor";
-            else if (fit.tipo === 'cruz_auto') name = "Cruz";
-            let key = `${name} (Generado)`;
-            accesorios[key] = (accesorios[key] || 0) + 1;
-        });
+// --- MODALES Y PDF ---
+window.realizarCalculo = function() {
+    const el = window.elementos.find(x => x.id === window.estado.selID);
+    if (!el || el.tipo !== 'tuberia') { alert("Seleccione una tubería."); return; }
+    const Q = window.parseInputFloat(document.getElementById('calc-caudal').value);
+    const P = window.parseInputFloat(document.getElementById('calc-presion').value);
+    const Gas = document.getElementById('calc-gas').value;
+    const L = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+    
+    if (Q <= 0 || P <= 0) { alert("Datos inválidos."); return; }
+    const res = window.calcularFlujoGas(el.props.diametroNominal, L, Q, Gas, P);
+    
+    const divRes = document.getElementById('calc-result');
+    if (res.error) {
+        divRes.innerHTML = `<div class="calc-result-box calc-err">❌ Error: ${res.error}</div>`;
+    } else {
+        let cls = "calc-ok"; if(res.estado === "ALERTA") cls = "calc-alert"; if(res.estado === "CRÍTICO") cls = "calc-err";
+        divRes.innerHTML = `<div class="calc-result-box ${cls}"><strong>${res.estado}</strong><br>ΔP: ${res.caidaPresion} (${res.porcentajeCaida})<br>Vel: ${res.velocidad}<br>P.Sal: ${res.presionSalida}<br><small>${res.formula}</small></div>`;
     }
-    let html = "";
-    if (Object.keys(tuberias).length > 0) {
-        html += `<tr class="table-header"><td colspan="2">🔵 TUBERÍAS Y DUCTOS</td></tr>`;
-        for (let key in tuberias) html += `<tr><td>${key}</td><td align='right'><b>${window.formatLength(tuberias[key])}</b></td></tr>`;
-    }
-    let hayAccesorios = Object.keys(accesorios).length > 0 || (equipos['Accesorios'] && Object.keys(equipos['Accesorios']).length > 0);
-    if (hayAccesorios) {
-        html += `<tr class="table-header"><td colspan="2">🟠 ACCESORIOS Y CONEXIONES</td></tr>`;
-        for (let key in accesorios) html += `<tr><td>${key}</td><td align='right'>${accesorios[key]} und</td></tr>`;
-        if (equipos['Accesorios']) {
-            for (let key in equipos['Accesorios']) html += `<tr><td>${key}</td><td align='right'>${equipos['Accesorios'][key]} und</td></tr>`;
-            delete equipos['Accesorios']; 
-        }
-    }
-    for (let cat in equipos) {
-        html += `<tr class="table-header"><td colspan="2">🟢 ${cat.toUpperCase()}</td></tr>`;
-        for (let key in equipos[cat]) html += `<tr><td>${key}</td><td align='right'>${equipos[cat][key]} und</td></tr>`;
-    }
-    const table = document.getElementById('tabla-res');
-    if (table) { table.innerHTML = html; document.getElementById('modal-reporte').style.display = 'flex'; }
 }
-// ... (exportarCSV, prepararPDF, generarPDF, etc. mantener igual) ...
-// Para abreviar en la respuesta, asumo que mantienes las funciones de PDF del paso anterior.
-// Son críticas para que funcione el botón PDF.
 
 window.mostrarEcuaciones = function() { document.getElementById('modal-ecuaciones').style.display = 'flex'; }
 window.prepararPDF = function() { document.getElementById('pdf-nombre').value = ""; document.getElementById('pdf-id').value = ""; document.getElementById('modal-pdf').style.display = 'flex'; }
-window.generarPDF = function() { /* Copiar del paso anterior */ 
+
+window.generarPDF = function() {
     const nombre = document.getElementById('pdf-nombre').value.trim();
     const id = document.getElementById('pdf-id').value.trim();
     const autor = document.getElementById('pdf-autor').value.trim() || "Ingeniería";
     const incluirEcuaciones = document.getElementById('pdf-include-eq').checked;
+
     if (!nombre || !id) { alert("Por favor, ingrese el Nombre y el ID."); return; }
+
     document.getElementById('modal-pdf').style.display = 'none';
     const gizmo = document.getElementById('gizmo-container');
     const hud = document.querySelector('.hud-overlay');
     if(gizmo) gizmo.style.display = 'none'; if(hud) hud.style.display = 'none';
+
     html2canvas(document.getElementById('main-area'), { backgroundColor: '#111111', scale: 1.5 }).then(canvas => {
         if(gizmo) gizmo.style.display = 'block'; if(hud) hud.style.display = 'flex';
+
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         const pageWidth = doc.internal.pageSize.getWidth(); const pageHeight = doc.internal.pageSize.getHeight(); const margin = 15;
+
         doc.setDrawColor(0); doc.setFillColor(240, 240, 240);
         doc.rect(margin, margin, pageWidth - 2*margin, 25, 'F'); doc.rect(margin, margin, pageWidth - 2*margin, 25, 'S');
         doc.setFontSize(14); doc.setFont("helvetica", "bold");
@@ -566,9 +700,11 @@ window.generarPDF = function() { /* Copiar del paso anterior */
         doc.text(`PROYECTO: ${nombre}`, margin + 5, margin + 16); doc.text(`ID: ${id}`, margin + 5, margin + 21);
         doc.text(`FECHA: ${new Date().toLocaleDateString()}`, pageWidth - margin - 5, margin + 16, { align: "right" });
         doc.text(`RESPONSABLE: ${autor}`, pageWidth - margin - 5, margin + 21, { align: "right" });
+
         const imgData = canvas.toDataURL('image/jpeg', 0.9);
         doc.addImage(imgData, 'JPEG', margin, margin + 30, pageWidth - 2*margin, 100);
         doc.rect(margin, margin + 30, pageWidth - 2*margin, 100);
+
         const tuberias = {}; const items = {};
         window.elementos.forEach(el => {
             if (el.visible === false || el.tipo ==='cota' || el.tipo ==='texto') return;
@@ -590,8 +726,10 @@ window.generarPDF = function() { /* Copiar del paso anterior */
         const tableBody = [];
         for (let k in tuberias) tableBody.push(["Tubería", k, window.formatLength(tuberias[k])]);
         for (let k in items) tableBody.push(["Elemento", k, items[k] + " und"]);
+
         doc.autoTable({ startY: margin + 130 + 10, head: [['Categoría', 'Descripción', 'Cantidad']], body: tableBody, theme: 'grid', styles: { fontSize: 9, cellPadding: 2 }, margin: { left: margin, right: margin } });
         doc.text("Pagina 1/2", pageWidth - margin, pageHeight - 10, {align:"right"});
+
         if(incluirEcuaciones) {
             doc.addPage();
             doc.setFillColor(230, 230, 230); doc.rect(margin, margin, pageWidth - 2*margin, 15, 'F');
@@ -622,4 +760,4 @@ window.generarPDF = function() { /* Copiar del paso anterior */
     });
 }
 
-console.log("✅ Core Logic (Network + Bulk Edit) cargado");
+console.log("✅ Core Logic (Full Suite + Cycle Selection) cargado");
