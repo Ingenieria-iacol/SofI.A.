@@ -1,4 +1,4 @@
-// js/renderer.js - Lógica de Visualización (Completo)
+// js/renderer.js - Lógica de Visualización (Completo con Blue Stream UI)
 
 function isoToScreen(x, y, z) {
     const ang = window.estado.view.angle;
@@ -465,7 +465,9 @@ function initLibrary() {
             div.onclick = () => { 
                 document.querySelectorAll('.tool-item').forEach(x=>x.classList.remove('active')); div.classList.add('active'); 
                 window.estado.activeItem = it; window.setTool(it.id); 
-                document.getElementById('right-panel').classList.add('closed');
+                // document.getElementById('right-panel').classList.add('closed'); // YA NO EXISTE
+                // Cerrar tarjeta si está abierta
+                document.getElementById('prop-card').classList.remove('active');
             };
             c.appendChild(div);
         });
@@ -490,14 +492,57 @@ function renderLayersUI() {
     window.layers.forEach(l => { const opt = document.createElement('option'); opt.value=l.id; opt.innerText=l.name; sel.appendChild(opt); });
 }
 
+// === NUEVA LÓGICA DE UI FLOTANTE (BLUE STREAM) ===
+
+window.cerrarPropiedades = function() {
+    document.getElementById('prop-card').classList.remove('active');
+    window.estado.selID = null;
+    if(typeof renderEffects === 'function') renderEffects();
+};
+
 function updatePropsPanel() {
-    const el = window.elementos.find(x=>x.id===window.estado.selID);
-    const f = document.getElementById('prop-form'); const v = document.getElementById('prop-vacio');
-    const divAdjust = document.getElementById('obj-adjust-controls');
-    const contDatos = document.getElementById('prop-datos-tecnicos-container'); contDatos.innerHTML = ''; 
-    if(!el) { f.style.display='none'; v.style.display='block'; return; }
-    f.style.display='block'; v.style.display='none';
+    const el = window.elementos.find(x => x.id === window.estado.selID);
+    const card = document.getElementById('prop-card');
+    const f = document.getElementById('prop-form'); 
+    const v = document.getElementById('prop-vacio');
+    const hero = document.getElementById('pc-hero-container');
+    const title = document.getElementById('pc-title-text');
     
+    const divAdjust = document.getElementById('obj-adjust-controls');
+    const contDatos = document.getElementById('prop-datos-tecnicos-container'); 
+    
+    // Si no hay selección, ocultar tarjeta
+    if (!el) {
+        card.classList.remove('active');
+        return;
+    }
+    
+    // Activar tarjeta
+    card.classList.add('active');
+    f.style.display = 'block'; 
+    v.style.display = 'none';
+    
+    // Configurar Hero y Título
+    let displayTitle = "Elemento";
+    if (el.tipo === 'tuberia') displayTitle = "Tubería";
+    else if (el.props.nombre) displayTitle = el.props.nombre;
+    else if (el.name) displayTitle = el.name;
+    else if (el.tipo === 'valvula') displayTitle = "Válvula";
+    else displayTitle = el.tipo.toUpperCase();
+    
+    title.innerText = displayTitle;
+    
+    hero.innerHTML = '';
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'pc-hero-icon';
+    if (el.tipo === 'tuberia') { iconDiv.innerHTML = window.ICONS.PIPE || '---'; } 
+    else if (el.icon) { iconDiv.innerHTML = el.icon; } 
+    else { iconDiv.innerHTML = '<div style="font-size:40px; color:#fff;">▪</div>'; }
+    hero.appendChild(iconDiv);
+
+    contDatos.innerHTML = ''; 
+
+    // Mapeo de valores básicos
     document.getElementById('p-visible').checked = (el.visible !== false); 
     document.getElementById('p-color').value = ensureHex(el.props.customColor || el.props.color || '#cccccc');
     document.getElementById('p-tag').value = el.props.tag || '';
@@ -506,37 +551,46 @@ function updatePropsPanel() {
     document.getElementById('p-show-label').checked = el.props.mostrarEtiqueta === true;
     
     const u = window.UNITS[window.CONFIG.unit];
-    document.getElementById('lbl-unit-z').innerText = u.label; document.getElementById('p-altura').value = (el.z * u.factor).toFixed(u.precision);
-    const rowFinal = document.getElementById('row-altura-final'); document.getElementById('lbl-unit-z-final').innerText = u.label;
+    document.getElementById('lbl-unit-z').innerText = u.label; 
+    document.getElementById('p-altura').value = (el.z * u.factor).toFixed(u.precision);
+    const rowFinal = document.getElementById('row-altura-final'); 
+    document.getElementById('lbl-unit-z-final').innerText = u.label;
     
+    // Lógica Específica
     if (el && el.props.tipo === 'tanque_glp') {
         generarFormularioTanque(el, contDatos);
         if(divAdjust) divAdjust.style.display = 'none';
     } 
-    // Nuevo bloque específico para la Válvula Actuada
     else if (el.props.tipo === 'actuada') {
         generarFormularioValvulaActuada(el, contDatos);
-        if(divAdjust) divAdjust.style.display = 'block'; // Permite ajustar rotación/escala
+        if(divAdjust) divAdjust.style.display = 'block';
         document.getElementById('p-anchor').value = el.props.anchor || 'center';
         document.getElementById('row-grosor').style.display = 'none';
-        rowFinal.style.display = 'none'; document.getElementById('row-longitud').style.display = 'none';
-        // Se evita caer en el bloque genérico de abajo
+        rowFinal.style.display = 'none'; 
+        document.getElementById('row-longitud').style.display = 'none';
     }
     else if (el.tipo === 'tuberia' || el.tipo === 'cota') {
-        const finalZ = el.z + el.dz; document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
-        rowFinal.style.display = 'flex'; divAdjust.style.display = 'none'; document.getElementById('row-longitud').style.display = 'flex';
+        const finalZ = el.z + el.dz; 
+        document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
+        rowFinal.style.display = 'flex'; 
+        divAdjust.style.display = 'none'; 
+        document.getElementById('row-longitud').style.display = 'flex';
         const rawLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
-        document.getElementById('lbl-unit').innerText = u.label; document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
+        document.getElementById('lbl-unit').innerText = u.label; 
+        document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
     } else {
-        rowFinal.style.display = 'none'; document.getElementById('row-longitud').style.display = 'none';
+        rowFinal.style.display = 'none'; 
+        document.getElementById('row-longitud').style.display = 'none';
         if(el.tipo !== 'texto') {
-             divAdjust.style.display = 'block'; const scaleVal = el.props.scaleFactor || 1.0;
-             document.getElementById('p-scale').value = scaleVal; document.getElementById('p-scale-val').textContent = scaleVal;
+             divAdjust.style.display = 'block'; 
+             const scaleVal = el.props.scaleFactor || 1.0;
+             document.getElementById('p-scale').value = scaleVal; 
+             document.getElementById('p-scale-val').textContent = scaleVal;
              document.getElementById('p-anchor').value = el.props.anchor || 'center';
         } else { divAdjust.style.display = 'none'; }
     }
     
-    // Bloque genérico para elementos que NO son tubería/cota/texto/tanque NI actuada
+    // Bloque Flujo Genérico (Si no es actuada/tanque/tuberia)
     if (el.tipo !== 'tuberia' && el.tipo !== 'cota' && el.tipo !== 'texto' && el.props.tipo !== 'tanque_glp' && el.props.tipo !== 'actuada') {
         const grpFlow = document.createElement('div'); grpFlow.className = 'acc-group'; grpFlow.id='grp-flow';
         const headFlow = document.createElement('div'); headFlow.className = 'acc-header'; headFlow.innerText = 'Conexiones y Flujo';
@@ -548,13 +602,13 @@ function updatePropsPanel() {
         btnInvert.innerHTML = `<button class="btn" style="width:100%" onclick="window.invertirFlujo()">🔄 Invertir Sentido Flujo</button>`;
         contentFlow.appendChild(btnInvert);
 
-        const titleIn = document.createElement('div'); titleIn.style = "font-size:0.7rem; color:#aaa; margin:5px 15px; border-bottom:1px solid #444;"; titleIn.innerText = "ENTRADA (INLET)";
+        const titleIn = document.createElement('div'); titleIn.style = "font-size:0.7rem; color:#aaa; margin:5px 0; border-bottom:1px solid #444;"; titleIn.innerText = "ENTRADA (INLET)";
         contentFlow.appendChild(titleIn);
         const rowIn = document.createElement('div'); rowIn.className = 'prop-row row-h';
         rowIn.innerHTML = `<select class="btn" style="flex:1" onchange="updateStyleProp('diamIn', this.value)"><option value='1/4"' ${el.props.diamIn==='1/4"'?'selected':''}>1/4"</option><option value='1/2"' ${el.props.diamIn==='1/2"'?'selected':''}>1/2"</option><option value='3/4"' ${el.props.diamIn==='3/4"'?'selected':''}>3/4"</option><option value='1"' ${el.props.diamIn==='1"'?'selected':''}>1"</option></select><select class="btn" style="flex:1" onchange="updateStyleProp('typeIn', this.value)"><option value='hembra' ${el.props.typeIn==='hembra'?'selected':''}>Hembra</option><option value='macho' ${el.props.typeIn==='macho'?'selected':''}>Macho</option><option value='brida' ${el.props.typeIn==='brida'?'selected':''}>Brida</option></select>`;
         contentFlow.appendChild(rowIn);
 
-        const titleOut = document.createElement('div'); titleOut.style = "font-size:0.7rem; color:#aaa; margin:5px 15px; border-bottom:1px solid #444;"; titleOut.innerText = "SALIDA (OUTLET)";
+        const titleOut = document.createElement('div'); titleOut.style = "font-size:0.7rem; color:#aaa; margin:5px 0; border-bottom:1px solid #444;"; titleOut.innerText = "SALIDA (OUTLET)";
         contentFlow.appendChild(titleOut);
         const rowOut = document.createElement('div'); rowOut.className = 'prop-row row-h';
         rowOut.innerHTML = `<select class="btn" style="flex:1" onchange="updateStyleProp('diamOut', this.value)"><option value='1/4"' ${el.props.diamOut==='1/4"'?'selected':''}>1/4"</option><option value='1/2"' ${el.props.diamOut==='1/2"'?'selected':''}>1/2"</option><option value='3/4"' ${el.props.diamOut==='3/4"'?'selected':''}>3/4"</option><option value='1"' ${el.props.diamOut==='1"'?'selected':''}>1"</option></select><select class="btn" style="flex:1" onchange="updateStyleProp('typeOut', this.value)"><option value='hembra' ${el.props.typeOut==='hembra'?'selected':''}>Hembra</option><option value='macho' ${el.props.typeOut==='macho'?'selected':''}>Macho</option><option value='brida' ${el.props.typeOut==='brida'?'selected':''}>Brida</option></select>`;
@@ -562,12 +616,11 @@ function updatePropsPanel() {
 
         grpFlow.appendChild(headFlow); grpFlow.appendChild(contentFlow); contDatos.appendChild(grpFlow);
     }
-    
+
     const divGrosor = document.getElementById('row-grosor');
     if(el.tipo === 'tuberia' && el.props.material) { divGrosor.style.display = 'none'; } else if (el.props.tipo !== 'actuada') { divGrosor.style.display = 'flex'; document.getElementById('p-grosor').value = el.props.grosor || 2; }
     if(el.props.rotacion !== undefined) document.getElementById('p-rot').value = el.props.rotacion;
-    
-    // ... (El resto de lógica de tubería se mantiene igual) ...
+
     if (el.tipo === 'tuberia' && el.props.material) {
         const accGroup = document.createElement('div'); accGroup.className = 'acc-group'; accGroup.id = 'grp-tech';
         const accHead = document.createElement('div'); accHead.className = 'acc-header'; accHead.innerText = 'Datos Técnicos';
@@ -634,7 +687,7 @@ function generarFormularioValvulaActuada(el, container) {
             <div class="prop-row"><label>MPO (Max Pressure)</label><input type="text" class="inp-actuada" data-key="mpo" value="${el.props.mpo||''}"></div>
             
             <div style="margin:10px 0; border-top:1px solid #444;"></div>
-            <label style="font-size:0.75rem; color:#aaa; margin-left:15px; margin-bottom:5px; display:block;">Conexión Mecánica</label>
+            <label style="font-size:0.75rem; color:#aaa; margin-bottom:5px; display:block;">Conexión Mecánica</label>
             
             <div class="prop-row row-h">
                 <div style="flex:1"><label>Diámetro</label>
@@ -818,4 +871,4 @@ window.updateAltura = function(valUser) {
     const u = window.UNITS[window.CONFIG.unit]; el.z = num / u.factor;
     window.saveState(); renderScene(); renderEffects(); updatePropsPanel();
 }
-console.log("✅ Renderer cargado con Válvula Actuada + Anchor Transversal");
+console.log("✅ Renderer cargado con Blue Stream UI");
