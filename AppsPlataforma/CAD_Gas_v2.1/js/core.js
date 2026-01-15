@@ -1,4 +1,4 @@
-// js/core.js - Cerebro de la Aplicación (PDF, Polyline, Engineering Calc)
+// js/core.js - Cerebro de la Aplicación (PDF, Polyline, Engineering Calc, Cycle Selection)
 
 // ==========================================
 // 1. ESTADO GLOBAL Y VARIABLES
@@ -248,7 +248,6 @@ window.confirmarInput = function() {
         window.addEl({ tipo, x: window.estado.inicio.x, y: window.estado.inicio.y, z: window.estado.inicio.z, dx, dy, dz, props });
         
         if (window.estado.tool !== 'cota') { 
-            // Polyline: Continuar desde el final
             window.estado.inicio = { x: window.estado.inicio.x + dx, y: window.estado.inicio.y + dy, z: window.estado.inicio.z + dz }; 
             window.estado.drawing = true; 
         } else { 
@@ -257,6 +256,60 @@ window.confirmarInput = function() {
     }
     box.style.display = 'none'; window.estado.tempVector = null; 
     if(typeof renderScene === 'function') renderScene(); 
+}
+
+// FUNCION DE SELECCIÓN CÍCLICA
+function selectElementAt(mouseX, mouseY) {
+    if(!window.elementos.length) return null;
+    
+    // 1. Encontrar candidatos cercanos (distancia en pantalla)
+    const threshold = 10; // píxeles
+    const candidates = [];
+    
+    window.elementos.forEach(el => {
+        if(el.visible === false) return;
+        const s = isoToScreen(el.x, el.y, el.z);
+        let dist = 1000;
+        
+        if(el.tipo === 'tuberia' || el.tipo === 'cota') {
+            const e = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz);
+            // Distancia punto a segmento
+            const l2 = (e.x-s.x)**2 + (e.y-s.y)**2;
+            if(l2 === 0) dist = Math.hypot(mouseX-s.x, mouseY-s.y);
+            else {
+                let t = ((mouseX-s.x)*(e.x-s.x) + (mouseY-s.y)*(e.y-s.y)) / l2;
+                t = Math.max(0, Math.min(1, t));
+                dist = Math.hypot(mouseX - (s.x + t*(e.x-s.x)), mouseY - (s.y + t*(e.y-s.y)));
+            }
+        } else {
+            // Distancia punto a punto
+            dist = Math.hypot(mouseX - s.x, mouseY - s.y);
+        }
+        
+        if(dist < threshold) {
+            candidates.push({ el: el, dist: dist });
+        }
+    });
+    
+    if(candidates.length === 0) return null;
+    
+    // 2. Ordenar candidatos (opcional, por profundidad o distancia)
+    // Para simplificar, usamos el orden de dibujo (último dibujado está "arriba")
+    candidates.reverse(); 
+    
+    // 3. Lógica Cíclica
+    // Si ya hay algo seleccionado y está en la lista de candidatos, selecciona el siguiente
+    if(window.estado.selID) {
+        const idx = candidates.findIndex(c => c.el.id === window.estado.selID);
+        if(idx !== -1) {
+            // Seleccionar el siguiente en la lista (circular)
+            const nextIdx = (idx + 1) % candidates.length;
+            return candidates[nextIdx].el.id;
+        }
+    }
+    
+    // Si no hay selección previa o la selección no está aquí, seleccionar el primero
+    return candidates[0].el.id;
 }
 
 window.handleCanvasClick = function(e) {
@@ -283,9 +336,18 @@ window.handleCanvasClick = function(e) {
         return; 
     }
     
-    // SELECCIONAR
+    // SELECCIONAR (MEJORADO CON CICLO)
     if(window.estado.tool === 'select') { 
-        window.estado.selID = window.estado.hoverID; 
+        // Obtener coordenadas de mouse relativas al SVG
+        const rect = document.getElementById('lienzo-cad').getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        
+        // Usar la nueva función de selección cíclica
+        const pickedID = selectElementAt(mx, my);
+        
+        window.estado.selID = pickedID; 
+        
         if(window.estado.selID) { 
             const el = window.elementos.find(x => x.id === window.estado.selID); 
             if(el) { 
@@ -300,11 +362,11 @@ window.handleCanvasClick = function(e) {
         return; 
     }
     
+    // DIBUJAR
     let tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
     let ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
     let tz = window.estado.snapped ? window.estado.snapped.z : window.estado.currentZ;
     
-    // LOGICA DE DIBUJO
     if (window.estado.drawing && window.estado.inicio && !window.estado.snapped) {
         const gridX = Math.round(window.estado.mouseIso.x * 10) / 10;
         const gridY = Math.round(window.estado.mouseIso.y * 10) / 10;
@@ -312,7 +374,6 @@ window.handleCanvasClick = function(e) {
         const dy = gridY - window.estado.inicio.y; 
         const dz = window.estado.currentZ - window.estado.inicio.z;
         const th = 0.5;
-        
         if (Math.abs(dy) < th && Math.abs(dz) < th) { ty = window.estado.inicio.y; tz = window.estado.inicio.z; tx = gridX; } 
         else if (Math.abs(dx) < th && Math.abs(dz) < th) { tx = window.estado.inicio.x; tz = window.estado.inicio.z; ty = gridY; } 
         else if (Math.abs(dx) < th && Math.abs(dy) < th) { tx = window.estado.inicio.x; ty = window.estado.inicio.y; tz = window.estado.inicio.z; }
@@ -539,7 +600,6 @@ window.exportarCSV = function() {
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 
-// --- CALCULO INGENIERÍA ---
 window.realizarCalculo = function() {
     const el = window.elementos.find(x => x.id === window.estado.selID);
     if (!el || el.tipo !== 'tuberia') { alert("Seleccione una tubería."); return; }
@@ -558,7 +618,6 @@ window.realizarCalculo = function() {
         divRes.innerHTML = `<div class="calc-result-box calc-err">❌ Error: ${res.error}</div>`;
     } else {
         let cls = "calc-ok"; if(res.estado === "ALERTA") cls = "calc-alert"; if(res.estado === "CRÍTICO") cls = "calc-err";
-        
         divRes.innerHTML = `
             <div class="calc-result-box ${cls}">
                 <strong>Estado: ${res.estado}</strong><br>
@@ -576,7 +635,6 @@ window.mostrarEcuaciones = function() {
     document.getElementById('modal-ecuaciones').style.display = 'flex';
 }
 
-// --- PDF PRO ---
 window.prepararPDF = function() {
     document.getElementById('pdf-nombre').value = ""; document.getElementById('pdf-id').value = "";
     document.getElementById('modal-pdf').style.display = 'flex';
@@ -602,7 +660,6 @@ window.generarPDF = function() {
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         const pageWidth = doc.internal.pageSize.getWidth(); const pageHeight = doc.internal.pageSize.getHeight(); const margin = 15;
 
-        // PAGINA 1
         doc.setDrawColor(0); doc.setFillColor(240, 240, 240);
         doc.rect(margin, margin, pageWidth - 2*margin, 25, 'F'); doc.rect(margin, margin, pageWidth - 2*margin, 25, 'S');
         doc.setFontSize(14); doc.setFont("helvetica", "bold");
@@ -641,7 +698,6 @@ window.generarPDF = function() {
         doc.autoTable({ startY: margin + 130 + 10, head: [['Categoría', 'Descripción', 'Cantidad']], body: tableBody, theme: 'grid', styles: { fontSize: 9, cellPadding: 2 }, margin: { left: margin, right: margin } });
         doc.text("Pagina 1/2", pageWidth - margin, pageHeight - 10, {align:"right"});
 
-        // PAGINA 2
         if(incluirEcuaciones) {
             doc.addPage();
             doc.setFillColor(230, 230, 230); doc.rect(margin, margin, pageWidth - 2*margin, 15, 'F');
@@ -672,4 +728,4 @@ window.generarPDF = function() {
     });
 }
 
-console.log("✅ Core Logic (Full Suite) cargado");
+console.log("✅ Core Logic (Full Suite + Cycle Selection) cargado");
