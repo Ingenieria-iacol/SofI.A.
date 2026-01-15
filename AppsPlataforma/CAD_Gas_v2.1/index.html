@@ -56,7 +56,7 @@
     .tool-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2px; }
     .tool-name { font-size: 0.85rem; }
 
-    /* ESTILOS DEL LIENZO CAD (IMPORTANTE: FALTABAN ESTOS) */
+    /* ESTILOS DEL LIENZO CAD */
     #main-area { flex-grow: 1; position: relative; background: #111; cursor: crosshair; }
     svg { display: block; width: 100%; height: 100%; }
 
@@ -78,19 +78,39 @@
     .snap-marker { fill:none; stroke:cyan; stroke-width:2; vector-effect: non-scaling-stroke; }
     .cursor-crosshair { stroke: white; stroke-width: 1; vector-effect: non-scaling-stroke; }
     .z-ref-line { stroke: #666; stroke-dasharray: 3,3; pointer-events: none; }
-    /* FIN ESTILOS LIENZO */
 
-    /* UI Flotante */
+    /* UI Flotante MEJORADA PARA DRAG & DROP */
     #prop-card {
-        position: absolute; top: 60px; right: 20px; width: 320px; max-height: 85vh;
-        background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(10px);
-        border: 1px solid #333; border-top: 3px solid var(--accent);
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); border-radius: 6px; z-index: 1000;
-        display: flex; flex-direction: column; opacity: 0; transform: scale(0.95) translateY(10px);
-        pointer-events: none; transition: opacity 0.3s, transform 0.3s;
+        position: absolute; 
+        top: 60px; 
+        left: 20px; /* Cambiado a left para facilitar cálculos de arrastre */
+        width: 320px; 
+        max-height: 85vh;
+        background: rgba(20, 20, 20, 0.95); 
+        backdrop-filter: blur(10px);
+        border: 1px solid #333; 
+        border-top: 3px solid var(--accent);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); 
+        border-radius: 6px; 
+        z-index: 1000;
+        display: flex; 
+        flex-direction: column; 
+        opacity: 0; 
+        transform: scale(0.95); /* Quitamos translateY para evitar conflictos al mover */
+        pointer-events: none; 
+        transition: opacity 0.3s, transform 0.3s;
     }
-    #prop-card.active { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; }
-    .pc-header { padding: 15px 20px; background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%); display: flex; justify-content: space-between; align-items: center; }
+    #prop-card.active { opacity: 1; transform: scale(1); pointer-events: auto; }
+    
+    .pc-header { 
+        padding: 15px 20px; 
+        background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%); 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        cursor: move; /* Cursor de movimiento para indicar que es arrastrable */
+        user-select: none;
+    }
     .pc-title { font-size: 1.1rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
     .pc-close { background: transparent; border: none; color: #888; font-size: 1.2rem; cursor: pointer; }
     .pc-hero { padding: 15px; display: flex; justify-content: center; background: radial-gradient(circle at center, #2b2b2b 0%, #141414 100%); border-bottom: 1px solid #333; }
