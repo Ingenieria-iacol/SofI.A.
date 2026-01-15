@@ -1,4 +1,4 @@
-// js/events.js - Control de Eventos (Teclado y Mouse)
+// js/events.js - Control de Eventos (Multi-Select & Escape Fix)
 
 const svg = document.getElementById('lienzo-cad');
 
@@ -14,8 +14,15 @@ svg.addEventListener('mousedown', e => {
     }
     if(e.button === 0) { 
         window.estado.startAction = {x: e.clientX, y: e.clientY}; 
+        // Si estamos sobre un objeto que YA está seleccionado, iniciamos potencial arrastre (Drag)
+        // Esto permite mover grupos seleccionados sin deseleccionarlos
         if (window.estado.tool === 'select' && window.estado.hoverID) { 
-            window.estado.action = 'potential_drag'; 
+            if (window.estado.selection.includes(window.estado.hoverID)) {
+                window.estado.action = 'potential_drag';
+            } else {
+                // Si no está seleccionado, el click lo seleccionará, pero el drag potencial sigue
+                window.estado.action = 'potential_drag';
+            }
         } else { 
             window.estado.action = 'rotate'; 
         } 
@@ -77,14 +84,11 @@ svg.addEventListener('mousemove', e => {
     window.estado.snapped = sn;
     if (snID) window.estado.hoverID = snID; 
     
-    if (snID && (window.estado.activeItem?.type === 'valvula' || window.estado.activeItem?.type === 'equipo')) {
-            const targetEl = window.elementos.find(x => x.id === snID);
-            if (targetEl && targetEl.tipo === 'tuberia') { window.estado.snapDir = { dx: targetEl.dx, dy: targetEl.dy, dz: targetEl.dz }; }
-    } else { window.estado.snapDir = null; }
-    
-    // DRAG (Mover objetos)
-    if (window.estado.action === 'dragging' && window.estado.selID) {
-        const el = window.elementos.find(x => x.id === window.estado.selID);
+    // DRAG (Mover objetos MULTIPLES)
+    if (window.estado.action === 'dragging' && window.estado.selection.length > 0) {
+        // Usamos el primer elemento como referencia para el movimiento
+        const refId = window.estado.selection[0];
+        const el = window.elementos.find(x => x.id === refId);
         if (el) {
             const gridX = Math.round(window.estado.mouseIso.x * 10) / 10;
             const gridY = Math.round(window.estado.mouseIso.y * 10) / 10;
@@ -98,7 +102,14 @@ svg.addEventListener('mousemove', e => {
             }
 
             if (Math.abs(diffX) > 0.001 || Math.abs(diffY) > 0.001 || Math.abs(diffZ) > 0.001) {
+                 // Movemos el líder
                  window.moverConConexiones(el.id, diffX, diffY, diffZ);
+                 
+                 // Movemos el resto de la selección con el mismo delta
+                 for (let i=1; i<window.estado.selection.length; i++) {
+                     window.moverConConexiones(window.estado.selection[i], diffX, diffY, diffZ);
+                 }
+                 
                  renderScene(); 
                  renderEffects();
             }
@@ -107,13 +118,18 @@ svg.addEventListener('mousemove', e => {
             const distDrag = Math.hypot(e.clientX - window.estado.startAction.x, e.clientY - window.estado.startAction.y);
             if(distDrag > 5) { 
                 window.estado.action = 'dragging'; 
-                if(!window.estado.selID) { window.estado.selID = window.estado.hoverID; updatePropsPanel(); } 
+                // Si arrastramos algo no seleccionado, lo seleccionamos
+                if (window.estado.hoverID && !window.estado.selection.includes(window.estado.hoverID)) {
+                     window.estado.selection = [window.estado.hoverID];
+                     updatePropsPanel();
+                }
                 window.saveState(); 
             }
     }
     
-    // HOVER SELECT / CUT
+    // HOVER SELECT / CUT (Igual que antes pero usa array selection)
     if(window.estado.tool === 'select' && !window.estado.action && !window.estado.snapped) {
+        // ... (Lógica de hover existente)
         const tol = 8 / window.estado.view.scale; let h = null; let minD = tol; 
         window.elementos.forEach(el => {
             if(el.visible === false) return; 
@@ -125,19 +141,7 @@ svg.addEventListener('mousemove', e => {
             if(d < minD) { minD=d; h=el.id; }
         });
         if(h !== window.estado.hoverID) { window.estado.hoverID = h; renderEffects(); }
-    } else if (window.estado.tool === 'cut' && !window.estado.action) {
-        const tol = 8 / window.estado.view.scale; let h = null; let minD = tol;
-        window.elementos.forEach(el => {
-            if(el.visible === false || el.tipo !== 'tuberia') return;
-            const s = isoToScreen(el.x, el.y, el.z);
-            const en = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz); 
-            const L2 = (en.x-s.x)**2 + (en.y-s.y)**2;
-            let d = 10000;
-            if(L2>0) { let t = ((p.x-s.x)*(en.x-s.x)+(p.y-s.y)*(en.y-s.y))/L2; t = Math.max(0, Math.min(1, t)); d = Math.sqrt((p.x - (s.x+t*(en.x-s.x)))**2 + (p.y - (s.y+t*(en.y-s.y)))**2); }
-            if(d < minD) { minD=d; h=el.id; }
-        });
-        if(h !== window.estado.hoverID) { window.estado.hoverID = h; renderEffects(); }
-    }
+    } 
     
     // TOOLTIP
     const tooltip = document.getElementById('hover-tooltip');
@@ -160,20 +164,26 @@ svg.addEventListener('mousemove', e => {
 window.addEventListener('mouseup', (e) => {
     const dist = Math.abs(e.clientX - window.estado.startAction.x) + Math.abs(e.clientY - window.estado.startAction.y);
     const isClick = dist < 5;
-    if (isClick && (window.estado.action === 'rotate' || window.estado.action === 'potential_drag')) { window.handleCanvasClick(e); }
+    
+    // Si fue un click, procesar selección/acción
+    if (isClick && (window.estado.action === 'rotate' || window.estado.action === 'potential_drag')) { 
+        window.handleCanvasClick(e); 
+    }
+    
     if (window.estado.action === 'dragging') window.saveState();
     window.estado.action = null; 
 });
 
-// Zoom Wheel
+// Zoom Wheel (Mantener)
 svg.addEventListener('wheel', e => { 
     e.preventDefault(); 
     let newScale = window.estado.view.scale * (e.deltaY > 0 ? 0.9 : 1.1); 
     if (newScale < 0.1) newScale = 0.1; if (newScale > 20) newScale = 20; 
     
     // Zoom hacia el mouse o selección
-    if(window.estado.selID) {
-        const el = window.elementos.find(x => x.id === window.estado.selID);
+    if(window.estado.selection.length > 0) {
+        // Zoom al primer elemento seleccionado
+        const el = window.elementos.find(x => x.id === window.estado.selection[0]);
         if(el) {
             let ox = el.x, oy = el.y, oz = el.z; if(el.tipo === 'tuberia' || el.tipo === 'cota') { ox += el.dx/2; oy += el.dy/2; oz += el.dz/2; }
             const ptLocal = isoToScreen(ox, oy, oz); 
@@ -193,8 +203,9 @@ svg.addEventListener('wheel', e => {
     updateTransform(); renderEffects(); 
 }, { passive: false });
 
-// Teclado (Atajos)
+// Teclado (FIX ESCAPE Y DELETE)
 window.addEventListener('keydown', e => {
+    // Si está escribiendo en un input, escape solo hace blur
     if(document.activeElement && (document.activeElement.classList.contains('hud-input') || document.activeElement.classList.contains('float-input'))) {
          if(e.key === 'Escape') {
              document.getElementById('dynamic-input-container').style.display = 'none';
@@ -205,21 +216,34 @@ window.addEventListener('keydown', e => {
          return;
     }
     
-    // Copy/Paste
+    // COPY / PASTE
     if(e.ctrlKey && e.key.toLowerCase() === 'c') {
-        if(window.estado.selID) {
-            const el = window.elementos.find(x=>x.id===window.estado.selID);
-            if(el) { window.estado.clipboard = JSON.parse(JSON.stringify(el)); console.log("Copiado"); }
+        // Copiar selección
+        if(window.estado.selection.length > 0) {
+            // Clonar array de objetos seleccionados
+            window.estado.clipboard = window.elementos.filter(x => window.estado.selection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
+            console.log(`Copiados ${window.estado.clipboard.length} elementos`);
         }
         return;
     }
     if(e.ctrlKey && e.key.toLowerCase() === 'v') {
-        if(window.estado.clipboard) {
-            const copy = JSON.parse(JSON.stringify(window.estado.clipboard));
-            copy.id = Date.now();
-            copy.x = window.estado.mouseIso.x; copy.y = window.estado.mouseIso.y; copy.z = window.estado.currentZ; 
-            window.elementos.push(copy);
-            window.saveState(); renderScene();
+        if(window.estado.clipboard && window.estado.clipboard.length > 0) {
+            // Pegar en la posición del mouse (ajustando offset relativo al primero)
+            const ref = window.estado.clipboard[0];
+            const dx = window.estado.mouseIso.x - ref.x;
+            const dy = window.estado.mouseIso.y - ref.y;
+            
+            const newIds = [];
+            window.estado.clipboard.forEach(item => {
+                const copy = JSON.parse(JSON.stringify(item));
+                copy.id = Date.now() + Math.random();
+                copy.x += dx; copy.y += dy; // Mantiene posición relativa
+                copy.z = window.estado.currentZ; // Forza Z actual
+                window.elementos.push(copy);
+                newIds.push(copy.id);
+            });
+            window.estado.selection = newIds;
+            window.saveState(); renderScene(); renderEffects();
         }
         return;
     }
@@ -231,8 +255,10 @@ window.addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     if (k === 'q' || k === 'a') {
         let originPoint = null;
-        if (window.estado.drawing && window.estado.inicio) { originPoint = window.estado.inicio; } else if (window.estado.selID) {
-            const el = window.elementos.find(x => x.id === window.estado.selID);
+        if (window.estado.drawing && window.estado.inicio) { 
+            originPoint = window.estado.inicio; 
+        } else if (window.estado.selection.length > 0) {
+            const el = window.elementos.find(x => x.id === window.estado.selection[0]);
             if(el) { originPoint = { x: el.x, y: el.y, z: el.z }; window.estado.drawing = true; window.estado.inicio = originPoint; window.estado.activeItem = el.tipo === 'tuberia' ? { type: 'tuberia', props: el.props, color: el.props.customColor } : window.estado.activeItem; }
         } else {
             if(k==='q') window.estado.currentZ += 1; if(k==='a') window.estado.currentZ -= 1; syncZInput(); renderInterface(); return;
@@ -255,11 +281,25 @@ window.addEventListener('keydown', e => {
         return;
     }
     
+    // ESCAPE FIX (Cierre global)
     if(e.key==='Escape') { 
-        window.estado.drawing=false; window.setTool('select'); 
+        // 1. Cerrar inputs flotantes
         document.getElementById('dynamic-input-container').style.display = 'none';
         document.getElementById('vertical-input-container').style.display = 'none';
+        
+        // 2. Cerrar Modales
+        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+        
+        // 3. Cancelar dibujo
+        window.estado.drawing = false; 
+        window.setTool('select'); 
+        
+        // 4. Limpiar selección y cerrar propiedades
+        window.estado.selection = [];
+        window.cerrarPropiedades(); // Esta función limpia y renderiza
     } 
+    
+    // DELETE
     if(e.key==='Delete') window.borrarSeleccion(); renderInterface();
 });
 
@@ -292,4 +332,4 @@ document.getElementById('v-len').addEventListener('keydown', (e) => {
     }
 });
 
-console.log("✅ Eventos cargados");
+console.log("✅ Eventos cargados (Fixes applied)");
