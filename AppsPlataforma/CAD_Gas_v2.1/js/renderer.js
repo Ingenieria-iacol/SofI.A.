@@ -234,13 +234,24 @@ function renderScene() {
                  }
              }
              else {
+                // RENDERIZADO GENÉRICO (TRANSVERSALIZADO)
                 const scaleFactor = el.props.scaleFactor || 1.0; 
-                const baseSize = (window.CONFIG.tileW * 0.25) * scaleFactor; const halfS = baseSize / 2;
+                const baseSize = (window.CONFIG.tileW * 0.25) * scaleFactor; 
+                const halfS = baseSize / 2;
+                
+                // Cálculo de Offset Transversal
+                let dx = -halfS;
+                if (el.props.anchor === 'start') dx = 0;
+                if (el.props.anchor === 'end') dx = -baseSize;
+                
                 const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
-                r.setAttribute("x", s.x - halfS); r.setAttribute("y", s.y - halfS); r.setAttribute("width", baseSize); r.setAttribute("height", baseSize);
+                // Usamos dx para posición horizontal relativa a la rotación
+                r.setAttribute("x", s.x + dx); r.setAttribute("y", s.y - halfS); 
+                r.setAttribute("width", baseSize); r.setAttribute("height", baseSize);
                 r.setAttribute("fill", "#222"); r.setAttribute("stroke", col);
+                
                 const tx = document.createElementNS("http://www.w3.org/2000/svg","text");
-                tx.setAttribute("x", s.x); tx.setAttribute("y", s.y + 4); tx.setAttribute("text-anchor","middle");
+                tx.setAttribute("x", s.x + dx + halfS); tx.setAttribute("y", s.y + 4); tx.setAttribute("text-anchor","middle");
                 tx.setAttribute("fill",col); tx.setAttribute("font-size", (baseSize*0.6)+"px"); tx.textContent = el.icon; 
                 g.appendChild(r); g.appendChild(tx);
              }
@@ -502,6 +513,15 @@ function updatePropsPanel() {
         generarFormularioTanque(el, contDatos);
         if(divAdjust) divAdjust.style.display = 'none';
     } 
+    // Nuevo bloque específico para la Válvula Actuada
+    else if (el.props.tipo === 'actuada') {
+        generarFormularioValvulaActuada(el, contDatos);
+        if(divAdjust) divAdjust.style.display = 'block'; // Permite ajustar rotación/escala
+        document.getElementById('p-anchor').value = el.props.anchor || 'center';
+        document.getElementById('row-grosor').style.display = 'none';
+        rowFinal.style.display = 'none'; document.getElementById('row-longitud').style.display = 'none';
+        // Se evita caer en el bloque genérico de abajo
+    }
     else if (el.tipo === 'tuberia' || el.tipo === 'cota') {
         const finalZ = el.z + el.dz; document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
         rowFinal.style.display = 'flex'; divAdjust.style.display = 'none'; document.getElementById('row-longitud').style.display = 'flex';
@@ -516,68 +536,39 @@ function updatePropsPanel() {
         } else { divAdjust.style.display = 'none'; }
     }
     
-    // --- NUEVO: ACORDEÓN DE CONEXIONES Y FLUJO (PARA ELEMENTOS NO TUBERÍA) ---
-    if (el.tipo !== 'tuberia' && el.tipo !== 'cota' && el.tipo !== 'texto' && el.props.tipo !== 'tanque_glp') {
+    // Bloque genérico para elementos que NO son tubería/cota/texto/tanque NI actuada
+    if (el.tipo !== 'tuberia' && el.tipo !== 'cota' && el.tipo !== 'texto' && el.props.tipo !== 'tanque_glp' && el.props.tipo !== 'actuada') {
         const grpFlow = document.createElement('div'); grpFlow.className = 'acc-group'; grpFlow.id='grp-flow';
         const headFlow = document.createElement('div'); headFlow.className = 'acc-header'; headFlow.innerText = 'Conexiones y Flujo';
         headFlow.onclick = function() { toggleAccordion('grp-flow'); };
         
         const contentFlow = document.createElement('div'); contentFlow.className = 'acc-content';
         
-        // Botón Invertir Flujo
         const btnInvert = document.createElement('div'); btnInvert.className = 'prop-row';
         btnInvert.innerHTML = `<button class="btn" style="width:100%" onclick="window.invertirFlujo()">🔄 Invertir Sentido Flujo</button>`;
         contentFlow.appendChild(btnInvert);
 
-        // ENTRADA
         const titleIn = document.createElement('div'); titleIn.style = "font-size:0.7rem; color:#aaa; margin:5px 15px; border-bottom:1px solid #444;"; titleIn.innerText = "ENTRADA (INLET)";
         contentFlow.appendChild(titleIn);
-        
         const rowIn = document.createElement('div'); rowIn.className = 'prop-row row-h';
-        rowIn.innerHTML = `
-            <select class="btn" style="flex:1" onchange="updateStyleProp('diamIn', this.value)">
-                <option value='1/4"' ${el.props.diamIn==='1/4"'?'selected':''}>1/4"</option>
-                <option value='1/2"' ${el.props.diamIn==='1/2"'?'selected':''}>1/2"</option>
-                <option value='3/4"' ${el.props.diamIn==='3/4"'?'selected':''}>3/4"</option>
-                <option value='1"' ${el.props.diamIn==='1"'?'selected':''}>1"</option>
-            </select>
-            <select class="btn" style="flex:1" onchange="updateStyleProp('typeIn', this.value)">
-                <option value='hembra' ${el.props.typeIn==='hembra'?'selected':''}>Hembra</option>
-                <option value='macho' ${el.props.typeIn==='macho'?'selected':''}>Macho</option>
-                <option value='brida' ${el.props.typeIn==='brida'?'selected':''}>Brida</option>
-            </select>
-        `;
+        rowIn.innerHTML = `<select class="btn" style="flex:1" onchange="updateStyleProp('diamIn', this.value)"><option value='1/4"' ${el.props.diamIn==='1/4"'?'selected':''}>1/4"</option><option value='1/2"' ${el.props.diamIn==='1/2"'?'selected':''}>1/2"</option><option value='3/4"' ${el.props.diamIn==='3/4"'?'selected':''}>3/4"</option><option value='1"' ${el.props.diamIn==='1"'?'selected':''}>1"</option></select><select class="btn" style="flex:1" onchange="updateStyleProp('typeIn', this.value)"><option value='hembra' ${el.props.typeIn==='hembra'?'selected':''}>Hembra</option><option value='macho' ${el.props.typeIn==='macho'?'selected':''}>Macho</option><option value='brida' ${el.props.typeIn==='brida'?'selected':''}>Brida</option></select>`;
         contentFlow.appendChild(rowIn);
 
-        // SALIDA
         const titleOut = document.createElement('div'); titleOut.style = "font-size:0.7rem; color:#aaa; margin:5px 15px; border-bottom:1px solid #444;"; titleOut.innerText = "SALIDA (OUTLET)";
         contentFlow.appendChild(titleOut);
-        
         const rowOut = document.createElement('div'); rowOut.className = 'prop-row row-h';
-        rowOut.innerHTML = `
-            <select class="btn" style="flex:1" onchange="updateStyleProp('diamOut', this.value)">
-                <option value='1/4"' ${el.props.diamOut==='1/4"'?'selected':''}>1/4"</option>
-                <option value='1/2"' ${el.props.diamOut==='1/2"'?'selected':''}>1/2"</option>
-                <option value='3/4"' ${el.props.diamOut==='3/4"'?'selected':''}>3/4"</option>
-                <option value='1"' ${el.props.diamOut==='1"'?'selected':''}>1"</option>
-            </select>
-            <select class="btn" style="flex:1" onchange="updateStyleProp('typeOut', this.value)">
-                <option value='hembra' ${el.props.typeOut==='hembra'?'selected':''}>Hembra</option>
-                <option value='macho' ${el.props.typeOut==='macho'?'selected':''}>Macho</option>
-                <option value='brida' ${el.props.typeOut==='brida'?'selected':''}>Brida</option>
-            </select>
-        `;
+        rowOut.innerHTML = `<select class="btn" style="flex:1" onchange="updateStyleProp('diamOut', this.value)"><option value='1/4"' ${el.props.diamOut==='1/4"'?'selected':''}>1/4"</option><option value='1/2"' ${el.props.diamOut==='1/2"'?'selected':''}>1/2"</option><option value='3/4"' ${el.props.diamOut==='3/4"'?'selected':''}>3/4"</option><option value='1"' ${el.props.diamOut==='1"'?'selected':''}>1"</option></select><select class="btn" style="flex:1" onchange="updateStyleProp('typeOut', this.value)"><option value='hembra' ${el.props.typeOut==='hembra'?'selected':''}>Hembra</option><option value='macho' ${el.props.typeOut==='macho'?'selected':''}>Macho</option><option value='brida' ${el.props.typeOut==='brida'?'selected':''}>Brida</option></select>`;
         contentFlow.appendChild(rowOut);
 
         grpFlow.appendChild(headFlow); grpFlow.appendChild(contentFlow); contDatos.appendChild(grpFlow);
     }
     
     const divGrosor = document.getElementById('row-grosor');
-    if(el.tipo === 'tuberia' && el.props.material) { divGrosor.style.display = 'none'; } else { divGrosor.style.display = 'flex'; document.getElementById('p-grosor').value = el.props.grosor || 2; }
+    if(el.tipo === 'tuberia' && el.props.material) { divGrosor.style.display = 'none'; } else if (el.props.tipo !== 'actuada') { divGrosor.style.display = 'flex'; document.getElementById('p-grosor').value = el.props.grosor || 2; }
     if(el.props.rotacion !== undefined) document.getElementById('p-rot').value = el.props.rotacion;
     
+    // ... (El resto de lógica de tubería se mantiene igual) ...
     if (el.tipo === 'tuberia' && el.props.material) {
-        // ... (lógica material igual) ...
         const accGroup = document.createElement('div'); accGroup.className = 'acc-group'; accGroup.id = 'grp-tech';
         const accHead = document.createElement('div'); accHead.className = 'acc-header'; accHead.innerText = 'Datos Técnicos';
         accHead.onclick = function() { toggleAccordion('grp-tech'); };
@@ -608,27 +599,82 @@ function updatePropsPanel() {
         }
         accGroup.appendChild(accHead); accGroup.appendChild(accContent); contDatos.appendChild(accGroup);
 
-        // --- SECCIÓN CÁLCULO HIDRÁULICO INTEGRADO ---
         const calcGroup = document.createElement('div'); calcGroup.className = 'acc-group'; calcGroup.id='grp-calc';
         const calcHead = document.createElement('div'); calcHead.className = 'acc-header'; calcHead.innerText = 'Cálculo Hidráulico';
         calcHead.onclick = function() { toggleAccordion('grp-calc'); };
-        
         const calcContent = document.createElement('div'); calcContent.className = 'acc-content';
-        calcContent.innerHTML = `
-            <div class="prop-row"><label>Caudal (m³/h)</label><input type="number" id="calc-caudal" placeholder="Ej: 2.5"></div>
-            <div class="prop-row"><label>P. Entrada (mbar)</label><input type="number" id="calc-presion" value="23"></div>
-            <div class="prop-row"><label>Tipo Gas</label><select id="calc-gas" class="btn"><option value="natural">Gas Natural</option><option value="glp">GLP</option></select></div>
-            <div class="prop-row" style="flex-direction:row; justify-content:space-between;">
-                <button class="btn primary" onclick="realizarCalculo()" style="flex:1; margin-right:5px;">Iterar ⚡</button>
-                <button class="btn" onclick="mostrarEcuaciones()" style="flex:1;">Función ƒ(x)</button>
-            </div>
-            <div id="calc-result"></div>
-        `;
+        calcContent.innerHTML = `<div class="prop-row"><label>Caudal (m³/h)</label><input type="number" id="calc-caudal" placeholder="Ej: 2.5"></div><div class="prop-row"><label>P. Entrada (mbar)</label><input type="number" id="calc-presion" value="23"></div><div class="prop-row"><label>Tipo Gas</label><select id="calc-gas" class="btn"><option value="natural">Gas Natural</option><option value="glp">GLP</option></select></div><div class="prop-row" style="flex-direction:row; justify-content:space-between;"><button class="btn primary" onclick="realizarCalculo()" style="flex:1; margin-right:5px;">Iterar ⚡</button><button class="btn" onclick="mostrarEcuaciones()" style="flex:1;">Función ƒ(x)</button></div><div id="calc-result"></div>`;
         calcGroup.appendChild(calcHead); calcGroup.appendChild(calcContent); contDatos.appendChild(calcGroup);
     }
 }
 
-// Generar Formulario Tanque (Mantenido)
+// Generar Formulario Específico para Válvula Actuada
+function generarFormularioValvulaActuada(el, container) {
+    const grp = document.createElement('div');
+    grp.className = 'acc-group';
+    grp.innerHTML = `
+        <div class="acc-header" onclick="this.parentElement.classList.toggle('collapsed')">Datos de Actuador</div>
+        <div class="acc-content">
+            <div class="prop-row row-h">
+                <div style="flex:1"><label>Voltaje</label><input type="text" class="inp-actuada" data-key="voltaje" value="${el.props.voltaje||''}"></div>
+                <div style="flex:1"><label>Corriente</label>
+                    <select class="btn inp-actuada" data-key="corriente">
+                        <option value="AC" ${el.props.corriente==='AC'?'selected':''}>AC</option>
+                        <option value="DC" ${el.props.corriente==='DC'?'selected':''}>DC</option>
+                    </select>
+                </div>
+            </div>
+            <div class="prop-row"><label>Estado Compuerta</label>
+                <select class="btn inp-actuada" data-key="estadoCompuerta" style="width:100%">
+                    <option value="N/C" ${el.props.estadoCompuerta==='N/C'?'selected':''}>N/C (Normal Cerrada)</option>
+                    <option value="N/A" ${el.props.estadoCompuerta==='N/A'?'selected':''}>N/A (Normal Abierta)</option>
+                </select>
+            </div>
+            <div class="prop-row"><label>Referencia / Modelo</label><input type="text" class="inp-actuada" data-key="referencia" value="${el.props.referencia||''}"></div>
+            <div class="prop-row"><label>MPO (Max Pressure)</label><input type="text" class="inp-actuada" data-key="mpo" value="${el.props.mpo||''}"></div>
+            
+            <div style="margin:10px 0; border-top:1px solid #444;"></div>
+            <label style="font-size:0.75rem; color:#aaa; margin-left:15px; margin-bottom:5px; display:block;">Conexión Mecánica</label>
+            
+            <div class="prop-row row-h">
+                <div style="flex:1"><label>Diámetro</label>
+                    <select class="btn inp-actuada" data-key="diametro">
+                        <option value='1/4"' ${el.props.diametro==='1/4"'?'selected':''}>1/4"</option>
+                        <option value='1/2"' ${el.props.diametro==='1/2"'?'selected':''}>1/2"</option>
+                        <option value='3/4"' ${el.props.diametro==='3/4"'?'selected':''}>3/4"</option>
+                        <option value='1"' ${el.props.diametro==='1"'?'selected':''}>1"</option>
+                        <option value='1-1/2"' ${el.props.diametro==='1-1/2"'?'selected':''}>1-1/2"</option>
+                        <option value='2"' ${el.props.diametro==='2"'?'selected':''}>2"</option>
+                    </select>
+                </div>
+                <div style="flex:1"><label>Acople</label>
+                    <select class="btn inp-actuada" data-key="tipoAcople">
+                        <option value="Hembra" ${el.props.tipoAcople==='Hembra'?'selected':''}>Hembra</option>
+                        <option value="Macho" ${el.props.tipoAcople==='Macho'?'selected':''}>Macho</option>
+                        <option value="Brida" ${el.props.tipoAcople==='Brida'?'selected':''}>Brida</option>
+                    </select>
+                </div>
+            </div>
+            <div class="prop-row"><label>Tipo Unión</label>
+                 <select class="btn inp-actuada" data-key="tipoUnion" style="width:100%">
+                    <option value="NPT" ${el.props.tipoUnion==='NPT'?'selected':''}>NPT (Rosca)</option>
+                    <option value="AB" ${el.props.tipoUnion==='AB'?'selected':''}>AB (Brida)</option>
+                    <option value="SL" ${el.props.tipoUnion==='SL'?'selected':''}>SL (Soldada)</option>
+                </select>
+            </div>
+        </div>
+    `;
+    container.appendChild(grp);
+    
+    // Listeners para guardar cambios
+    container.querySelectorAll('.inp-actuada').forEach(inp => {
+        inp.onchange = (e) => {
+            el.props[e.target.dataset.key] = e.target.value;
+            window.saveState();
+        };
+    });
+}
+
 function generarFormularioTanque(el, container) {
     container.innerHTML = ''; 
     const props = el.props;
@@ -687,7 +733,6 @@ function generarFormularioTanque(el, container) {
         listConn.appendChild(row);
     });
 
-    // Checkboxes
     const grpChk = document.createElement('div');
     grpChk.className = 'acc-group';
     grpChk.innerHTML = `<div class="acc-header" onclick="this.parentElement.classList.toggle('collapsed')">Checklist Técnico</div><div class="acc-content" id="list-chk"></div>`;
@@ -702,7 +747,6 @@ function generarFormularioTanque(el, container) {
         listChk.appendChild(div);
     });
 
-    // Listeners
     container.querySelectorAll('.inp-tanque').forEach(inp => {
         inp.onchange = (e) => { el.props[e.target.dataset.key] = parseFloat(e.target.value); window.saveState(); renderScene(); updatePropsPanel(); };
     });
@@ -728,7 +772,6 @@ function generarFormularioTanque(el, container) {
     };
 }
 
-// --- HELPERS GLOBALES ---
 window.togLay = (id) => { const l=window.layers.find(x=>x.id===id); l.visible=!l.visible; renderLayersUI(); renderScene(); }
 window.addLayer = () => { window.layers.push({id:'l'+Date.now(), name:'Nueva', color:'#fff', visible:true}); renderLayersUI(); }
 window.updateAlturaFinal = function(valUser) {
@@ -775,4 +818,4 @@ window.updateAltura = function(valUser) {
     const u = window.UNITS[window.CONFIG.unit]; el.z = num / u.factor;
     window.saveState(); renderScene(); renderEffects(); updatePropsPanel();
 }
-console.log("✅ Renderer cargado con soporte P&ID SVG + Fix Anchor + Tees Ajustadas");
+console.log("✅ Renderer cargado con Válvula Actuada + Anchor Transversal");
