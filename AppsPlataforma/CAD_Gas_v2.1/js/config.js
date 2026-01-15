@@ -1,6 +1,6 @@
 // js/config.js
+console.log("🔹 Cargando Config...");
 
-// CONFIGURACIÓN POR DEFECTO
 window.CONFIG = { 
     tileW: 100, 
     tileH: 50, 
@@ -12,7 +12,6 @@ window.CONFIG = {
     showTags: true 
 };
 
-// CONSTANTES DE UNIDADES
 window.UNITS = { 
     'm': { factor: 1, label: 'm', precision: 2 }, 
     'dm': { factor: 10, label: 'cm', precision: 1 }, 
@@ -20,7 +19,7 @@ window.UNITS = {
     'mm': { factor: 1000, label: 'mm', precision: 0 } 
 };
 
-// DIÁMETROS DISPONIBLES
+// DIÁMETROS DISPONIBLES (Completo)
 window.DIAMETROS_DISPONIBLES = {
     'acero_sch40': ['1/4"', '1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '2-1/2"', '3"', '4"', '6"'],
     'acero_sch80': ['1/2"', '3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '3"', '4"'],
@@ -38,10 +37,8 @@ window.DIAMETROS_DISPONIBLES = {
     'pe_metric': ['20mm', '25mm', '32mm', '40mm', '50mm', '63mm', '90mm', '110mm', '160mm']
 };
 
-// ==========================================
-// ICONOS SVG (Estilo P&ID)
-// ==========================================
-const ICONS = {
+// ICONOS SVG (Estilo P&ID Original)
+window.ICONS = {
     PIPE: `<svg viewBox="0 0 24 24"><line x1="2" y1="20" x2="22" y2="4" /></svg>`,
     PIPE_FLEX: `<svg viewBox="0 0 24 24"><path d="M2,20 C8,20 8,12 12,12 S16,4 22,4" /></svg>`,
     UNION: `<svg viewBox="0 0 24 24"><path d="M7,12 L17,12 M7,8 L7,16 M17,8 L17,16" /></svg>`, 
@@ -67,10 +64,10 @@ const ICONS = {
     BROCHA: `<svg viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="6" /><line x1="8" y1="10" x2="8" y2="13" /><line x1="11" y1="10" x2="11" y2="13" /><line x1="13" y1="10" x2="13" y2="13" /><line x1="16" y1="10" x2="16" y2="13" /><path d="M10,13 L14,13 L13,20 L11,20 Z" /></svg>`
 };
 
-// Props Default para Flujo
 const defaultFlow = { diamIn: '1/2"', typeIn: 'hembra', diamOut: '1/2"', typeOut: 'hembra' };
+const ICONS = window.ICONS; // Atajo local
 
-// CATÁLOGO COMPLETO
+// CATÁLOGO COMPLETO (Recuperado)
 window.CATALOGO = {
     mat: [
         { subCat: 'Acero al Carbón', id: 't_ac_40', name: 'Sch40', color: '#444444', icon: ICONS.PIPE, type: 'tuberia', props: { material: 'acero_sch40', diametroNominal: '1"' } },
@@ -96,7 +93,6 @@ window.CATALOGO = {
             props: { 
                 tipo: 'actuada', 
                 rotacion: 0,
-                // Propiedades específicas solicitadas
                 voltaje: '24V',
                 corriente: 'DC',
                 estadoCompuerta: 'N/C',
