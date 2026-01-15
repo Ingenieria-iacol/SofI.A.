@@ -275,11 +275,13 @@ function renderScene() {
                 path.setAttribute("d", d); path.setAttribute("stroke", fit.color); path.setAttribute("stroke-width", fit.width); path.setAttribute("class", "fitting-auto");
                 g.appendChild(path);
                 const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.6); c.setAttribute("fill", fit.color);
+                // MODIFICADO: Radio reducido a 0.2
+                c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.2); c.setAttribute("fill", fit.color);
                 g.appendChild(c);
             } else if (fit.tipo === 'tee_auto' || fit.tipo === 'cruz_auto') {
                 const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.4);
+                // MODIFICADO: Radio reducido a 0.2
+                c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.2);
                 c.setAttribute("fill", "#222"); c.setAttribute("stroke", fit.color); c.setAttribute("stroke-width", fit.width);
                 g.appendChild(c);
             } else if (fit.tipo === 'reductor_auto') {
