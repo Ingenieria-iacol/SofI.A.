@@ -67,7 +67,7 @@ window.ICONS = {
     BROCHA: `<svg viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="6" /><line x1="8" y1="10" x2="8" y2="13" /><line x1="11" y1="10" x2="11" y2="13" /><line x1="13" y1="10" x2="13" y2="13" /><line x1="16" y1="10" x2="16" y2="13" /><path d="M10,13 L14,13 L13,20 L11,20 Z" /></svg>`
 };
 
-// ALIAS LOCAL PARA CATALOGO (Evita romper el resto del archivo)
+// ALIAS LOCAL (Para que el resto del archivo no se rompa si usa 'ICONS')
 const ICONS = window.ICONS;
 
 // Props Default para Flujo
