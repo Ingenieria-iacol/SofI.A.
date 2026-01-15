@@ -121,12 +121,6 @@ function renderScene() {
         const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
         const s = isoToScreen(el.x, el.y, el.z);
         let col = el.props.customColor || el.props.color || lay.color; 
-        
-        // Highlight para multiselección
-        if (window.estado.multiSel.includes(el.id)) {
-            col = "#ff00ff";
-        }
-
         let width = 2;
         if(el.tipo === 'tuberia' && el.props.diametroNominal) width = window.parseDiameterToScale(el.props.diametroNominal);
         else width = el.props.grosor || 2; 
@@ -486,88 +480,10 @@ function renderLayersUI() {
 }
 
 function updatePropsPanel() {
-    const multi = window.estado.multiSel;
+    const el = window.elementos.find(x=>x.id===window.estado.selID);
     const f = document.getElementById('prop-form'); const v = document.getElementById('prop-vacio');
     const divAdjust = document.getElementById('obj-adjust-controls');
     const contDatos = document.getElementById('prop-datos-tecnicos-container'); contDatos.innerHTML = ''; 
-
-    // MODO MULTI-SELECCIÓN
-    if (multi.length > 1) {
-        f.style.display='block'; v.style.display='none';
-        
-        const head = document.createElement('div');
-        head.style = "padding:10px; background:#333; margin-bottom:10px; font-weight:bold; color:#fff; border-left:4px solid #0078d7;";
-        head.innerText = `Edición Múltiple (${multi.length} objetos)`;
-        contDatos.appendChild(head);
-        
-        const btnNet = document.createElement('button'); btnNet.className = "btn primary"; btnNet.style="width:100%; margin-bottom:10px;";
-        btnNet.innerText = "🔗 Seleccionar Red Conectada";
-        btnNet.onclick = () => window.seleccionarConectados();
-        contDatos.appendChild(btnNet);
-
-        const grpMat = document.createElement('div'); grpMat.className = "acc-group";
-        grpMat.innerHTML = `<div class="acc-header">Material y Diámetro (Lote)</div><div class="acc-content" id="bulk-mat-content"></div>`;
-        contDatos.appendChild(grpMat);
-        
-        const bulkContent = grpMat.querySelector('#bulk-mat-content');
-        
-        const rowMat = document.createElement('div'); rowMat.className = 'prop-row';
-        rowMat.innerHTML = `<label>Cambiar Material Todo:</label>`;
-        const selMat = document.createElement('select'); selMat.className = 'btn';
-        selMat.innerHTML = `<option value="">-- Sin Cambios --</option>`;
-        window.CATALOGO.mat.forEach(m => { selMat.innerHTML += `<option value="${m.props.material}">${m.name}</option>`; });
-        selMat.onchange = (e) => {
-            if(!e.target.value) return;
-            const catItem = window.CATALOGO.mat.find(m => m.props.material === e.target.value);
-            window.elementos.forEach(el => {
-                if(window.estado.multiSel.includes(el.id) && el.tipo === 'tuberia') {
-                    el.props.material = e.target.value;
-                    if(catItem) { el.props.color = catItem.color; el.props.diametroNominal = catItem.props.diametroNominal; }
-                }
-            });
-            window.saveState(); renderScene();
-        };
-        rowMat.appendChild(selMat); bulkContent.appendChild(rowMat);
-
-        const rowDia = document.createElement('div'); rowDia.className = 'prop-row';
-        rowDia.innerHTML = `<label>Cambiar Diámetro Todo:</label>`;
-        const selDia = document.createElement('select'); selDia.className = 'btn';
-        selDia.innerHTML = `<option value="">-- Sin Cambios --</option>
-            <option value='1/2"'>1/2"</option><option value='3/4"'>3/4"</option><option value='1"'>1"</option>
-            <option value='1-1/4"'>1-1/4"</option><option value='1-1/2"'>1-1/2"</option><option value='2"'>2"</option>`;
-        selDia.onchange = (e) => {
-            if(!e.target.value) return;
-            window.elementos.forEach(el => {
-                if(window.estado.multiSel.includes(el.id) && el.tipo === 'tuberia') {
-                    el.props.diametroNominal = e.target.value;
-                }
-            });
-            window.saveState(); renderScene();
-        };
-        rowDia.appendChild(selDia); bulkContent.appendChild(rowDia);
-
-        const grpCalc = document.createElement('div'); grpCalc.className = "acc-group";
-        grpCalc.innerHTML = `
-            <div class="acc-header">Cálculo de Circuito</div>
-            <div class="acc-content">
-                <div style="font-size:0.8rem; color:#aaa; margin-bottom:8px;">Analizar caída de presión acumulada en los tramos seleccionados.</div>
-                <div class="prop-row"><label>Caudal Total (m³/h)</label><input type="number" id="calc-caudal" placeholder="Ej: 2.5"></div>
-                <div class="prop-row"><label>P. Entrada (mbar)</label><input type="number" id="calc-presion" value="23"></div>
-                <div class="prop-row"><label>Tipo Gas</label><select id="calc-gas" class="btn"><option value="natural">Gas Natural</option><option value="glp">GLP</option></select></div>
-                <button class="btn primary" style="width:100%; margin-top:5px;" onclick="window.calcularTrayectoCompleto()">🚀 Calcular Trayecto</button>
-                <div id="calc-result"></div>
-            </div>`;
-        contDatos.appendChild(grpCalc);
-
-        const btnDel = document.createElement('button'); btnDel.className = "btn danger"; btnDel.style="width:100%; margin-top:20px;";
-        btnDel.innerText = "🗑️ Eliminar Selección";
-        btnDel.onclick = () => window.borrarSeleccion();
-        contDatos.appendChild(btnDel);
-
-        return; 
-    }
-
-    const el = window.elementos.find(x=>x.id===window.estado.selID);
     if(!el) { f.style.display='none'; v.style.display='block'; return; }
     f.style.display='block'; v.style.display='none';
     
@@ -591,11 +507,6 @@ function updatePropsPanel() {
         rowFinal.style.display = 'flex'; divAdjust.style.display = 'none'; document.getElementById('row-longitud').style.display = 'flex';
         const rawLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
         document.getElementById('lbl-unit').innerText = u.label; document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
-        
-        const btnNet = document.createElement('div'); btnNet.className = 'prop-row';
-        btnNet.innerHTML = `<button class="btn" style="width:100%" onclick="window.seleccionarConectados()">🔗 Seleccionar Red</button>`;
-        contDatos.appendChild(btnNet);
-
     } else {
         rowFinal.style.display = 'none'; document.getElementById('row-longitud').style.display = 'none';
         if(el.tipo !== 'texto') {
@@ -605,43 +516,12 @@ function updatePropsPanel() {
         } else { divAdjust.style.display = 'none'; }
     }
     
-    if (el.tipo !== 'tuberia' && el.tipo !== 'cota' && el.tipo !== 'texto' && el.props.tipo !== 'tanque_glp') {
-        const grpFlow = document.createElement('div'); grpFlow.className = 'acc-group'; grpFlow.id='grp-flow';
-        const headFlow = document.createElement('div'); headFlow.className = 'acc-header'; headFlow.innerText = 'Conexiones y Flujo';
-        headFlow.onclick = function() { toggleAccordion('grp-flow'); };
-        
-        const contentFlow = document.createElement('div'); contentFlow.className = 'acc-content';
-        
-        const btnInvert = document.createElement('div'); btnInvert.className = 'prop-row';
-        btnInvert.innerHTML = `<button class="btn" style="width:100%" onclick="window.invertirFlujo()">🔄 Invertir Sentido Flujo</button>`;
-        contentFlow.appendChild(btnInvert);
-
-        const titleIn = document.createElement('div'); titleIn.style = "font-size:0.7rem; color:#aaa; margin:5px 15px; border-bottom:1px solid #444;"; titleIn.innerText = "ENTRADA (INLET)";
-        contentFlow.appendChild(titleIn);
-        const rowIn = document.createElement('div'); rowIn.className = 'prop-row row-h';
-        rowIn.innerHTML = `
-            <select class="btn" style="flex:1" onchange="updateStyleProp('diamIn', this.value)"><option value='1/2"' ${el.props.diamIn==='1/2"'?'selected':''}>1/2"</option><option value='3/4"' ${el.props.diamIn==='3/4"'?'selected':''}>3/4"</option><option value='1"' ${el.props.diamIn==='1"'?'selected':''}>1"</option></select>
-            <select class="btn" style="flex:1" onchange="updateStyleProp('typeIn', this.value)"><option value='hembra' ${el.props.typeIn==='hembra'?'selected':''}>Hembra</option><option value='macho' ${el.props.typeIn==='macho'?'selected':''}>Macho</option></select>
-        `;
-        contentFlow.appendChild(rowIn);
-
-        const titleOut = document.createElement('div'); titleOut.style = "font-size:0.7rem; color:#aaa; margin:5px 15px; border-bottom:1px solid #444;"; titleOut.innerText = "SALIDA (OUTLET)";
-        contentFlow.appendChild(titleOut);
-        const rowOut = document.createElement('div'); rowOut.className = 'prop-row row-h';
-        rowOut.innerHTML = `
-            <select class="btn" style="flex:1" onchange="updateStyleProp('diamOut', this.value)"><option value='1/2"' ${el.props.diamOut==='1/2"'?'selected':''}>1/2"</option><option value='3/4"' ${el.props.diamOut==='3/4"'?'selected':''}>3/4"</option><option value='1"' ${el.props.diamOut==='1"'?'selected':''}>1"</option></select>
-            <select class="btn" style="flex:1" onchange="updateStyleProp('typeOut', this.value)"><option value='hembra' ${el.props.typeOut==='hembra'?'selected':''}>Hembra</option><option value='macho' ${el.props.typeOut==='macho'?'selected':''}>Macho</option></select>
-        `;
-        contentFlow.appendChild(rowOut);
-
-        grpFlow.appendChild(headFlow); grpFlow.appendChild(contentFlow); contDatos.appendChild(grpFlow);
-    }
-    
     const divGrosor = document.getElementById('row-grosor');
     if(el.tipo === 'tuberia' && el.props.material) { divGrosor.style.display = 'none'; } else { divGrosor.style.display = 'flex'; document.getElementById('p-grosor').value = el.props.grosor || 2; }
     if(el.props.rotacion !== undefined) document.getElementById('p-rot').value = el.props.rotacion;
     
     if (el.tipo === 'tuberia' && el.props.material) {
+        // ... (lógica material igual) ...
         const accGroup = document.createElement('div'); accGroup.className = 'acc-group'; accGroup.id = 'grp-tech';
         const accHead = document.createElement('div'); accHead.className = 'acc-header'; accHead.innerText = 'Datos Técnicos';
         accHead.onclick = function() { toggleAccordion('grp-tech'); };
@@ -672,7 +552,7 @@ function updatePropsPanel() {
         }
         accGroup.appendChild(accHead); accGroup.appendChild(accContent); contDatos.appendChild(accGroup);
 
-        // SECCIÓN CÁLCULO
+        // --- SECCIÓN CÁLCULO HIDRÁULICO INTEGRADO ---
         const calcGroup = document.createElement('div'); calcGroup.className = 'acc-group'; calcGroup.id='grp-calc';
         const calcHead = document.createElement('div'); calcHead.className = 'acc-header'; calcHead.innerText = 'Cálculo Hidráulico';
         calcHead.onclick = function() { toggleAccordion('grp-calc'); };
@@ -751,6 +631,7 @@ function generarFormularioTanque(el, container) {
         listConn.appendChild(row);
     });
 
+    // Checkboxes
     const grpChk = document.createElement('div');
     grpChk.className = 'acc-group';
     grpChk.innerHTML = `<div class="acc-header" onclick="this.parentElement.classList.toggle('collapsed')">Checklist Técnico</div><div class="acc-content" id="list-chk"></div>`;
@@ -765,6 +646,7 @@ function generarFormularioTanque(el, container) {
         listChk.appendChild(div);
     });
 
+    // Listeners
     container.querySelectorAll('.inp-tanque').forEach(inp => {
         inp.onchange = (e) => { el.props[e.target.dataset.key] = parseFloat(e.target.value); window.saveState(); renderScene(); updatePropsPanel(); };
     });
@@ -813,14 +695,6 @@ window.updateStyleProp = function(k,v) {
         else { el.props[k]=v; }
         window.saveState(); renderScene(); if(k==='anchor' || k==='scaleFactor') renderEffects(); 
     } 
-}
-window.invertirFlujo = function() {
-    const el = window.elementos.find(x => x.id === window.estado.selID);
-    if (el && el.props) {
-        el.props.rotacion = (parseFloat(el.props.rotacion || 0) + 180) % 360;
-        document.getElementById('p-rot').value = el.props.rotacion;
-        window.saveState(); renderScene();
-    }
 }
 window.updateBooleanProp = function(k, val) { const el = window.elementos.find(x=>x.id===window.estado.selID); if(el){ el.props[k] = val; window.saveState(); renderScene(); } }
 window.updateRootProp = function(k, val) { const el = window.elementos.find(x=>x.id===window.estado.selID); if(el){ el[k] = val; window.saveState(); renderScene(); renderEffects(); } }
