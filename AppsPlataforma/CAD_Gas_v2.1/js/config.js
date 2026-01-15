@@ -42,15 +42,10 @@ window.DIAMETROS_DISPONIBLES = {
 // ICONOS SVG (Estilo P&ID)
 // ==========================================
 const ICONS = {
-    // Tuberías
     PIPE: `<svg viewBox="0 0 24 24"><line x1="2" y1="20" x2="22" y2="4" /></svg>`,
     PIPE_FLEX: `<svg viewBox="0 0 24 24"><path d="M2,20 C8,20 8,12 12,12 S16,4 22,4" /></svg>`,
-    
-    // Conexiones / Componentes
     UNION: `<svg viewBox="0 0 24 24"><path d="M7,12 L17,12 M7,8 L7,16 M17,8 L17,16" /></svg>`, 
     BRIDA: `<svg viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="20" stroke-width="3"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="16" x2="16" y2="16"/></svg>`,
-    
-    // Válvulas
     V_GATE: `<svg viewBox="0 0 24 24"><path d="M2,8 L12,16 L22,8 L22,16 L12,8 L2,16 Z" class="filled" fill="currentColor" stroke="none"/></svg>`, 
     V_BOLA: `<svg viewBox="0 0 24 24"><path d="M2,7 L12,12 L2,17 Z" /><path d="M22,7 L12,12 L22,17 Z" /><circle cx="12" cy="12" r="3" /></svg>`, 
     V_MACHO: `<svg viewBox="0 0 24 24"><path d="M2,7 L12,17 L22,7 Z" /><line x1="12" y1="7" x2="12" y2="12"/></svg>`, 
@@ -58,27 +53,22 @@ const ICONS = {
     V_AGUJA: `<svg viewBox="0 0 24 24"><path d="M2,12 L22,12 M12,12 L12,20 M8,16 L16,16" /><path d="M12,12 L8,4 L16,4 Z" /></svg>`, 
     V_CHECK: `<svg viewBox="0 0 24 24"><path d="M4,17 L14,12 L4,7 Z" /><line x1="14" y1="7" x2="14" y2="17" /></svg>`, 
     V_EXCESO: `<svg viewBox="0 0 24 24"><path d="M2,12 L22,12" /><path d="M16,7 L8,12 L16,17 Z" fill="currentColor"/></svg>`, 
-    
-    // Equipos
     MEDIDOR: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12,12 L16,8" /><text x="8" y="16" font-size="8" font-family="Arial" stroke="none" fill="currentColor">M</text></svg>`,
     CORRECTOR: `<svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2" /><path d="M8,12 L16,12" /></svg>`,
     REGULADOR: `<svg viewBox="0 0 24 24"><path d="M4,12 L20,12" /><path d="M12,12 L8,4 L16,4 Z" /></svg>`,
     COMPRESOR: `<svg viewBox="0 0 24 24"><path d="M4,20 L20,4 M20,20 L4,4" /><circle cx="12" cy="12" r="8" /></svg>`,
-    
-    // Instrumentos
     MANOMETRO: `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="7" /><line x1="12" y1="15" x2="12" y2="22" /><text x="12" y="10" text-anchor="middle" font-size="8" stroke="none" fill="currentColor">PI</text></svg>`,
     PRESOSTATO: `<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /><text x="12" y="15" text-anchor="middle" font-size="8" stroke="none" fill="currentColor">PS</text></svg>`,
     SENSOR: `<svg viewBox="0 0 24 24"><path d="M12,2 L15,8 L21,9 L17,14 L18,20 L12,17 L6,20 L7,14 L3,9 L9,8 Z" /></svg>`,
-    
-    // Periféricos
     SOPORTE: `<svg viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="20" stroke-width="3"/><line x1="12" y1="20" x2="12" y2="8"/><path d="M8,8 L16,8 L12,14 Z"/></svg>`,
     TANQUE: `<svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="4" /><line x1="8" y1="6" x2="8" y2="18" /><line x1="16" y1="6" x2="16" y2="18" /></svg>`,
-    
-    // Consumibles
     CINTA: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" stroke-width="3"/><path d="M12,6 L18,2" stroke-width="1"/></svg>`,
     BOTELLA: `<svg viewBox="0 0 24 24"><path d="M9,20 L15,20 L15,10 L9,10 Z" /><path d="M12,10 L12,6" /><rect x="10" y="4" width="4" height="2" /></svg>`,
     BROCHA: `<svg viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="6" /><line x1="8" y1="10" x2="8" y2="13" /><line x1="11" y1="10" x2="11" y2="13" /><line x1="13" y1="10" x2="13" y2="13" /><line x1="16" y1="10" x2="16" y2="13" /><path d="M10,13 L14,13 L13,20 L11,20 Z" /></svg>`
 };
+
+// Props Default para Flujo
+const defaultFlow = { diamIn: '1/2"', typeIn: 'hembra', diamOut: '1/2"', typeOut: 'hembra' };
 
 // CATÁLOGO COMPLETO
 window.CATALOGO = {
@@ -94,24 +84,24 @@ window.CATALOGO = {
         { subCat: 'Plásticas', id: 't_pe_met', name: 'PE Métrico', color: '#FFD700', icon: ICONS.PIPE, type: 'tuberia', props: { material: 'pe_metric', diametroNominal: '32mm' } }
     ],
     comp: [
-        { subCat: 'Uniones', id: 'c_union', name: 'Unión Universal', icon: ICONS.UNION, type: 'equipo', props: { tipo: 'accesorio' } },
-        { subCat: 'Uniones', id: 'c_brida', name: 'Brida', icon: ICONS.BRIDA, type: 'equipo', props: { tipo: 'accesorio' } },
-        { subCat: 'Válvulas (Aislamiento)', id: 'v_bola', name: 'V. Bola', icon: ICONS.V_BOLA, type: 'valvula', props: { tipo: 'bola', rotacion: 0 }, info: { title: "Válvula de Bola", desc: "Cierre rápido 90°.", use: "Cierre general." } },
-        { subCat: 'Válvulas (Aislamiento)', id: 'v_macho', name: 'V. Macho', icon: ICONS.V_MACHO, type: 'valvula', props: { tipo: 'macho', rotacion: 0 }, info: { title: "Válvula Macho", desc: "Cono metálico con grasa.", use: "Acometidas." } },
-        { subCat: 'Válvulas (Regulación)', id: 'v_aguja', name: 'V. Aguja', icon: ICONS.V_AGUJA, type: 'valvula', props: { tipo: 'aguja', rotacion: 0 }, info: { title: "V. Aguja", desc: "Control fino.", use: "Instrumentación." } },
-        { subCat: 'Válvulas (Regulación)', id: 'v_globo', name: 'V. Globo', icon: ICONS.V_GLOBO, type: 'valvula', props: { tipo: 'globo', rotacion: 0 }, info: { title: "V. Globo", desc: "Estrangulamiento.", use: "Bypass." } },
-        { subCat: 'Válvulas (Seguridad)', id: 'v_check', name: 'V. Cheque', icon: ICONS.V_CHECK, type: 'valvula', props: { tipo: 'retencion', rotacion: 0 }, info: { title: "V. Cheque", desc: "Una vía.", use: "Salida bombas." } },
-        { subCat: 'Válvulas (Seguridad)', id: 'v_exceso', name: 'Exc. Flujo', icon: ICONS.V_EXCESO, type: 'valvula', props: { tipo: 'exceso', rotacion: 0 }, info: { title: "Exc. Flujo", desc: "Cierre por ruptura.", use: "Tanques." } }
+        { subCat: 'Uniones', id: 'c_union', name: 'Unión Universal', icon: ICONS.UNION, type: 'equipo', props: { tipo: 'accesorio', ...defaultFlow } },
+        { subCat: 'Uniones', id: 'c_brida', name: 'Brida', icon: ICONS.BRIDA, type: 'equipo', props: { tipo: 'accesorio', diamIn:'2"', typeIn:'brida', diamOut:'2"', typeOut:'brida' } },
+        { subCat: 'Válvulas (Aislamiento)', id: 'v_bola', name: 'V. Bola', icon: ICONS.V_BOLA, type: 'valvula', props: { tipo: 'bola', rotacion: 0, ...defaultFlow }, info: { title: "Válvula de Bola", desc: "Cierre rápido 90°." } },
+        { subCat: 'Válvulas (Aislamiento)', id: 'v_macho', name: 'V. Macho', icon: ICONS.V_MACHO, type: 'valvula', props: { tipo: 'macho', rotacion: 0, ...defaultFlow }, info: { title: "Válvula Macho", desc: "Cono metálico con grasa." } },
+        { subCat: 'Válvulas (Regulación)', id: 'v_aguja', name: 'V. Aguja', icon: ICONS.V_AGUJA, type: 'valvula', props: { tipo: 'aguja', rotacion: 0, ...defaultFlow }, info: { title: "V. Aguja", desc: "Control fino." } },
+        { subCat: 'Válvulas (Regulación)', id: 'v_globo', name: 'V. Globo', icon: ICONS.V_GLOBO, type: 'valvula', props: { tipo: 'globo', rotacion: 0, ...defaultFlow }, info: { title: "V. Globo", desc: "Estrangulamiento." } },
+        { subCat: 'Válvulas (Seguridad)', id: 'v_check', name: 'V. Cheque', icon: ICONS.V_CHECK, type: 'valvula', props: { tipo: 'retencion', rotacion: 0, ...defaultFlow }, info: { title: "V. Cheque", desc: "Una vía." } },
+        { subCat: 'Válvulas (Seguridad)', id: 'v_exceso', name: 'Exc. Flujo', icon: ICONS.V_EXCESO, type: 'valvula', props: { tipo: 'exceso', rotacion: 0, ...defaultFlow }, info: { title: "Exc. Flujo", desc: "Cierre por ruptura." } }
     ],
     eq: [
-        { subCat: 'Medición', id: 'eq_medidor', name: 'Medidor G4', icon: ICONS.MEDIDOR, type: 'equipo', props: { modelo: 'G4' } },
-        { subCat: 'Medición', id: 'eq_ecor', name: 'Electro-corrector', icon: ICONS.CORRECTOR, type: 'equipo', props: { modelo: 'EC' } },
-        { subCat: 'Regulación', id: 'eq_reg', name: 'Regulador', icon: ICONS.REGULADOR, type: 'equipo', props: { cap: '5 m3/h' } },
-        { subCat: 'Compresión', id: 'eq_comp', name: 'Compresor', icon: ICONS.COMPRESOR, type: 'equipo', props: { cap: 'HP' } }
+        { subCat: 'Medición', id: 'eq_medidor', name: 'Medidor G4', icon: ICONS.MEDIDOR, type: 'equipo', props: { modelo: 'G4', diamIn:'1"', typeIn:'macho', diamOut:'1"', typeOut:'macho' } },
+        { subCat: 'Medición', id: 'eq_ecor', name: 'Electro-corrector', icon: ICONS.CORRECTOR, type: 'equipo', props: { modelo: 'EC', ...defaultFlow } },
+        { subCat: 'Regulación', id: 'eq_reg', name: 'Regulador', icon: ICONS.REGULADOR, type: 'equipo', props: { cap: '5 m3/h', diamIn:'1/2"', typeIn:'hembra', diamOut:'1"', typeOut:'hembra' } },
+        { subCat: 'Compresión', id: 'eq_comp', name: 'Compresor', icon: ICONS.COMPRESOR, type: 'equipo', props: { cap: 'HP', ...defaultFlow } }
     ],
     inst: [
-          { subCat: 'Presión', id: 'i_mano', name: 'Manómetro', icon: ICONS.MANOMETRO, type: 'equipo', props: { rango: '0-60 psi' } },
-          { subCat: 'Presión', id: 'i_pres', name: 'Presostato', icon: ICONS.PRESOSTATO, type: 'equipo', props: { set: 'High' } },
+          { subCat: 'Presión', id: 'i_mano', name: 'Manómetro', icon: ICONS.MANOMETRO, type: 'equipo', props: { rango: '0-60 psi', diamIn:'1/4"', typeIn:'macho' } },
+          { subCat: 'Presión', id: 'i_pres', name: 'Presostato', icon: ICONS.PRESOSTATO, type: 'equipo', props: { set: 'High', diamIn:'1/4"', typeIn:'hembra' } },
           { subCat: 'Seguridad', id: 'i_ion', name: 'Sensor Ionizado', icon: ICONS.SENSOR, type: 'equipo', props: { tipo: 'Ion' } }
     ],
     perif: [
