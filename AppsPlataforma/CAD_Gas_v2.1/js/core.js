@@ -1,4 +1,4 @@
-// js/core.js - Cerebro de la Aplicación (PDF Pro + Equations + Polyline)
+// js/core.js - Cerebro de la Aplicación (PDF, Polyline, Engineering Calc)
 
 // ==========================================
 // 1. ESTADO GLOBAL Y VARIABLES
@@ -303,8 +303,8 @@ window.handleCanvasClick = function(e) {
     let tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
     let ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
     let tz = window.estado.snapped ? window.estado.snapped.z : window.estado.currentZ;
-    let lockedAxis = null;
     
+    // LOGICA DE DIBUJO
     if (window.estado.drawing && window.estado.inicio && !window.estado.snapped) {
         const gridX = Math.round(window.estado.mouseIso.x * 10) / 10;
         const gridY = Math.round(window.estado.mouseIso.y * 10) / 10;
@@ -539,10 +539,46 @@ window.exportarCSV = function() {
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 
-// --- GENERACIÓN DE PDF PROFESIONAL CON ANEXO TÉCNICO ---
+// --- CALCULO INGENIERÍA ---
+window.realizarCalculo = function() {
+    const el = window.elementos.find(x => x.id === window.estado.selID);
+    if (!el || el.tipo !== 'tuberia') { alert("Seleccione una tubería."); return; }
+    
+    const Q = window.parseInputFloat(document.getElementById('calc-caudal').value);
+    const P = window.parseInputFloat(document.getElementById('calc-presion').value);
+    const Gas = document.getElementById('calc-gas').value;
+    const L = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+    
+    if (Q <= 0 || P <= 0) { alert("Ingrese Caudal y Presión válidos (>0)."); return; }
+    
+    const res = window.calcularFlujoGas(el.props.diametroNominal, L, Q, Gas, P);
+    
+    const divRes = document.getElementById('calc-result');
+    if (res.error) {
+        divRes.innerHTML = `<div class="calc-result-box calc-err">❌ Error: ${res.error}</div>`;
+    } else {
+        let cls = "calc-ok"; if(res.estado === "ALERTA") cls = "calc-alert"; if(res.estado === "CRÍTICO") cls = "calc-err";
+        
+        divRes.innerHTML = `
+            <div class="calc-result-box ${cls}">
+                <strong>Estado: ${res.estado}</strong><br>
+                ΔP: ${res.caidaPresion} (${res.porcentajeCaida})<br>
+                Velocidad: ${res.velocidad}<br>
+                P. Salida: ${res.presionSalida}<br>
+                <small style="color:#888">${res.formula}</small>
+                ${res.alertas ? `<br><small style="color:#f44">⚠ ${res.alertas}</small>` : ''}
+            </div>
+        `;
+    }
+}
+
+window.mostrarEcuaciones = function() {
+    document.getElementById('modal-ecuaciones').style.display = 'flex';
+}
+
+// --- PDF PRO ---
 window.prepararPDF = function() {
-    document.getElementById('pdf-nombre').value = "";
-    document.getElementById('pdf-id').value = "";
+    document.getElementById('pdf-nombre').value = ""; document.getElementById('pdf-id').value = "";
     document.getElementById('modal-pdf').style.display = 'flex';
 }
 
@@ -552,51 +588,34 @@ window.generarPDF = function() {
     const autor = document.getElementById('pdf-autor').value.trim() || "Ingeniería";
     const incluirEcuaciones = document.getElementById('pdf-include-eq').checked;
 
-    if (!nombre || !id) {
-        alert("Por favor, ingrese el Nombre y el ID del Proyecto.");
-        return;
-    }
+    if (!nombre || !id) { alert("Por favor, ingrese el Nombre y el ID."); return; }
 
     document.getElementById('modal-pdf').style.display = 'none';
     const gizmo = document.getElementById('gizmo-container');
     const hud = document.querySelector('.hud-overlay');
-    if(gizmo) gizmo.style.display = 'none';
-    if(hud) hud.style.display = 'none';
+    if(gizmo) gizmo.style.display = 'none'; if(hud) hud.style.display = 'none';
 
-    const elementToCapture = document.getElementById('main-area');
-    
-    html2canvas(elementToCapture, {
-        backgroundColor: '#111111',
-        scale: 1.5 
-    }).then(canvas => {
-        if(gizmo) gizmo.style.display = 'block';
-        if(hud) hud.style.display = 'flex';
+    html2canvas(document.getElementById('main-area'), { backgroundColor: '#111111', scale: 1.5 }).then(canvas => {
+        if(gizmo) gizmo.style.display = 'block'; if(hud) hud.style.display = 'flex';
 
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const margin = 15;
+        const pageWidth = doc.internal.pageSize.getWidth(); const pageHeight = doc.internal.pageSize.getHeight(); const margin = 15;
 
-        // --- PÁGINA 1: DIBUJO Y MATERIALES ---
-        // Header
+        // PAGINA 1
         doc.setDrawColor(0); doc.setFillColor(240, 240, 240);
         doc.rect(margin, margin, pageWidth - 2*margin, 25, 'F'); doc.rect(margin, margin, pageWidth - 2*margin, 25, 'S');
         doc.setFontSize(14); doc.setFont("helvetica", "bold");
         doc.text("REPORTE DE INGENIERÍA - ISOMÉTRICO DE GAS", pageWidth / 2, margin + 8, { align: "center" });
         doc.setFontSize(10); doc.setFont("helvetica", "normal");
-        doc.text(`PROYECTO: ${nombre}`, margin + 5, margin + 16);
-        doc.text(`ID: ${id}`, margin + 5, margin + 21);
+        doc.text(`PROYECTO: ${nombre}`, margin + 5, margin + 16); doc.text(`ID: ${id}`, margin + 5, margin + 21);
         doc.text(`FECHA: ${new Date().toLocaleDateString()}`, pageWidth - margin - 5, margin + 16, { align: "right" });
         doc.text(`RESPONSABLE: ${autor}`, pageWidth - margin - 5, margin + 21, { align: "right" });
 
-        // Imagen
         const imgData = canvas.toDataURL('image/jpeg', 0.9);
-        const imgHeight = 100; 
-        doc.addImage(imgData, 'JPEG', margin, margin + 30, pageWidth - 2*margin, imgHeight);
-        doc.rect(margin, margin + 30, pageWidth - 2*margin, imgHeight);
+        doc.addImage(imgData, 'JPEG', margin, margin + 30, pageWidth - 2*margin, 100);
+        doc.rect(margin, margin + 30, pageWidth - 2*margin, 100);
 
-        // Tabla
         const tuberias = {}; const items = {};
         window.elementos.forEach(el => {
             if (el.visible === false || el.tipo ==='cota' || el.tipo ==='texto') return;
@@ -604,17 +623,14 @@ window.generarPDF = function() {
                 let k = `${el.props.material || 'Genérico'} [${el.props.diametroNominal || '?'}]`;
                 tuberias[k] = (tuberias[k]||0) + Math.sqrt(el.dx**2+el.dy**2+el.dz**2);
             } else {
-                let n = el.name || el.tipo;
-                if(el.tipo==='valvula') n = "Válvula " + n;
-                if(el.props.tipo==='tanque_glp') n = "Tanque GLP";
+                let n = el.name || el.tipo; if(el.tipo==='valvula') n = "Válvula " + n;
                 let det = el.props.modelo || el.props.diametro || "";
                 items[`${n} ${det}`] = (items[`${n} ${det}`]||0) + 1;
             }
         });
         if (typeof window.analizarRed === 'function') {
             window.analizarRed().forEach(fit => {
-                let n = "Accesorio Auto";
-                if(fit.tipo==='codo_auto') n="Codo 90°"; else if(fit.tipo==='tee_auto') n="Tee";
+                let n = "Accesorio Auto"; if(fit.tipo==='codo_auto') n="Codo 90°"; else if(fit.tipo==='tee_auto') n="Tee";
                 items[`${n} (Generado)`] = (items[`${n} (Generado)`]||0) + 1;
             });
         }
@@ -622,69 +638,38 @@ window.generarPDF = function() {
         for (let k in tuberias) tableBody.push(["Tubería", k, window.formatLength(tuberias[k])]);
         for (let k in items) tableBody.push(["Elemento", k, items[k] + " und"]);
 
-        doc.autoTable({
-            startY: margin + 30 + imgHeight + 10,
-            head: [['Categoría', 'Descripción', 'Cantidad']],
-            body: tableBody,
-            theme: 'grid',
-            headStyles: { fillColor: [50, 50, 50], textColor: 255 },
-            styles: { fontSize: 9, cellPadding: 2 },
-            margin: { left: margin, right: margin }
-        });
-
-        // Pie Pagina 1
-        doc.setFontSize(8);
+        doc.autoTable({ startY: margin + 130 + 10, head: [['Categoría', 'Descripción', 'Cantidad']], body: tableBody, theme: 'grid', styles: { fontSize: 9, cellPadding: 2 }, margin: { left: margin, right: margin } });
         doc.text("Pagina 1/2", pageWidth - margin, pageHeight - 10, {align:"right"});
 
-        // --- PÁGINA 2: ANEXO DE ECUACIONES ---
+        // PAGINA 2
         if(incluirEcuaciones) {
             doc.addPage();
-            
-            // Header Anexo
-            doc.setFillColor(230, 230, 230);
-            doc.rect(margin, margin, pageWidth - 2*margin, 15, 'F');
+            doc.setFillColor(230, 230, 230); doc.rect(margin, margin, pageWidth - 2*margin, 15, 'F');
             doc.setFontSize(12); doc.setFont("helvetica", "bold");
             doc.text("ANEXO TÉCNICO: METODOLOGÍA DE CÁLCULO", pageWidth/2, margin + 10, {align:"center"});
-            
             let y = margin + 30;
             doc.setFontSize(10); doc.setFont("helvetica", "normal");
-            
-            doc.text("Este proyecto utiliza la metodología de MUELLER para el cálculo de pérdidas de carga.", margin, y); y+=10;
-            doc.text("Consideraciones Generales:", margin, y); y+=6;
+            doc.text("Este proyecto utiliza la metodología de MUELLER para el cálculo de pérdidas.", margin, y); y+=10;
             doc.setFontSize(9);
-            doc.text("- Gas Natural: Gravedad Específica (S) = 0.60", margin+5, y); y+=5;
-            doc.text("- GLP: Gravedad Específica (S) = 1.52", margin+5, y); y+=5;
-            doc.text("- Tuberías: Diámetros internos estándar según norma (Sch40/PE/Cobre).", margin+5, y); y+=10;
-            
-            // Formula Baja Presion
+            doc.text("- Gas Natural (S=0.60) / GLP (S=1.52)", margin+5, y); y+=10;
             doc.setFontSize(11); doc.setFont("helvetica", "bold");
-            doc.text("1. Fórmula de Mueller para Baja Presión (< 1 psi / 70 mbar)", margin, y); y+=8;
+            doc.text("1. Fórmula Baja Presión (< 70 mbar)", margin, y); y+=8;
             doc.setFont("courier", "bold");
             doc.setDrawColor(200); doc.setFillColor(250, 250, 255); doc.rect(margin, y-2, 100, 15, 'F');
             doc.text("Q = (2971 * D^2.725 / S^0.425) * (h / L)^0.575", margin+2, y+8); 
             y+=20;
-            doc.setFont("helvetica", "italic"); doc.setFontSize(9);
-            doc.text("Donde: Q=Caudal (CFH), D=Diámetro Int (pulg), S=Gravedad Específica, h=Caída (pulgadas H2O), L=Longitud (pies).", margin, y); y+=15;
-
-            // Formula Media Presion
-            doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setFontStyle("bold");
-            doc.text("2. Fórmula de Mueller para Media/Alta Presión (> 1 psi)", margin, y); y+=8;
+            doc.setFont("helvetica", "bold");
+            doc.text("2. Fórmula Media Presión (> 70 mbar)", margin, y); y+=8;
             doc.setFont("courier", "bold");
             doc.setDrawColor(200); doc.setFillColor(250, 250, 255); doc.rect(margin, y-2, 110, 15, 'F');
             doc.text("Q = (2826 * D^2.725 / S^0.425) * ((P1^2 - P2^2)/L)^0.575", margin+2, y+8); 
-            y+=20;
-            doc.setFont("helvetica", "italic"); doc.setFontSize(9);
-            doc.text("Donde: P1, P2 = Presiones Absolutas (psia).", margin, y); y+=15;
-            
-            // Nota legal
             y = pageHeight - 30;
             doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-            doc.text("NOTA: Los cálculos son referenciales. El ingeniero responsable debe verificar las condiciones de sitio.", margin, y);
+            doc.text("Nota: Cálculos referenciales.", margin, y);
             doc.text("Pagina 2/2", pageWidth - margin, pageHeight - 10, {align:"right"});
         }
-
         doc.save(`Reporte_${id}.pdf`);
     });
 }
 
-console.log("✅ Core Logic (PDF Pro + Equations + Polyline) cargado");
+console.log("✅ Core Logic (Full Suite) cargado");
