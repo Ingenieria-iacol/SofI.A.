@@ -2,136 +2,237 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v1.7 - Suite Ingeniería (Cálculo Integrado)</title>
+<title>CAD Gas v14.3 - Suite Ingeniería (Blue Stream UI)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <style>
-    :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ffff; --ok: #4caf50; --err: #f44336; --warn: #ff9800; }
+    :root { 
+        --bg: #141414; /* Fondo casi negro */
+        --panel: #1f1f1f; 
+        --border: #333; 
+        --accent: #0071eb; /* AZUL ELÉCTRICO */
+        --text: #e5e5e5; 
+        --snap: #00ffff; 
+        --ok: #4caf50; 
+        --err: #f44336; 
+        --warn: #ff9800; 
+        --input-bg: #2b2b2b;
+    }
     body { font-family: 'Segoe UI', Consolas, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
-    header { background-color: #2d2d2d; height: 45px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; padding: 0 15px; z-index: 100; }
+    
+    /* Header & Toolbar */
+    header { background-color: #000; height: 45px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; padding: 0 15px; z-index: 100; }
     .brand { font-weight:700; color:#fff; margin-right:10px; font-size:1rem; letter-spacing:1px; }
     .brand span { color: var(--accent); }
-    button.btn, select.btn, input.btn-input { background: #3c3c3c; color: #eee; border: 1px solid #555; padding: 4px 12px; border-radius: 3px; cursor: pointer; font-size: 0.85rem; display:flex; align-items:center; gap:6px; transition:0.2s; outline:none; }
-    button.btn:hover, select.btn:hover { background: #505050; border-color: #777; }
-    button.primary { background: var(--accent); border-color: #005a9e; font-weight:600; }
-    button.primary:hover { background: #1084e3; }
-    button.danger { background: #822; border-color: #600; }
+    
+    button.btn, select.btn, input.btn-input { background: #333; color: #eee; border: 1px solid #444; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; display:flex; align-items:center; gap:6px; transition:0.2s; outline:none; }
+    button.btn:hover, select.btn:hover { background: #444; border-color: #666; }
+    button.primary { background: var(--accent); border-color: #005a9e; font-weight:600; color:#fff; }
+    button.primary:hover { background: #fff; color:var(--accent); box-shadow: 0 0 10px var(--accent); }
+    button.danger { background: #922; border-color: #600; }
     button.btn:disabled { opacity: 0.5; cursor: default; pointer-events: none; }
-    button.active, .tool-item.active { background: #444; border-color: var(--accent); color: #fff; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
-    button.active { border: 1px solid var(--accent); }
-    .toolbar-sep { width: 1px; height: 24px; background: #555; margin: 0 5px; }
-    .layer-dropdown { position: relative; display: inline-block; }
-    .layer-content { display: none; position: absolute; top: 35px; left: 0; background-color: var(--panel); min-width: 160px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); border: 1px solid var(--border); z-index: 200; border-radius: 4px; padding: 5px; }
-    .layer-content.show { display: block; }
-    .layer-row-header { display: flex; align-items: center; padding: 5px 10px; gap: 8px; border-bottom: 1px solid #333; cursor: pointer; transition: 0.2s; }
-    .layer-row-header:hover { background: #333; }
-    .layer-row-header.active { background: #37373d; border-left: 3px solid var(--accent); }
+    button.active, .tool-item.active { background: #444; border-color: var(--accent); color: #fff; box-shadow: 0 0 5px var(--accent); }
+    
+    .toolbar-sep { width: 1px; height: 24px; background: #444; margin: 0 5px; }
+    
+    /* Layout Principal */
     #workspace { flex-grow: 1; display: flex; position: relative; overflow: hidden; }
-    #left-panel, #right-panel { background-color: var(--panel); display: flex; flex-direction: column; z-index: 90; transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); overflow: hidden; white-space: nowrap; flex-shrink: 0; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
-    #left-panel { width: 260px; border-right: 1px solid var(--border); }
-    #right-panel { width: 280px; border-left: 1px solid var(--border); }
+    
+    /* Panel Izquierdo (Biblioteca) */
+    #left-panel { width: 260px; background-color: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 90; transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); flex-shrink: 0; }
     .closed { width: 0 !important; min-width: 0 !important; border: none !important; opacity: 0; pointer-events: none; }
+    
     .panel-handle { position: absolute; top: 50%; transform: translateY(-50%); width: 20px; height: 60px; background: #2d2d2d; border: 1px solid #444; color: var(--accent); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 92; border-radius: 0 8px 8px 0; transition: 0.2s; font-size: 12px; box-shadow: 2px 0 5px rgba(0,0,0,0.3); }
     .panel-handle:hover { background: #444; width: 25px; color: #fff; }
     .handle-left { left: 0; }
-    .handle-right { right: 0; border-radius: 8px 0 0 8px; border-left: 1px solid #444; border-right: none; }
     #left-panel:not(.closed) + .handle-left { left: 260px; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; margin-left: -10px; }
-    #right-panel:not(.closed) ~ .handle-right { right: 280px; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; margin-right: -10px; }
-    .panel-header { padding: 10px; background: #2d2d2d; font-weight:600; color:#fff; border-bottom:1px solid var(--border); display:flex; justify-content: space-between; align-items: center; }
+
+    .panel-header { padding: 10px; background: #000; font-weight:600; color:#fff; border-bottom:1px solid var(--border); display:flex; justify-content: space-between; align-items: center; text-transform:uppercase; letter-spacing:1px; font-size:0.85rem; }
+    
+    /* Biblioteca Items */
     .lib-group { border-bottom: 1px solid var(--border); }
     .lib-group-title { padding: 8px 12px; cursor: pointer; font-size:0.8rem; font-weight:bold; color:#888; text-transform:uppercase; display:flex; justify-content:space-between; transition: 0.2s;}
     .lib-group-title:hover { color: #fff; background: #333; }
-    .lib-items { display: none; padding: 5px; background: #1e1e1e; max-height: 400px; overflow-y: auto; } 
-    .lib-items.open { display: block; animation: fadeIn 0.3s; }
+    .lib-items { display: none; padding: 5px; background: #161616; max-height: 400px; overflow-y: auto; } 
+    .lib-items.open { display: block; }
     .lib-subheader { font-size: 0.7rem; color: var(--accent); font-weight: bold; margin: 10px 0 4px 5px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 2px; }
     
     .tool-item { position: relative; display: flex; align-items: center; gap: 10px; padding: 6px 10px; margin: 2px 0; cursor: pointer; border-radius: 4px; transition: 0.1s; border: 1px solid transparent; }
-    .tool-item:hover { background: #383838; } 
-    .tool-item.active { background: #37373d; border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+    .tool-item:hover { background: #333; } 
     .tool-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
-    .tool-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2px; stroke-linecap: round; stroke-linejoin: round; }
-    .tool-icon svg.filled { fill: currentColor; }
+    .tool-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2px; }
     .tool-name { font-size: 0.85rem; }
 
-    .lib-tooltip { display: none; position: absolute; left: 100%; top: 0; width: 280px; background: rgba(30, 30, 30, 0.98); border: 1px solid var(--accent); padding: 12px; z-index: 1000; font-size: 0.8rem; color: #ddd; box-shadow: 4px 4px 15px rgba(0,0,0,0.7); white-space: normal; border-radius: 0 4px 4px 4px; backdrop-filter: blur(4px); pointer-events: none; }
-    .tool-item:hover .lib-tooltip { display: block; }
-    .tooltip-title { font-weight: bold; color: #fff; font-size: 0.9rem; margin-bottom: 4px; display:block; border-bottom: 1px solid #444; padding-bottom: 4px;}
-    .tooltip-desc { margin-bottom: 6px; color: #bbb; line-height: 1.3;}
-    .tooltip-meta { font-style: italic; color: #0078d7; font-size: 0.75rem; display: block; margin-top: 5px;}
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    #main-area { flex-grow: 1; position: relative; background: #111; cursor: none; }
-    svg { display: block; width: 100%; height: 100%; }
-    #cmd-panel { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(40, 40, 40, 0.9); border: 1px solid #555; padding: 5px; border-radius: 6px; display: flex; gap: 5px; backdrop-filter: blur(5px); z-index: 95; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-    .cmd-divider { width: 1px; background: #555; margin: 0 5px; }
-    #gizmo-container { position: absolute; bottom: 50px; left: 20px; width: 80px; height: 80px; pointer-events: none; z-index: 95; }
-    .axis-line { stroke-width: 2; marker-end: url(#arrow); stroke-linecap: round; } .axis-text { font-family: monospace; font-weight: bold; font-size: 10px; }
-    .grid-path, .grid-axis, .grid-minor { fill: none; pointer-events: none; }
-    .grid-path { stroke: #2a2a2a; stroke-width: 1; vector-effect: non-scaling-stroke; }
-    .grid-minor { stroke: #222; stroke-width: 0.5; vector-effect: non-scaling-stroke; opacity: 0.6; } 
-    .grid-axis { stroke: #333; stroke-width: 2; vector-effect: non-scaling-stroke; }
-    #capa-interfaz, #capa-referencias, #capa-hover { pointer-events: none; }
-    .tuberia { fill: none; stroke-linecap: round; stroke-linejoin: round; shape-rendering: geometricPrecision; transition: stroke 0.1s; } 
-    .fitting-auto { fill: none; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
-    .dim-line { stroke: #aaa; stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; }
-    .dim-text { fill: #aaa; font-size: 12px; text-anchor: middle; font-family: monospace; pointer-events: none; }
-    .label-tech { fill: #777; font-size: 9px; font-family: 'Segoe UI', sans-serif; pointer-events: none; text-anchor: middle; text-shadow: 1px 1px 2px #000; font-weight: 500; }
-    .z-ref-line { stroke: #666; stroke-dasharray: 2,2; vector-effect: non-scaling-stroke; opacity: 0.5; }
-    .cursor-crosshair { stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; opacity: 1; filter: drop-shadow(0 0 2px black); }
-    .snap-marker { fill: none; stroke: var(--snap); stroke-width: 2; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 2px var(--snap)); }
-    .hover-halo { stroke: #fff; stroke-width: 6; opacity: 0.3; fill: none; pointer-events: none; stroke-linecap: round; }
-    .sel-halo { stroke: var(--accent); stroke-width: 4; opacity: 0.8; fill: none; pointer-events: none; stroke-linecap: round; }
-    .sub-panel { display: flex; flex-direction: column; height: 100%;}
-    .sp-top { flex: 1; overflow-y:auto; padding-bottom: 20px;} 
-    .acc-group { border-bottom: 1px solid #333; }
-    .acc-header { padding: 10px 15px; background: #2a2a2a; color: #ddd; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; text-transform: uppercase; }
-    .acc-header:hover { background: #333; color: #fff; }
+    /* === NUEVA VENTANA EMERGENTE "BLUE-STREAM" === */
+    #prop-card {
+        position: absolute;
+        top: 60px;
+        right: 20px;
+        width: 320px;
+        max-height: 85vh;
+        background: rgba(20, 20, 20, 0.95); /* Fondo oscuro semitransparente */
+        backdrop-filter: blur(10px); /* Efecto Glass */
+        border: 1px solid #333;
+        border-top: 3px solid var(--accent); /* Línea azul superior */
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+        border-radius: 6px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+        pointer-events: none;
+        transition: opacity 0.3s cubic-bezier(0.25, 1, 0.5, 1), transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+        overflow: hidden;
+    }
+
+    #prop-card.active {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        pointer-events: auto;
+    }
+
+    .pc-header {
+        padding: 15px 20px;
+        background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .pc-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+
+    .pc-close {
+        background: transparent;
+        border: none;
+        color: #888;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .pc-close:hover { color: #fff; }
+
+    .pc-hero {
+        padding: 15px;
+        display: flex;
+        justify-content: center;
+        background: radial-gradient(circle at center, #2b2b2b 0%, #141414 100%);
+        border-bottom: 1px solid #333;
+        margin-bottom: 0;
+    }
+    
+    .pc-hero-icon svg {
+        width: 80px;
+        height: 80px;
+        filter: drop-shadow(0 0 15px rgba(0, 113, 235, 0.5)); /* Resplandor azul */
+        stroke: #fff !important;
+        stroke-width: 1.5;
+    }
+
+    .pc-content {
+        overflow-y: auto;
+        padding: 15px;
+        flex: 1;
+    }
+    
+    /* Scrollbar minimalista */
+    .pc-content::-webkit-scrollbar { width: 6px; }
+    .pc-content::-webkit-scrollbar-track { background: #141414; }
+    .pc-content::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+    .pc-content::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    /* Estilos de inputs modernizados */
+    .prop-row { margin-bottom: 12px; }
+    .prop-row.row-h { display: flex; gap: 10px; align-items: center; }
+    
+    .prop-row label {
+        font-size: 0.75rem;
+        color: #aaa;
+        margin-bottom: 5px;
+        display: block;
+        font-weight: 500;
+    }
+
+    .prop-row input[type="text"], 
+    .prop-row input[type="number"], 
+    .prop-row select {
+        background: var(--input-bg);
+        border: 1px solid transparent;
+        color: #fff;
+        padding: 8px 10px;
+        border-radius: 3px;
+        width: 100%;
+        transition: 0.2s;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+    }
+
+    .prop-row input:focus, .prop-row select:focus {
+        background: #383838;
+        border-color: var(--accent);
+        outline: none;
+        box-shadow: 0 0 8px rgba(0, 113, 235, 0.3);
+    }
+    
+    .acc-group { margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+    .acc-header {
+        background: transparent;
+        color: #ddd;
+        font-weight: 600;
+        padding: 10px 5px;
+        cursor: pointer;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        display: flex; justify-content: space-between;
+    }
+    .acc-header:hover { color: var(--accent); }
     .acc-header::after { content: '▼'; font-size: 0.7rem; transition: transform 0.2s; }
     .acc-group.collapsed .acc-header::after { transform: rotate(-90deg); }
-    .acc-content { display: block; padding: 10px 0; background: #252526; }
+    .acc-content { display: block; padding: 5px 0; }
     .acc-group.collapsed .acc-content { display: none; }
-    .prop-row { margin: 8px 15px; display: flex; flex-direction: column; gap: 4px; }
-    .prop-row.row-h { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
-    .prop-row label { color: #aaa; font-size: 0.75rem; }
-    .prop-row input[type="text"], .prop-row input[type="number"], .prop-row select { width: 100%; background: #181818; border: 1px solid #444; color: #eee; padding: 6px; border-radius: 3px; font-size: 0.85rem; box-sizing: border-box; }
-    .prop-row input[type="color"] { width: 100%; height: 30px; border: 1px solid #444; background: #181818; padding: 2px; cursor: pointer; }
-    input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
-    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: var(--accent); margin-top: -5px; cursor: pointer; }
-    input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #444; border-radius: 2px; }
-    .hud-overlay { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 5px 10px; border-radius: 4px; color: #ccc; font-family: monospace; display: flex; align-items: center; gap: 12px; backdrop-filter: blur(2px); border: 1px solid #444; }
-    .hud-group { display: flex; align-items: center; gap: 5px; }
-    .hud-label { font-size: 0.75rem; color: #888; font-weight: bold; }
-    .hud-input { width: 45px; background: transparent; border: none; border-bottom: 1px solid #555; color: #0ff; font-family: monospace; font-size: 1em; text-align: center; outline: none; transition: 0.2s;}
-    .hud-input:focus { border-bottom-color: var(--accent); background: rgba(255,255,255,0.1); width: 60px;}
-    .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:200; justify-content:center; align-items:center; }
-    .modal-box { background: var(--panel); padding:20px; border:1px solid #555; width:500px; border-radius:5px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;}
-    #dynamic-input-container, #vertical-input-container { position: absolute; background: rgba(37, 37, 38, 0.95); border: 1px solid var(--accent); padding: 5px 8px; border-radius: 4px; display: none; align-items: center; gap: 5px; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
-    .float-input { width: 70px; background: #111; border: 1px solid #444; color: #fff; padding: 2px 5px; border-radius: 2px; outline: none; font-family: monospace; }
-    .float-input:focus { border-color: var(--accent); }
-    #vertical-input-container { border-color: #0f0; flex-direction: column; align-items: flex-start; padding: 10px; min-width: 150px; }
-    #v-title { color: #0f0; font-weight: bold; font-size: 0.8rem; margin-bottom: 5px; display:flex; gap:5px; align-items:center;}
-    #hover-tooltip { position: absolute; display: none; pointer-events: none; z-index: 2000; background: rgba(0, 0, 0, 0.85); border: 1px solid #777; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; color: #fff; font-family: monospace; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); white-space: nowrap; backdrop-filter: blur(2px); }
-    .table-header { background-color: #333; color: #fff; font-weight: bold; text-transform: uppercase; font-size: 0.85rem; border-bottom: 2px solid #555; }
-    .table-header td { padding: 8px 5px; margin-top: 10px; }
-    #tabla-res tr:not(.table-header) td { padding: 5px; border-bottom: 1px solid #2a2a2a; }
-    #tabla-res { width: 100%; border-collapse: collapse; }
-    .required-star { color: #ff4444; margin-left: 2px; }
+
+    /* Area Principal */
+    #main-area { flex-grow: 1; position: relative; background: #111; cursor: none; }
+    svg { display: block; width: 100%; height: 100%; }
     
-    /* Estilos Cálculo */
-    .calc-result-box { margin-top:10px; padding:10px; background:#111; border-radius:4px; font-size:0.8rem; border-left:4px solid #555; }
-    .calc-ok { border-color: var(--ok); }
-    .calc-alert { border-color: var(--warn); }
-    .calc-err { border-color: var(--err); }
-    .eq-box { background:#f5f5f5; color:#000; padding:15px; margin-bottom:10px; border-radius:4px; font-family:'Times New Roman', serif; }
+    /* HUD y Comandos */
+    #cmd-panel { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(30, 30, 30, 0.9); border: 1px solid #444; padding: 5px; border-radius: 6px; display: flex; gap: 5px; backdrop-filter: blur(5px); z-index: 95; }
+    .hud-overlay { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 5px 10px; border-radius: 4px; color: #ccc; font-family: monospace; display: flex; gap: 12px; border: 1px solid #444; }
+    .hud-input { width: 50px; background: transparent; border: none; border-bottom: 1px solid #555; color: var(--accent); text-align: center; outline: none; }
+
+    /* Modales */
+    .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:200; justify-content:center; align-items:center; backdrop-filter: blur(2px); }
+    .modal-box { background: #1f1f1f; padding:25px; border:1px solid #444; width:500px; border-radius:6px; box-shadow: 0 20px 50px rgba(0,0,0,0.7); max-height: 90vh; overflow-y: auto;}
+    
+    /* Elementos Flotantes */
+    #dynamic-input-container, #vertical-input-container { position: absolute; background: rgba(30, 30, 30, 0.95); border: 1px solid var(--accent); padding: 5px 8px; border-radius: 4px; display: none; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+    .float-input { width: 70px; background: #000; border: 1px solid #444; color: #fff; padding: 2px 5px; outline: none; }
+    
+    /* Capas */
+    .layer-dropdown { position: relative; display: inline-block; }
+    .layer-content { display: none; position: absolute; top: 35px; left: 0; background-color: #1f1f1f; min-width: 160px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); border: 1px solid #333; z-index: 200; border-radius: 4px; padding: 5px; }
+    .layer-content.show { display: block; }
+    .layer-row-header { display: flex; align-items: center; padding: 5px 10px; gap: 8px; cursor: pointer; }
+    .layer-row-header:hover { background: #333; }
+    .layer-row-header.active { border-left: 3px solid var(--accent); background: #2a2a2a; }
 </style>
 </head>
 <body>
 
 <header>
-    <div class="brand"><span>CAD</span> GAS v1.7</div>
+    <div class="brand"><span>CAD</span> GAS v15.0</div>
     <div class="toolbar-sep"></div>
-    <button class="btn" id="btn-undo" onclick="undo()" title="Deshacer (Ctrl+Z)">↩</button>
-    <button class="btn" id="btn-redo" onclick="redo()" title="Rehacer (Ctrl+Y)">↪</button>
+    <button class="btn" id="btn-undo" onclick="undo()" title="Deshacer">↩</button>
+    <button class="btn" id="btn-redo" onclick="redo()" title="Rehacer">↪</button>
     <div class="toolbar-sep"></div>
     <button class="btn" onclick="guardarProyecto()">💾 Guardar</button>
     <button class="btn" onclick="document.getElementById('file-input').click()">📂 Abrir</button>
@@ -179,10 +280,10 @@
     
     <div id="main-area">
         <div id="cmd-panel">
-            <button id="cmd-grid" class="btn active" onclick="toggleConfig('grid')" style="padding:4px 8px;">Grid ▦</button>
-            <button id="cmd-snap" class="btn active" onclick="toggleConfig('snap')" style="padding:4px 8px;">Snap 🧲</button>
-            <div class="cmd-divider"></div>
-            <button class="btn" onclick="resetView()" style="padding:4px 8px;">Centrar 🎯</button>
+            <button id="cmd-grid" class="btn active" onclick="toggleConfig('grid')">Grid ▦</button>
+            <button id="cmd-snap" class="btn active" onclick="toggleConfig('snap')">Snap 🧲</button>
+            <div class="toolbar-sep"></div>
+            <button class="btn" onclick="resetView()">Centrar 🎯</button>
         </div>
         <svg id="lienzo-cad">
             <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#f00" /></marker></defs>
@@ -191,102 +292,72 @@
                 <g id="capa-referencias"></g><g id="contenedor-elementos"></g><g id="capa-fittings"></g><g id="capa-seleccion"></g><g id="capa-hover"></g><g id="capa-interfaz"></g>
             </g>
         </svg>
-        <div id="gizmo-container"><svg id="gizmo-svg" viewBox="0 0 100 100"><g id="gizmo-axes" transform="translate(50,50)"></g></svg></div>
+        <div id="gizmo-container" style="position: absolute; bottom: 50px; left: 20px; width: 80px; height: 80px; pointer-events: none;"><svg id="gizmo-svg" viewBox="0 0 100 100"><g id="gizmo-axes" transform="translate(50,50)"></g></svg></div>
         <div class="hud-overlay">
-            <div class="hud-group"><span class="hud-label">ELEV(Z)</span><input type="number" id="hud-z-input" class="hud-input" value="0.00" step="0.10" onchange="updateZInput(this.value)"><span class="hud-label" id="hud-z-unit" style="font-size:0.6rem; font-weight:normal;">m</span></div>
-            <div style="width:1px; height:15px; background:#555;"></div>
-            <div class="hud-group"><span class="hud-label">ZOOM</span><input type="number" id="hud-scale-input" class="hud-input" value="100" onchange="updateZoomInput(this.value)"><span class="hud-label" style="font-weight:normal;">%</span></div>
-            <div style="width:1px; height:15px; background:#555;"></div>
-            <div class="hud-group"><span class="hud-label">ROT</span><input type="number" id="hud-rot-input" class="hud-input" value="45" onchange="updateRotInput(this.value)"><span class="hud-label" style="font-weight:normal;">°</span></div>
+            <div><span style="color:#888; font-weight:bold; font-size:0.75rem;">Z:</span> <input type="number" id="hud-z-input" class="hud-input" value="0.00" step="0.10" onchange="updateZInput(this.value)"> <span id="hud-z-unit" style="font-size:0.7rem">m</span></div>
+            <div style="width:1px; background:#555;"></div>
+            <div><span style="color:#888; font-weight:bold; font-size:0.75rem;">ZOOM:</span> <input type="number" id="hud-scale-input" class="hud-input" value="100" onchange="updateZoomInput(this.value)"> %</div>
+            <div style="width:1px; background:#555;"></div>
+            <div><span style="color:#888; font-weight:bold; font-size:0.75rem;">ROT:</span> <input type="number" id="hud-rot-input" class="hud-input" value="45" onchange="updateRotInput(this.value)"> °</div>
         </div>
         <div id="dynamic-input-container"><span>L:</span><input type="text" id="dynamic-len" class="float-input"><span style="color:#0f0">✔</span></div>
-        <div id="vertical-input-container"><div id="v-title"><span id="v-icon">⬆</span> <span id="v-text">SUBIENDO</span></div><div style="display:flex; align-items:center; gap:5px;"><label style="font-size:0.8rem; color:#ccc;">Longitud:</label><input type="text" id="v-len" class="float-input" placeholder="0.00"><span style="font-size:0.8rem; color:#888;">m</span></div><div style="font-size:0.7rem; color:#777; margin-top:5px;">[Enter] confirmar, [Esc] cancelar</div></div>
-        <div id="hover-tooltip">Z: 0.00m</div>
+        <div id="vertical-input-container" style="flex-direction:column; align-items:flex-start; padding:10px; border-color:#0f0;"><div id="v-title" style="color:#0f0; font-weight:bold; margin-bottom:5px;"><span id="v-icon">⬆</span> <span id="v-text">SUBIENDO</span></div><input type="text" id="v-len" class="float-input" placeholder="0.00"><span style="font-size:0.7rem; color:#777;">[Enter] confirmar</span></div>
+        <div id="hover-tooltip" style="position:absolute; display:none; background:rgba(0,0,0,0.8); border:1px solid #777; padding:3px 8px; border-radius:4px; font-size:0.75rem; pointer-events:none;"></div>
     </div>
     
-    <div id="right-panel" class="closed">
-        <div class="panel-header"><span>Propiedades</span><span style="font-size:0.8rem; cursor:pointer;" onclick="togglePanel('right-panel')">✕</span></div>
-        <div class="sub-panel">
-            <div id="prop-vacio" style="padding:20px; color:#666; text-align:center; font-size:0.85rem;">Seleccione un objeto para ver sus propiedades</div>
-            <div id="prop-form" class="sp-top" style="display:none;">
+    <div id="prop-card">
+        <div class="pc-header">
+            <span class="pc-title" id="pc-title-text">Propiedades</span>
+            <button class="pc-close" onclick="cerrarPropiedades()">✕</button>
+        </div>
+        <div class="pc-hero" id="pc-hero-container"></div>
+        <div class="pc-content">
+            <div id="prop-vacio" style="padding:20px; color:#666; text-align:center;">Nada seleccionado</div>
+            <div id="prop-form" style="display:none;">
                 <div class="acc-group" id="grp-general">
-                    <div class="acc-header" onclick="toggleAccordion('grp-general')">Información</div>
+                    <div class="acc-header" onclick="toggleAccordion('grp-general')">General</div>
                     <div class="acc-content">
-                        <div class="prop-row row-h"><label style="color:#fff; font-weight:bold;">Visibilidad</label><input type="checkbox" id="p-visible" onchange="updateRootProp('visible', this.checked)" style="width:auto; cursor:pointer;"></div>
-                        <div class="prop-row row-h"><label style="color:#fff;">Mostrar Etiqueta</label><input type="checkbox" id="p-show-label" onchange="updateBooleanProp('mostrarEtiqueta', this.checked)" style="width:auto; cursor:pointer;"></div>
+                        <div class="prop-row row-h"><label style="flex:1">Visible</label><input type="checkbox" id="p-visible" onchange="updateRootProp('visible', this.checked)" style="width:auto;"></div>
+                        <div class="prop-row row-h"><label style="flex:1">Etiqueta</label><input type="checkbox" id="p-show-label" onchange="updateBooleanProp('mostrarEtiqueta', this.checked)" style="width:auto;"></div>
                         <div class="prop-row"><label>Tag (Etiqueta)</label><input type="text" id="p-tag" onchange="updateStyleProp('tag', this.value)"></div>
-                        <div class="prop-row"><label>Capa Actual</label><select id="p-capa" class="btn" onchange="updateStyleProp('layerId', this.value)"></select></div>
+                        <div class="prop-row"><label>Capa</label><select id="p-capa" class="btn" onchange="updateStyleProp('layerId', this.value)"></select></div>
                     </div>
                 </div>
                 <div class="acc-group" id="grp-geo">
                     <div class="acc-header" onclick="toggleAccordion('grp-geo')">Geometría</div>
                     <div class="acc-content">
-                        <div class="prop-row"><label>Elevación Z1 (<span id="lbl-unit-z">m</span>)</label><input type="text" id="p-altura" inputmode="decimal" onchange="updateAltura(this.value)" placeholder="0.00"></div>
-                        <div class="prop-row" id="row-altura-final" style="display:none;"><label>Elevación Z2 (<span id="lbl-unit-z-final">m</span>)</label><input type="text" id="p-altura-final" inputmode="decimal" onchange="updateAlturaFinal(this.value)" placeholder="0.00"></div>
-                        <div class="prop-row" id="row-longitud"><label>Longitud (<span id="lbl-unit">m</span>)</label><input type="text" inputmode="decimal" id="p-longitud" onchange="updateLongitud(this.value)"></div>
+                        <div class="prop-row"><label>Elevación Z1 (<span id="lbl-unit-z">m</span>)</label><input type="text" id="p-altura" onchange="updateAltura(this.value)"></div>
+                        <div class="prop-row" id="row-altura-final"><label>Elevación Z2 (<span id="lbl-unit-z-final">m</span>)</label><input type="text" id="p-altura-final" onchange="updateAlturaFinal(this.value)"></div>
+                        <div class="prop-row" id="row-longitud"><label>Longitud (<span id="lbl-unit">m</span>)</label><input type="text" id="p-longitud" onchange="updateLongitud(this.value)"></div>
                     </div>
                 </div>
+                
                 <div id="prop-datos-tecnicos-container"></div>
+                
                 <div class="acc-group" id="grp-app">
                     <div class="acc-header" onclick="toggleAccordion('grp-app')">Apariencia</div>
                     <div class="acc-content">
-                        <div id="obj-adjust-controls" style="display:none;">
-                            <div class="prop-row"><label>Tamaño Visual</label><div style="display:flex; align-items:center; gap:5px;"><input type="range" id="p-scale" min="0.1" max="3" step="0.1" oninput="updateStyleProp('scaleFactor', this.value)" style="flex-grow:1;"><span id="p-scale-val" style="font-size:0.7rem; color:#888; width:25px;">1.0</span></div></div>
+                        <div id="obj-adjust-controls">
+                            <div class="prop-row"><label>Escala Visual</label><div style="display:flex; align-items:center; gap:5px;"><input type="range" id="p-scale" min="0.1" max="3" step="0.1" oninput="updateStyleProp('scaleFactor', this.value)"><span id="p-scale-val" style="font-size:0.7rem; color:#888;">1.0</span></div></div>
                             <div class="prop-row"><label>Punto de Acople</label><select id="p-anchor" class="btn" onchange="updateStyleProp('anchor', this.value)"><option value="start">Inicio</option><option value="center">Centro</option><option value="end">Fin</option></select></div>
                         </div>
-                        <div class="prop-row"><label>Color</label><input type="color" id="p-color" onchange="updateStyleProp('color', this.value)"></div>
-                        <div class="prop-row" id="row-tipo-linea"><label>Tipo de Línea</label><select id="p-linestyle" class="btn" onchange="updateStyleProp('tipoLinea', this.value)"><option value="solid">Sólida (⎯⎯⎯)</option><option value="dashed">Guiones (- - -)</option><option value="dotted">Punteada (· · ·)</option></select></div>
-                        <div class="prop-row" id="row-grosor"><label>Grosor Visual</label><input type="number" id="p-grosor" value="2" onchange="updateStyleProp('grosor', this.value)"></div>
+                        <div class="prop-row"><label>Color</label><input type="color" id="p-color" style="height:35px; padding:0; border:none;" onchange="updateStyleProp('color', this.value)"></div>
+                        <div class="prop-row" id="row-tipo-linea"><label>Estilo de Línea</label><select id="p-linestyle" class="btn" onchange="updateStyleProp('tipoLinea', this.value)"><option value="solid">Sólida</option><option value="dashed">Guiones</option><option value="dotted">Punteada</option></select></div>
+                        <div class="prop-row" id="row-grosor"><label>Grosor</label><input type="number" id="p-grosor" onchange="updateStyleProp('grosor', this.value)"></div>
                         <div class="prop-row"><label>Rotación (°)</label><input type="number" id="p-rot" onchange="updateStyleProp('rotacion', this.value)"></div>
                     </div>
                 </div>
-                <div class="prop-row" style="margin-top:15px;"><button class="btn danger" onclick="borrarSeleccion()" style="justify-content:center;">Eliminar Objeto</button></div>
+                <div style="margin-top:20px;"><button class="btn danger" onclick="borrarSeleccion()" style="width:100%; justify-content:center;">Eliminar Objeto</button></div>
             </div>
         </div>
     </div>
 </div>
-<div class="panel-handle handle-right" onclick="togglePanel('right-panel')">⚙️</div>
 
-<div id="modal-reporte" class="modal" onclick="this.style.display='none'"><div class="modal-box" onclick="event.stopPropagation()"><h3>Listado de Materiales</h3><table id="tabla-res" style="width:100%; font-size:0.9rem; border-collapse: collapse; color:#ccc;"></table><br><div style="display:flex; justify-content:space-between; align-items:center;"><button class="btn primary" onclick="exportarCSV()">📊 Exportar CSV</button><button class="btn" onclick="document.getElementById('modal-reporte').style.display='none'">Cerrar</button></div></div></div>
-<div id="modal-guardar" class="modal"><div class="modal-box"><h3>Guardar Proyecto</h3><div style="margin-bottom:15px;">Nombre:</div><input type="text" id="input-filename" class="btn-input" value="proyecto_gas" style="width:100%; margin-bottom:15px;"><div style="display:flex; gap:10px; justify-content:flex-end;"><button class="btn" onclick="guardarEnNavegador()">⚡ Navegador</button><button class="btn primary" onclick="confirmarDescarga()">💾 Descargar JSON</button><button class="btn" onclick="document.getElementById('modal-guardar').style.display='none'">Cancelar</button></div></div></div>
-<div id="modal-insertar" class="modal"><div class="modal-box"><h3>Insertar Elemento en Punto</h3><div class="prop-row"><label>Elemento a integrar:</label><select id="ins-select" class="btn" style="width:100%" onchange="checkInsertType()"></select></div><div class="prop-row row-h" style="margin-top:10px;"><label>Altura Inicial (Z1):</label><input type="text" id="ins-z1" class="btn-input" style="width:100px" placeholder="0.00"></div><div class="prop-row row-h" id="row-ins-z2" style="margin-top:10px;"><label>Altura Final (Z2) (Op):</label><input type="text" id="ins-z2" class="btn-input" style="width:100px" placeholder="0.00"></div><small style="color:#777; font-size:0.75rem; display:block; margin-top:5px;">* Si Z1 es distinto a Z2, se creará una tubería vertical.</small><div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn primary" onclick="ejecutarInsercion()">Integrar Objeto</button><button class="btn" onclick="cerrarModalInsertar()">Cancelar</button></div></div></div>
-
-<div id="modal-pdf" class="modal"><div class="modal-box" style="width:400px;">
-    <h3>Generar Reporte PDF</h3>
-    <div style="margin-bottom:10px; font-size:0.8rem; color:#aaa;">Ingrese los datos requeridos para formalizar el documento.</div>
-    <div class="prop-row"><label>Nombre del Proyecto <span class="required-star">*</span></label><input type="text" id="pdf-nombre" class="btn-input" placeholder="Ej: Red Residencial A-101"></div>
-    <div class="prop-row"><label>ID / Código de Proyecto <span class="required-star">*</span></label><input type="text" id="pdf-id" class="btn-input" placeholder="Ej: PRJ-2024-001"></div>
-    <div class="prop-row"><label>Responsable / Ingeniero</label><input type="text" id="pdf-autor" class="btn-input" placeholder="Ing. Juan Pérez"></div>
-    <div class="prop-row row-h" style="margin-top:15px; border-top:1px solid #444; padding-top:10px;">
-        <label style="cursor:pointer; flex:1;" for="pdf-include-eq">Incluir Anexo de Ecuaciones (Mueller)</label>
-        <input type="checkbox" id="pdf-include-eq" style="width:auto; cursor:pointer;">
-    </div>
-    <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
-        <button class="btn primary" onclick="generarPDF()">📄 Generar Documento</button>
-        <button class="btn" onclick="document.getElementById('modal-pdf').style.display='none'">Cancelar</button>
-    </div>
-</div></div>
-
-<div id="modal-ecuaciones" class="modal" onclick="this.style.display='none'"><div class="modal-box" style="width:600px;" onclick="event.stopPropagation()">
-    <h3>Sustento Matemático (Fórmulas de Mueller)</h3>
-    <div style="font-size:0.9rem; color:#ccc; margin-bottom:15px;">Las pérdidas de carga son calculadas utilizando las ecuaciones de Mueller, seleccionadas automáticamente según la presión de operación.</div>
-    
-    <div class="eq-box">
-        <strong>1. Baja Presión (< 70 mbar)</strong><br>
-        <em style="font-size:1.1rem; display:block; margin:10px 0; text-align:center;">Q = (2971 · D<sup>2.725</sup> / S<sup>0.425</sup>) · (h / L)<sup>0.575</sup></em>
-        <small>Donde: Q=Caudal(CFH), D=Diam(in), h=Caída(in.w.c), L=Longitud(ft)</small>
-    </div>
-    
-    <div class="eq-box">
-        <strong>2. Media Presión (> 70 mbar)</strong><br>
-        <em style="font-size:1.1rem; display:block; margin:10px 0; text-align:center;">Q = (2826 · D<sup>2.725</sup> / S<sup>0.425</sup>) · ((P<sub>1</sub>² - P<sub>2</sub>²) / L)<sup>0.575</sup></em>
-        <small>Donde: P1, P2 = Presiones Absolutas (psia)</small>
-    </div>
-    
-    <div style="margin-top:20px; text-align:right;">
-        <button class="btn" onclick="document.getElementById('modal-ecuaciones').style.display='none'">Cerrar</button>
-    </div>
-</div></div>
+<div id="modal-reporte" class="modal" onclick="this.style.display='none'"><div class="modal-box" onclick="event.stopPropagation()"><h3>Listado de Materiales</h3><table id="tabla-res" style="width:100%; font-size:0.9rem; border-collapse: collapse; color:#ccc;"></table><br><div style="display:flex; justify-content:space-between;"><button class="btn primary" onclick="exportarCSV()">Exportar CSV</button><button class="btn" onclick="document.getElementById('modal-reporte').style.display='none'">Cerrar</button></div></div></div>
+<div id="modal-guardar" class="modal"><div class="modal-box"><h3>Guardar Proyecto</h3><div style="margin-bottom:15px;">Nombre:</div><input type="text" id="input-filename" class="btn-input" value="proyecto_gas" style="width:100%; margin-bottom:15px;"><div style="display:flex; gap:10px; justify-content:flex-end;"><button class="btn" onclick="guardarEnNavegador()">Navegador</button><button class="btn primary" onclick="confirmarDescarga()">Descargar JSON</button><button class="btn" onclick="document.getElementById('modal-guardar').style.display='none'">Cancelar</button></div></div></div>
+<div id="modal-insertar" class="modal"><div class="modal-box"><h3>Insertar Elemento</h3><div class="prop-row"><label>Elemento:</label><select id="ins-select" class="btn" style="width:100%" onchange="checkInsertType()"></select></div><div class="prop-row row-h" style="margin-top:10px;"><label>Z1:</label><input type="text" id="ins-z1" class="btn-input" style="width:100px"><label>Z2 (Tub):</label><input type="text" id="ins-z2" class="btn-input" style="width:100px"></div><div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn primary" onclick="ejecutarInsercion()">Insertar</button><button class="btn" onclick="cerrarModalInsertar()">Cancelar</button></div></div></div>
+<div id="modal-pdf" class="modal"><div class="modal-box"><h3>Reporte PDF</h3><div class="prop-row"><label>Proyecto:</label><input type="text" id="pdf-nombre" class="btn-input"></div><div class="prop-row"><label>ID:</label><input type="text" id="pdf-id" class="btn-input"></div><div class="prop-row"><label>Autor:</label><input type="text" id="pdf-autor" class="btn-input"></div><div class="prop-row row-h"><label>Incluir Ecuaciones</label><input type="checkbox" id="pdf-include-eq"></div><div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn primary" onclick="generarPDF()">Generar</button><button class="btn" onclick="document.getElementById('modal-pdf').style.display='none'">Cancelar</button></div></div></div>
+<div id="modal-ecuaciones" class="modal" onclick="this.style.display='none'"><div class="modal-box" onclick="event.stopPropagation()"><h3>Fórmulas Mueller</h3><div style="background:#ddd; color:#000; padding:10px; margin-bottom:10px;"><b>Baja:</b> Q = ...</div><div style="background:#ddd; color:#000; padding:10px;"><b>Media:</b> Q = ...</div></div></div>
 
 <script src="./js/config.js"></script>
 <script src="./js/utils.js"></script>
@@ -296,7 +367,7 @@
 
 <script>
     window.onload = function() {
-        console.log("🚀 Iniciando CAD Gas v14.3 (Full Engineering)...");
+        console.log("🚀 Iniciando CAD Gas v15.0 (Blue Stream UI)...");
         if(typeof window.saveState === 'function') window.saveState(); 
         if(typeof renderGrid === 'function') renderGrid(); 
         if(typeof renderGizmo === 'function') renderGizmo(); 
@@ -325,6 +396,5 @@
         }, 500);
     };
 </script>
-
 </body>
 </html>
