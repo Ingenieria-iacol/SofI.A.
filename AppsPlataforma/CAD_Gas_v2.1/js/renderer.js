@@ -1,4 +1,4 @@
-// js/renderer.js - Lógica de Visualización e Interfaz (Soporte P&ID SVG + Anchor Fix)
+// js/renderer.js - Lógica de Visualización e Interfaz (Full Integration)
 
 // ==========================================
 // 1. MATEMÁTICAS VISUALES (Proyecciones)
@@ -124,7 +124,7 @@ function renderGizmo() {
 }
 
 // ==========================================
-// 3. RENDERIZADO PRINCIPAL (Scene) - MEJORADO P&ID
+// 3. RENDERIZADO PRINCIPAL (Scene)
 // ==========================================
 function renderScene() {
     const cont = document.getElementById('contenedor-elementos'); 
@@ -241,12 +241,12 @@ function renderScene() {
              if (el.props.tipo === 'tanque_glp') {
                  dibujarTanqueGLP(g, s, el, col);
              } 
-             // 4. NUEVO SOPORTE SVG P&ID CON PUNTO DE ACOPLE
+             // 4. NUEVO SOPORTE SVG P&ID CON ANCHOR FIX
              else if (el.icon && el.icon.trim().startsWith('<svg')) {
                  const scale = el.props.scaleFactor || 1.0;
                  const size = 30 * scale; 
                  const halfSize = size / 2;
-
+                 
                  // Crear contenedor para el SVG
                  const iconWrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
                  iconWrapper.innerHTML = el.icon; 
@@ -272,6 +272,7 @@ function renderScene() {
                      svgContent.setAttribute("stroke-width", "2");
                      svgContent.setAttribute("overflow", "visible");
                      
+                     // Manejar partes rellenas
                      const fills = svgContent.querySelectorAll(".filled");
                      fills.forEach(f => f.setAttribute("fill", col));
                      
@@ -311,7 +312,7 @@ function renderScene() {
         cont.appendChild(g);
     });
     
-    // Renderizado de fittings automáticos
+    // Renderizado de fittings automáticos (codos, tees)
     if (typeof window.analizarRed === 'function') {
         const autoFittings = window.analizarRed();
         autoFittings.forEach(fit => {
@@ -333,8 +334,9 @@ function renderScene() {
                 c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.6); c.setAttribute("fill", fit.color);
                 g.appendChild(c);
             } else if (fit.tipo === 'tee_auto' || fit.tipo === 'cruz_auto') {
+                // CORRECCIÓN TAMAÑO TEE: Reducido a 0.6 para ser más discreto
                 const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 1.2);
+                c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.6);
                 c.setAttribute("fill", "#222"); c.setAttribute("stroke", fit.color); c.setAttribute("stroke-width", fit.width);
                 g.appendChild(c);
             } else if (fit.tipo === 'reductor_auto') {
@@ -351,7 +353,7 @@ function renderScene() {
 }
 
 // ==========================================
-// 4. DIBUJO AVANZADO: TANQUE 3D - INGENIERÍA DE DETALLE
+// 4. DIBUJO AVANZADO: TANQUE 3D
 // ==========================================
 
 function dibujarTanqueGLP(g, screenPos, el, colorBase) {
@@ -876,4 +878,4 @@ window.updateAltura = function(valUser) {
     const u = window.UNITS[window.CONFIG.unit]; el.z = num / u.factor;
     window.saveState(); renderScene(); renderEffects(); updatePropsPanel();
 }
-console.log("✅ Renderer cargado con soporte P&ID SVG + Fix Anchor");
+console.log("✅ Renderer cargado con soporte P&ID SVG + Fix Anchor + Tees Ajustadas");
