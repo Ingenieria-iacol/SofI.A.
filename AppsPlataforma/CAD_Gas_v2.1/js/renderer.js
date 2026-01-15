@@ -336,7 +336,7 @@ function renderScene() {
             } else if (fit.tipo === 'tee_auto' || fit.tipo === 'cruz_auto') {
                 // CORRECCIÓN TAMAÑO TEE: Reducido a 0.6 para ser más discreto
                 const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.6);
+                c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.1);
                 c.setAttribute("fill", "#222"); c.setAttribute("stroke", fit.color); c.setAttribute("stroke-width", fit.width);
                 g.appendChild(c);
             } else if (fit.tipo === 'reductor_auto') {
