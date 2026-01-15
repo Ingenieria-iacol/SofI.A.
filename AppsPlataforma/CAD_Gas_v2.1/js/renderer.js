@@ -1,4 +1,4 @@
-// js/renderer.js - Lógica de Visualización (Completo con Blue Stream UI y Safety Fixes)
+// js/renderer.js - Visualización y Seguridad contra fallos
 
 function isoToScreen(x, y, z) {
     const ang = window.estado.view.angle;
