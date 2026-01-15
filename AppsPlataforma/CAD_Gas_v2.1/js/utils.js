@@ -61,10 +61,6 @@ window.ensureHex = function(color) {
 
 // Cálculo de Flujo de Gas (Mueller)
 window.calcularFlujoGas = function(diam, len, caudal, tipoGas, presionEntrada) {
-    // Implementación simplificada de Mueller
-    // Retorna objeto { estado: 'OK'|'ALERTA'|'CRÍTICO', caidaPresion, velocidad, ... }
-    
-    // Factores Gravedad Específica (S)
     const S = (tipoGas === 'glp') ? 1.52 : 0.60;
     
     // Diámetro interno aprox (pulgadas)
@@ -77,18 +73,9 @@ window.calcularFlujoGas = function(diam, len, caudal, tipoGas, presionEntrada) {
         D = parseFloat(diam.replace('mm','')) / 25.4;
     }
 
-    // Presión > 70mbar (aprox 1 psi) usa Media Presión, sino Baja
-    // Fórmula Mueller Baja Presión: h = (Q^1.739 * S^0.739 * L) / (C * D^4.739) ... (simplificado)
-    // Usaremos la versión invertida común: Q = ...
-    
-    // Por simplicidad, calculamos caída de presión
-    // h (pérdida) = ...
-    
     let drop = 0;
     let vel = 0;
     
-    // Cálculo dummy para demostración visual (reemplazar con fórmula exacta si se requiere precisión certificada)
-    // Supongamos fórmula genérica proporcional
     const factorK = (tipoGas === 'glp') ? 0.8 : 1.0;
     drop = (caudal * caudal * len * S) / (1000 * Math.pow(D, 5));
     
@@ -111,20 +98,23 @@ window.calcularFlujoGas = function(diam, len, caudal, tipoGas, presionEntrada) {
     };
 };
 
-// Utilidad para comparar puntos con tolerancia
 window.arePointsEqual = function(p1, p2) {
     const e = 0.001;
     return Math.abs(p1.x - p2.x) < e && Math.abs(p1.y - p2.y) < e && Math.abs(p1.z - p2.z) < e;
 };
 
-// --- NUEVA FUNCIÓN: ARRASTRE DE ELEMENTOS ---
+// --- FIX FUNCIÓN DE ARRASTRE ---
 window.makeDraggable = function(el) {
     const header = el.querySelector('.pc-header') || el;
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
 
     header.onmousedown = function(e) {
-        if(e.target.classList.contains('pc-close')) return; // No iniciar si clica cerrar
+        // CORRECCIÓN CLAVE: Si el clic es en el botón de cerrar, no iniciar Drag
+        if(e.target.classList.contains('pc-close') || e.target.closest('.pc-close')) {
+            return;
+        }
+
         e.preventDefault();
         isDragging = true;
         startX = e.clientX;
@@ -134,8 +124,8 @@ window.makeDraggable = function(el) {
         initialLeft = rect.left;
         initialTop = rect.top;
 
-        document.onmouseup = closeDragElement;
-        document.onmousemove = elementDrag;
+        document.addEventListener('mouseup', closeDragElement);
+        document.addEventListener('mousemove', elementDrag);
     };
 
     function elementDrag(e) {
@@ -145,20 +135,18 @@ window.makeDraggable = function(el) {
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
 
-        // Establecer nueva posición
         el.style.left = (initialLeft + dx) + "px";
         el.style.top = (initialTop + dy) + "px";
         
-        // Resetear transforms para que position absolute funcione bien
         el.style.transform = "none"; 
         el.style.opacity = "1";
     }
 
     function closeDragElement() {
         isDragging = false;
-        document.onmouseup = null;
-        document.onmousemove = null;
+        document.removeEventListener('mouseup', closeDragElement);
+        document.removeEventListener('mousemove', elementDrag);
     }
 };
 
-console.log("✅ Utils cargados correctamente (incluye Drag)");
+console.log("✅ Utils cargados (Drag fix)");
