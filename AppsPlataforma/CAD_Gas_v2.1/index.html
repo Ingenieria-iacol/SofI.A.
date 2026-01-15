@@ -2,13 +2,12 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas v14.2 - Suite Pro (Cálculos + PDF Técnico)</title>
+<title>CAD Gas v14.3 - Suite Ingeniería (Cálculo Integrado)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-
 <style>
-    :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ffff; }
+    :root { --bg: #1e1e1e; --panel: #252526; --border: #333; --accent: #0078d7; --text: #ccc; --snap: #00ffff; --ok: #4caf50; --err: #f44336; --warn: #ff9800; }
     body { font-family: 'Segoe UI', Consolas, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
     header { background-color: #2d2d2d; height: 45px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; padding: 0 15px; z-index: 100; }
     .brand { font-weight:700; color:#fff; margin-right:10px; font-size:1rem; letter-spacing:1px; }
@@ -105,7 +104,7 @@
     .hud-input { width: 45px; background: transparent; border: none; border-bottom: 1px solid #555; color: #0ff; font-family: monospace; font-size: 1em; text-align: center; outline: none; transition: 0.2s;}
     .hud-input:focus { border-bottom-color: var(--accent); background: rgba(255,255,255,0.1); width: 60px;}
     .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:200; justify-content:center; align-items:center; }
-    .modal-box { background: var(--panel); padding:20px; border:1px solid #555; width:500px; border-radius:5px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .modal-box { background: var(--panel); padding:20px; border:1px solid #555; width:500px; border-radius:5px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;}
     #dynamic-input-container, #vertical-input-container { position: absolute; background: rgba(37, 37, 38, 0.95); border: 1px solid var(--accent); padding: 5px 8px; border-radius: 4px; display: none; align-items: center; gap: 5px; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
     .float-input { width: 70px; background: #111; border: 1px solid #444; color: #fff; padding: 2px 5px; border-radius: 2px; outline: none; font-family: monospace; }
     .float-input:focus { border-color: var(--accent); }
@@ -117,12 +116,19 @@
     #tabla-res tr:not(.table-header) td { padding: 5px; border-bottom: 1px solid #2a2a2a; }
     #tabla-res { width: 100%; border-collapse: collapse; }
     .required-star { color: #ff4444; margin-left: 2px; }
+    
+    /* Estilos Cálculo */
+    .calc-result-box { margin-top:10px; padding:10px; background:#111; border-radius:4px; font-size:0.8rem; border-left:4px solid #555; }
+    .calc-ok { border-color: var(--ok); }
+    .calc-alert { border-color: var(--warn); }
+    .calc-err { border-color: var(--err); }
+    .eq-box { background:#f5f5f5; color:#000; padding:15px; margin-bottom:10px; border-radius:4px; font-family:'Times New Roman', serif; }
 </style>
 </head>
 <body>
 
 <header>
-    <div class="brand"><span>CAD</span> GAS v14.2</div>
+    <div class="brand"><span>CAD</span> GAS v14.3</div>
     <div class="toolbar-sep"></div>
     <button class="btn" id="btn-undo" onclick="undo()" title="Deshacer (Ctrl+Z)">↩</button>
     <button class="btn" id="btn-redo" onclick="redo()" title="Rehacer (Ctrl+Y)">↪</button>
@@ -248,19 +254,37 @@
 <div id="modal-pdf" class="modal"><div class="modal-box" style="width:400px;">
     <h3>Generar Reporte PDF</h3>
     <div style="margin-bottom:10px; font-size:0.8rem; color:#aaa;">Ingrese los datos requeridos para formalizar el documento.</div>
-    
     <div class="prop-row"><label>Nombre del Proyecto <span class="required-star">*</span></label><input type="text" id="pdf-nombre" class="btn-input" placeholder="Ej: Red Residencial A-101"></div>
     <div class="prop-row"><label>ID / Código de Proyecto <span class="required-star">*</span></label><input type="text" id="pdf-id" class="btn-input" placeholder="Ej: PRJ-2024-001"></div>
     <div class="prop-row"><label>Responsable / Ingeniero</label><input type="text" id="pdf-autor" class="btn-input" placeholder="Ing. Juan Pérez"></div>
-    
     <div class="prop-row row-h" style="margin-top:15px; border-top:1px solid #444; padding-top:10px;">
         <label style="cursor:pointer; flex:1;" for="pdf-include-eq">Incluir Anexo de Ecuaciones (Mueller)</label>
         <input type="checkbox" id="pdf-include-eq" style="width:auto; cursor:pointer;">
     </div>
-    
     <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
         <button class="btn primary" onclick="generarPDF()">📄 Generar Documento</button>
         <button class="btn" onclick="document.getElementById('modal-pdf').style.display='none'">Cancelar</button>
+    </div>
+</div></div>
+
+<div id="modal-ecuaciones" class="modal" onclick="this.style.display='none'"><div class="modal-box" style="width:600px;" onclick="event.stopPropagation()">
+    <h3>Sustento Matemático (Fórmulas de Mueller)</h3>
+    <div style="font-size:0.9rem; color:#ccc; margin-bottom:15px;">Las pérdidas de carga son calculadas utilizando las ecuaciones de Mueller, seleccionadas automáticamente según la presión de operación.</div>
+    
+    <div class="eq-box">
+        <strong>1. Baja Presión (< 70 mbar)</strong><br>
+        <em style="font-size:1.1rem; display:block; margin:10px 0; text-align:center;">Q = (2971 · D<sup>2.725</sup> / S<sup>0.425</sup>) · (h / L)<sup>0.575</sup></em>
+        <small>Donde: Q=Caudal(CFH), D=Diam(in), h=Caída(in.w.c), L=Longitud(ft)</small>
+    </div>
+    
+    <div class="eq-box">
+        <strong>2. Media Presión (> 70 mbar)</strong><br>
+        <em style="font-size:1.1rem; display:block; margin:10px 0; text-align:center;">Q = (2826 · D<sup>2.725</sup> / S<sup>0.425</sup>) · ((P<sub>1</sub>² - P<sub>2</sub>²) / L)<sup>0.575</sup></em>
+        <small>Donde: P1, P2 = Presiones Absolutas (psia)</small>
+    </div>
+    
+    <div style="margin-top:20px; text-align:right;">
+        <button class="btn" onclick="document.getElementById('modal-ecuaciones').style.display='none'">Cerrar</button>
     </div>
 </div></div>
 
@@ -272,7 +296,7 @@
 
 <script>
     window.onload = function() {
-        console.log("🚀 Iniciando CAD Gas v14.2 (Suite Pro)...");
+        console.log("🚀 Iniciando CAD Gas v14.3 (Full Engineering)...");
         if(typeof window.saveState === 'function') window.saveState(); 
         if(typeof renderGrid === 'function') renderGrid(); 
         if(typeof renderGizmo === 'function') renderGizmo(); 
