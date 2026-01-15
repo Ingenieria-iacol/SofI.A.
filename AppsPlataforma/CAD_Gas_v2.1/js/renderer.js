@@ -428,7 +428,12 @@ function resetView() {
 }
 function togglePanel(id) { document.getElementById(id).classList.toggle('closed'); setTimeout(() => { updateTransform(); }, 410); }
 function toggleGroup(id) { document.querySelectorAll('.lib-items').forEach(el => { if(el.id !== id) el.classList.remove('open'); }); document.getElementById(id).classList.toggle('open'); }
-function toggleAccordion(id) { const el = document.getElementById(id); if(el) el.classList.toggle('collapsed'); }
+
+// --- NUEVO: Función Global de Acordeón Robusta ---
+window.toggleAccordion = function(id) { 
+    const el = document.getElementById(id); 
+    if(el) { el.classList.toggle('collapsed'); } 
+};
 
 function initLibrary() {
     const fillGroup = (id, items) => {
@@ -465,8 +470,6 @@ function initLibrary() {
             div.onclick = () => { 
                 document.querySelectorAll('.tool-item').forEach(x=>x.classList.remove('active')); div.classList.add('active'); 
                 window.estado.activeItem = it; window.setTool(it.id); 
-                // document.getElementById('right-panel').classList.add('closed'); // YA NO EXISTE
-                // Cerrar tarjeta si está abierta
                 document.getElementById('prop-card').classList.remove('active');
             };
             c.appendChild(div);
@@ -492,7 +495,7 @@ function renderLayersUI() {
     window.layers.forEach(l => { const opt = document.createElement('option'); opt.value=l.id; opt.innerText=l.name; sel.appendChild(opt); });
 }
 
-// === NUEVA LÓGICA DE UI FLOTANTE (BLUE STREAM) ===
+// === NUEVA LÓGICA DE UI FLOTANTE ===
 
 window.cerrarPropiedades = function() {
     document.getElementById('prop-card').classList.remove('active');
@@ -503,6 +506,38 @@ window.cerrarPropiedades = function() {
 function updatePropsPanel() {
     const el = window.elementos.find(x => x.id === window.estado.selID);
     const card = document.getElementById('prop-card');
+    
+    // --- LÓGICA DRAG & DROP ---
+    if (!card.getAttribute('data-draggable-init')) {
+        if(window.makeDraggable) window.makeDraggable(card);
+        card.setAttribute('data-draggable-init', 'true');
+    }
+
+    // --- POSICIONAMIENTO INTELIGENTE ---
+    // Si la tarjeta no estaba visible, la movemos cerca del objeto seleccionado
+    if (el && !card.classList.contains('active')) {
+        const screenPos = isoToScreen(el.x, el.y, el.z);
+        let finalLeft = screenPos.x + 60; // Offset inicial a la derecha
+        let finalTop = screenPos.y - 40;  // Offset inicial arriba
+        
+        // Evitar salirse de pantalla
+        const maxLeft = window.innerWidth - 340;
+        const maxTop = window.innerHeight - 400;
+        
+        if (finalLeft > maxLeft) finalLeft = screenPos.x - 340; // Mover a la izq si no cabe
+        if (finalLeft < 0) finalLeft = 20;
+        if (finalTop < 60) finalTop = 80;
+        if (finalTop > maxTop) finalTop = maxTop;
+        
+        card.style.left = finalLeft + 'px';
+        card.style.top = finalTop + 'px';
+        
+        // Reset transform para evitar bugs visuales con el drag
+        card.style.transform = "scale(0.95)";
+        setTimeout(() => card.style.transform = "scale(1)", 50);
+    }
+    // ----------------------------
+
     const f = document.getElementById('prop-form'); 
     const v = document.getElementById('prop-vacio');
     const hero = document.getElementById('pc-hero-container');
@@ -536,7 +571,6 @@ function updatePropsPanel() {
     const iconDiv = document.createElement('div');
     iconDiv.className = 'pc-hero-icon';
     if (el.tipo === 'tuberia') { 
-        // SAFETY FIX: Check window.ICONS first
         if (window.ICONS && window.ICONS.PIPE) {
             iconDiv.innerHTML = window.ICONS.PIPE;
         } else {
@@ -601,7 +635,7 @@ function updatePropsPanel() {
     if (el.tipo !== 'tuberia' && el.tipo !== 'cota' && el.tipo !== 'texto' && el.props.tipo !== 'tanque_glp' && el.props.tipo !== 'actuada') {
         const grpFlow = document.createElement('div'); grpFlow.className = 'acc-group'; grpFlow.id='grp-flow';
         const headFlow = document.createElement('div'); headFlow.className = 'acc-header'; headFlow.innerText = 'Conexiones y Flujo';
-        headFlow.onclick = function() { toggleAccordion('grp-flow'); };
+        headFlow.onclick = function() { window.toggleAccordion('grp-flow'); };
         
         const contentFlow = document.createElement('div'); contentFlow.className = 'acc-content';
         
@@ -631,7 +665,7 @@ function updatePropsPanel() {
     if (el.tipo === 'tuberia' && el.props.material) {
         const accGroup = document.createElement('div'); accGroup.className = 'acc-group'; accGroup.id = 'grp-tech';
         const accHead = document.createElement('div'); accHead.className = 'acc-header'; accHead.innerText = 'Datos Técnicos';
-        accHead.onclick = function() { toggleAccordion('grp-tech'); };
+        accHead.onclick = function() { window.toggleAccordion('grp-tech'); };
         const accContent = document.createElement('div'); accContent.className = 'acc-content';
         const rowMat = document.createElement('div'); rowMat.className = 'prop-row';
         const lblMat = document.createElement('label'); lblMat.innerText = "Material Tubería";
@@ -661,7 +695,7 @@ function updatePropsPanel() {
 
         const calcGroup = document.createElement('div'); calcGroup.className = 'acc-group'; calcGroup.id='grp-calc';
         const calcHead = document.createElement('div'); calcHead.className = 'acc-header'; calcHead.innerText = 'Cálculo Hidráulico';
-        calcHead.onclick = function() { toggleAccordion('grp-calc'); };
+        calcHead.onclick = function() { window.toggleAccordion('grp-calc'); };
         const calcContent = document.createElement('div'); calcContent.className = 'acc-content';
         calcContent.innerHTML = `<div class="prop-row"><label>Caudal (m³/h)</label><input type="number" id="calc-caudal" placeholder="Ej: 2.5"></div><div class="prop-row"><label>P. Entrada (mbar)</label><input type="number" id="calc-presion" value="23"></div><div class="prop-row"><label>Tipo Gas</label><select id="calc-gas" class="btn"><option value="natural">Gas Natural</option><option value="glp">GLP</option></select></div><div class="prop-row" style="flex-direction:row; justify-content:space-between;"><button class="btn primary" onclick="realizarCalculo()" style="flex:1; margin-right:5px;">Iterar ⚡</button><button class="btn" onclick="mostrarEcuaciones()" style="flex:1;">Función ƒ(x)</button></div><div id="calc-result"></div>`;
         calcGroup.appendChild(calcHead); calcGroup.appendChild(calcContent); contDatos.appendChild(calcGroup);
@@ -878,4 +912,4 @@ window.updateAltura = function(valUser) {
     const u = window.UNITS[window.CONFIG.unit]; el.z = num / u.factor;
     window.saveState(); renderScene(); renderEffects(); updatePropsPanel();
 }
-console.log("✅ Renderer cargado con Blue Stream UI (Fix Safe Icons)");
+console.log("✅ Renderer cargado con Blue Stream UI (Drag & Drop + Smart Pos)");
