@@ -1,14 +1,11 @@
-{
-type: uploaded file
-fileName: Cad Gas V2.4/js/core.js
-fullContent:
-// js/core.js - Cerebro de la Aplicación (Topología & Cálculo)
+// js/core.js - Cerebro de la Aplicación
 
 window.EPSILON_GRID = 0.001; 
 window.layers = [{ id: 'l_gas', name: 'Gas', color: '#FFD700', visible: true }];
 window.activeLayerId = 'l_gas';
 window.elementos = [];
 
+// Estado Global
 window.estado = {
     tool: 'select', 
     activeItem: null, 
@@ -34,9 +31,7 @@ let historyIndex = -1;
 const MAX_HISTORY = 50;
 let insertCoords = { x:0, y:0 }; 
 
-// ==========================================
-// 2. SISTEMA DE HISTORIAL (UNDO/REDO)
-// ==========================================
+// --- HISTORIAL (UNDO/REDO) ---
 window.saveState = function() {
     if (historyIndex < historyStack.length - 1) {
         historyStack = historyStack.slice(0, historyIndex + 1);
@@ -78,9 +73,7 @@ function updateUndoRedoUI() {
     if(btnRedo) btnRedo.disabled = (historyIndex >= historyStack.length - 1);
 }
 
-// ==========================================
-// 3. GESTIÓN DE ELEMENTOS (CRUD)
-// ==========================================
+// --- CRUD ELEMENTOS ---
 window.addEl = function(data) { 
     if(!data.props.diametroNominal && window.estado.activeItem?.props?.diametroNominal) { 
         data.props.diametroNominal = window.estado.activeItem.props.diametroNominal; 
@@ -110,6 +103,7 @@ window.setTool = function(t) {
     window.estado.selection = [];
     window.cerrarPropiedades();
     if(typeof renderEffects === 'function') renderEffects(); 
+    
     document.querySelectorAll('.tool-item').forEach(x => x.classList.remove('active'));
     ['btn-select','btn-cota','btn-texto', 'btn-insert','btn-cut'].forEach(id => { 
         const btn = document.getElementById(id); 
@@ -119,32 +113,24 @@ window.setTool = function(t) {
     if(activeBtn) activeBtn.classList.add('active'); 
 }
 
-// ==========================================
-// 4. LÓGICA DE TOPOLOGÍA Y CÁLCULO DE RED
-// ==========================================
-
-// Esta función analiza TODA la red, construye un grafo y calcula presiones
+// --- TOPOLOGÍA Y CÁLCULO DE RED (NUEVO) ---
 window.calcularTodaLaRed = function(presionEntrada, tipoGas) {
-    // 1. Construir Grafo de Conexiones
-    // Nodos: Coordenadas (key) -> { id, elementId (si es equipo), connections: [ {targetKey, pipeId} ], load: 0, pressure: 0 }
-    // Aristas: Pipes
-    
-    const nodes = new Map(); // Key -> NodeObj
+    // 1. Construir Grafo
+    const nodes = new Map(); 
     const pipes = [];
 
-    // Helper para obtener/crear nodo
-    const getNode = (x, y, z, elemId = null, isConsumer = false, load = 0) => {
+    const getNode = (x, y, z, elemId = null, load = 0) => {
         const k = window.getKey(x, y, z);
         if (!nodes.has(k)) {
             nodes.set(k, { key: k, x, y, z, neighbors: [], elemId: null, isSource: false, load: 0 });
         }
         const n = nodes.get(k);
         if (elemId) n.elemId = elemId;
-        if (isConsumer) n.load += load;
+        if (load > 0) n.load += load;
         return n;
     };
 
-    // Recorrer elementos para armar topología
+    // Recorrer elementos
     window.elementos.forEach(el => {
         if (!el.visible) return;
         
@@ -153,8 +139,6 @@ window.calcularTodaLaRed = function(presionEntrada, tipoGas) {
             const end = getNode(el.x + el.dx, el.y + el.dy, el.z + el.dz);
             const len = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
             
-            // Guardar arista bidireccional en el grafo conceptual
-            // Pero en 'neighbors' guardaremos referencia al pipe
             start.neighbors.push({ target: end.key, pipeId: el.id });
             end.neighbors.push({ target: start.key, pipeId: el.id });
             
@@ -162,85 +146,65 @@ window.calcularTodaLaRed = function(presionEntrada, tipoGas) {
                 id: el.id, 
                 len: len, 
                 diam: el.props.diametroNominal, 
-                u: start.key, 
-                v: end.key,
-                flow: 0 // Se calculará después
+                flow: 0 
             });
         } 
         else if (el.tipo === 'valvula' || el.tipo === 'equipo' || el.props.tipo === 'tanque_glp') {
-            // Equipos son nodos. Verificamos si tienen consumo o son fuentes.
             const load = parseFloat(el.props.caudal || el.props.potencia || 0);
-            // Identificar Fuente: Por nombre (Medidor/Regulador) o checkbox (si existiera)
-            let isSrc = false;
             const name = (el.name || el.props.nombre || "").toLowerCase();
             const subCat = (el.subCat || "").toLowerCase();
-            if (name.includes("medidor") || name.includes("regulador") || name.includes("tanque") || subCat.includes("medición")) {
-                isSrc = true;
-            }
+            const isSrc = (name.includes("medidor") || name.includes("regulador") || name.includes("tanque") || subCat.includes("medición"));
             
-            const n = getNode(el.x, el.y, el.z, el.id, load > 0, load);
+            const n = getNode(el.x, el.y, el.z, el.id, load);
             if (isSrc) n.isSource = true;
         }
     });
 
-    // 2. Encontrar Fuente (Source)
-    // Buscamos nodo marcado como source, o el primero que tenga grado 1 y no sea consumo
+    // 2. Encontrar Fuente
     let sourceNode = null;
     for (const [k, n] of nodes) {
         if (n.isSource) { sourceNode = n; break; }
     }
+    // Fallback: Si no hay fuente definida, usar el primer nodo que tenga vecinos
     if (!sourceNode && nodes.size > 0) {
-        // Fallback: Primer nodo
         sourceNode = nodes.values().next().value;
     }
 
-    if (!sourceNode) return { error: "No se encontraron elementos conectados." };
+    if (!sourceNode) return { error: "No se encontraron elementos conectados o fuente de gas." };
 
-    // 3. Propagar Demanda (DFS desde la Fuente hacia abajo)
-    // Como es grafo no dirigido, usamos 'visited' para simular árbol desde la fuente
-    
-    const results = []; // Array ordenado de tramos calculados
-    const visited = new Set();
-    
-    // Función recursiva que retorna el caudal total acumulado de sus hijos
-    // Y calcula la caída de presión en el tramo que conecta al padre
+    // 3. Propagar Demanda (Back-calculation)
+    const visitedFlow = new Set();
     const calculateFlowRecursively = (currentNodeKey, parentKey) => {
-        visited.add(currentNodeKey);
+        visitedFlow.add(currentNodeKey);
         const node = nodes.get(currentNodeKey);
-        
-        let totalFlow = node.load; // Consumo propio del nodo
+        let totalFlow = node.load; 
 
-        // Iterar vecinos
         node.neighbors.forEach(link => {
             if (link.target !== parentKey) {
-                // Es un hijo
                 const flowFromChild = calculateFlowRecursively(link.target, currentNodeKey);
                 totalFlow += flowFromChild;
-                
-                // Asignar flujo al tubo que conecta con este hijo
-                // El flujo viaja de Current -> Child
                 const pipe = pipes.find(p => p.id === link.pipeId);
                 if (pipe) pipe.flow = flowFromChild; 
             }
         });
-        
         return totalFlow;
     };
 
     calculateFlowRecursively(sourceNode.key, null);
 
-    // 4. Calcular Presiones (DFS Pre-order: Padre -> Hijo)
+    // 4. Calcular Presiones (Forward-calculation)
+    const results = [];
+    const visitedPress = new Set(); // Para evitar ciclos infinitos si hay loops
+    
     const calculatePressureRecursively = (currentNodeKey, parentKey, currentP) => {
+        visitedPress.add(currentNodeKey);
         const node = nodes.get(currentNodeKey);
         
         node.neighbors.forEach(link => {
-            if (link.target !== parentKey) {
-                // Es un hijo, calculamos la caída en el tubo que llega a él
+            if (link.target !== parentKey && !visitedPress.has(link.target)) {
                 const pipe = pipes.find(p => p.id === link.pipeId);
                 if (pipe) {
-                    // Calcular Mueller
                     const calc = window.calcularFlujoGas(pipe.diam, pipe.len, pipe.flow, tipoGas, currentP);
-                    
                     results.push({
                         pipeId: pipe.id,
                         diam: pipe.diam,
@@ -252,8 +216,6 @@ window.calcularTodaLaRed = function(presionEntrada, tipoGas) {
                         vel: calc.velocidad,
                         msg: calc.estado
                     });
-
-                    // Recursión con la nueva presión
                     calculatePressureRecursively(link.target, currentNodeKey, calc.presionSalida);
                 }
             }
@@ -265,11 +227,7 @@ window.calcularTodaLaRed = function(presionEntrada, tipoGas) {
     return { success: true, tramos: results, source: sourceNode };
 };
 
-// ==========================================
-// 5. HELPERS DE INTERACCIÓN (Inputs y Clicks)
-// ==========================================
-
-// Mover con conexiones
+// --- HELPERS E INTERACCIÓN ---
 window.moverConConexiones = function(idElemento, dx, dy, dz) {
     const el = window.elementos.find(e => e.id === idElemento); if (!el) return;
     const oldStart = { x: el.x, y: el.y, z: el.z };
@@ -277,11 +235,8 @@ window.moverConConexiones = function(idElemento, dx, dy, dz) {
     if (el.tipo === 'tuberia' || el.tipo === 'cota') { 
         oldEnd = { x: el.x + el.dx, y: el.y + el.dy, z: el.z + el.dz }; 
     }
-    
     el.x += dx; el.y += dy; el.z += dz;
-
     const check = window.arePointsEqual;
-    
     window.elementos.forEach(vecino => {
         if (vecino.id === idElemento || vecino.visible === false) return;
         if (window.estado.selection.includes(vecino.id)) return;
@@ -361,7 +316,6 @@ window.analizarRed = function() {
     return accesorios;
 }
 
-// Helpers Inputs
 window.mostrarInputDinámico = function(xScreen, yScreen, distActual, vectorData) {
     const box = document.getElementById('dynamic-input-container'); 
     const input = document.getElementById('dynamic-len');
@@ -443,6 +397,7 @@ window.handleCanvasClick = function(e) {
     if(document.getElementById('dynamic-input-container').style.display === 'flex' || 
        document.getElementById('vertical-input-container').style.display === 'flex') return;
     
+    // CORTAR
     if(window.estado.tool === 'cut' && window.estado.hoverID) {
         const tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
         const ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
@@ -451,6 +406,7 @@ window.handleCanvasClick = function(e) {
         window.saveState(); renderScene(); return;
     }
     
+    // INSERTAR
     if(window.estado.tool === 'insert') {
         const tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
         const ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
@@ -458,6 +414,7 @@ window.handleCanvasClick = function(e) {
         window.abrirModalInsertar(tx, ty, tz); return; 
     }
     
+    // SELECCIONAR
     if(window.estado.tool === 'select') { 
         const rect = document.getElementById('lienzo-cad').getBoundingClientRect();
         const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
@@ -480,7 +437,7 @@ window.handleCanvasClick = function(e) {
         return; 
     }
     
-    // Draw
+    // DIBUJAR
     let tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
     let ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
     let tz = window.estado.snapped ? window.estado.snapped.z : window.estado.currentZ;
@@ -612,6 +569,7 @@ window.limpiarTodo = function(){
     if(confirm("¿Estás seguro de borrar todo?")){ window.elementos = []; window.saveState(); window.cerrarPropiedades(); renderScene(); } 
 }
 
+// Funciones de reporte
 window.mostrarReporte = function() {
     const tuberias = {}; const accesorios = {}; const equipos = {};
     window.elementos.forEach(el => {
@@ -646,13 +604,9 @@ window.mostrarReporte = function() {
     const table = document.getElementById('tabla-res'); if (table) { table.innerHTML = html; document.getElementById('modal-reporte').style.display = 'flex'; }
 };
 
-window.exportarCSV = function() {
-    // Implementación CSV básica
-    alert("Exportar CSV: (Funcionalidad simplificada para brevedad)");
-}
+window.exportarCSV = function() { alert("Funcionalidad simplificada para brevedad"); }
 
 window.realizarCalculo = function() {
-    // Calculo unitario (Panel de propiedades)
     if (window.estado.selection.length !== 1) { alert("Seleccione una única tubería."); return; }
     const el = window.elementos.find(x => x.id === window.estado.selection[0]);
     if (!el || el.tipo !== 'tuberia') { alert("No es tubería."); return; }
@@ -667,10 +621,7 @@ window.realizarCalculo = function() {
 
 window.mostrarEcuaciones = function() { document.getElementById('modal-ecuaciones').style.display = 'flex'; }
 window.prepararPDF = function() { document.getElementById('modal-pdf').style.display = 'flex'; }
-window.generarPDF = function() { 
-    alert("Generando PDF (Simulado)..."); 
-    document.getElementById('modal-pdf').style.display = 'none'; 
-}
+window.generarPDF = function() { alert("Simulado"); document.getElementById('modal-pdf').style.display = 'none'; }
 window.setUnit = function(u) {
     if (window.UNITS[u]) {
         window.CONFIG.unit = u;
@@ -680,6 +631,3 @@ window.setUnit = function(u) {
         const lbl = document.getElementById('hud-z-unit'); if(lbl) lbl.innerText = window.UNITS[u].label;
     }
 };
-
-console.log("✅ Core Logic (Calculation System) cargado");
-}
