@@ -1,8 +1,4 @@
-{
-type: uploaded file
-fileName: Cad Gas V2.4/js/renderer.js
-fullContent:
-// js/renderer.js - Visualización y UI (Resultados Globales)
+// js/renderer.js - Visualización y UI
 
 window.toggleAccordion = function(id) { 
     const el = document.getElementById(id); 
@@ -17,7 +13,7 @@ window.cerrarPropiedades = function() {
 };
 
 // ==========================================
-// RENDERIZADO GRÁFICO (SVG)
+// RENDERIZADO GRÁFICO
 // ==========================================
 
 function isoToScreen(x, y, z) {
@@ -304,7 +300,6 @@ function renderEffects() {
 }
 
 function renderInterface() {
-    // (Sin cambios mayores, solo optimización)
     const g = document.getElementById('capa-interfaz'); g.innerHTML='';
     if(window.estado.action === 'rotate' || window.estado.action === 'pan') return;
     let tx = window.estado.snapped ? window.estado.snapped.x : window.estado.mouseIso.x;
@@ -557,11 +552,8 @@ window.updateLongitud = function(v){
      const cur = Math.sqrt(el.dx**2+el.dy**2+el.dz**2);
      const r = l/cur; el.dx*=r; el.dy*=r; el.dz*=r; window.saveState(); renderScene();
 }
-window.dibujarTanqueGLP = function(g,s,el,c) { /* (Misma funcion anterior) */
+window.dibujarTanqueGLP = function(g,s,el,c) {
     const r=document.createElementNS("http://www.w3.org/2000/svg","rect");
     r.setAttribute("x",s.x-20); r.setAttribute("y",s.y-10); r.setAttribute("width",40); r.setAttribute("height",20); r.setAttribute("rx",5); r.setAttribute("fill","#222"); r.setAttribute("stroke",c); g.appendChild(r);
 }
 window.generarFormularioTanque = function(el, c) { /* Placeholder para mantener compatibilidad si se usa */ }
-
-console.log("✅ Renderer System Calc cargado");
-}
