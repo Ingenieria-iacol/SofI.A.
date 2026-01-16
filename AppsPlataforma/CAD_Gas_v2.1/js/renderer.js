@@ -1,4 +1,25 @@
-// js/renderer.js - Visualización y Seguridad (Multi-Edit Ready)
+// js/renderer.js - Visualización y UI (Propiedades Corregido)
+
+// ==========================================
+// UTILIDADES UI GLOBALES
+// ==========================================
+window.toggleAccordion = function(id) { 
+    const el = document.getElementById(id); 
+    if(el) { el.classList.toggle('collapsed'); } 
+};
+
+window.cerrarPropiedades = function() {
+    const card = document.getElementById('prop-card');
+    if(card) card.classList.remove('active');
+    
+    // Limpiar selección
+    window.estado.selection = []; 
+    if(typeof renderEffects === 'function') renderEffects();
+};
+
+// ==========================================
+// RENDERIZADO GRÁFICO (SVG)
+// ==========================================
 
 function isoToScreen(x, y, z) {
     const ang = window.estado.view.angle;
@@ -314,7 +335,6 @@ function renderEffects() {
     };
     if(window.estado.hoverID && window.estado.tool==='select') draw(window.estado.hoverID, ch, 'hover-halo');
     
-    // MODIFICADO: Iterar sobre el array de selección
     if(window.estado.selection && window.estado.selection.length > 0) {
         window.estado.selection.forEach(id => {
              draw(id, cs, 'sel-halo');
@@ -399,7 +419,6 @@ function resetView() {
     const svg = document.getElementById('lienzo-cad');
     const rect = svg.getBoundingClientRect(); window.estado.view.angle = Math.PI / 4; 
     
-    // Zoom a la selección (si hay) o reset general
     if (window.estado.selection && window.estado.selection.length > 0) {
         const el = window.elementos.find(e => e.id === window.estado.selection[0]);
         if(el) {
@@ -432,11 +451,6 @@ function resetView() {
 }
 function togglePanel(id) { document.getElementById(id).classList.toggle('closed'); setTimeout(() => { updateTransform(); }, 410); }
 function toggleGroup(id) { document.querySelectorAll('.lib-items').forEach(el => { if(el.id !== id) el.classList.remove('open'); }); document.getElementById(id).classList.toggle('open'); }
-
-window.toggleAccordion = function(id) { 
-    const el = document.getElementById(id); 
-    if(el) { el.classList.toggle('collapsed'); } 
-};
 
 function initLibrary() {
     const fillGroup = (id, items) => {
@@ -496,14 +510,7 @@ function renderLayersUI() {
     window.layers.forEach(l => { const opt = document.createElement('option'); opt.value=l.id; opt.innerText=l.name; sel.appendChild(opt); });
 }
 
-// === NUEVA LÓGICA DE UI FLOTANTE (REPARADA) ===
-
-window.cerrarPropiedades = function() {
-    document.getElementById('prop-card').classList.remove('active');
-    // CORRECCIÓN: Limpiar selección al cerrar panel manualmente
-    window.estado.selection = []; 
-    if(typeof renderEffects === 'function') renderEffects();
-};
+// === LÓGICA DE UI FLOTANTE (CORREGIDA) ===
 
 function updatePropsPanel() {
     const el = window.elementos.find(x => x.id === (window.estado.selection.length > 0 ? window.estado.selection[0] : null));
@@ -516,6 +523,7 @@ function updatePropsPanel() {
     }
 
     // --- POSICIONAMIENTO INTELIGENTE ---
+    // Solo reposicionar si se abre por primera vez (no tiene clase active)
     if (el && !card.classList.contains('active')) {
         const screenPos = isoToScreen(el.x, el.y, el.z);
         let finalLeft = screenPos.x + 60; 
@@ -555,13 +563,12 @@ function updatePropsPanel() {
     f.style.display = 'block'; 
     v.style.display = 'none';
 
-    // CASO MULTI-SELECCIÓN (BATCH)
+    // CASO MULTI-SELECCIÓN
     if (selCount > 1) {
         title.innerText = `Selección (${selCount})`;
         hero.innerHTML = '<div style="font-size:40px; color:#fff;">📚</div>';
         contDatos.innerHTML = '';
         
-        // Formulario Batch simplificado
         contDatos.innerHTML = `
             <div class="acc-group">
                 <div class="acc-header">Edición Masiva</div>
@@ -579,12 +586,10 @@ function updatePropsPanel() {
         const selCapa = document.getElementById('p-batch-capa');
         window.layers.forEach(l => { const opt = document.createElement('option'); opt.value=l.id; opt.innerText=l.name; selCapa.appendChild(opt); });
         
-        // Listeners Batch
         selCapa.onchange = (e) => window.updateBatchProp('layerId', e.target.value);
         document.getElementById('p-batch-color').onchange = (e) => window.updateBatchProp('customColor', e.target.value);
         document.getElementById('p-batch-visible').onchange = (e) => window.updateBatchProp('visible', e.target.checked);
         
-        // Ocultar resto
         document.getElementById('grp-general').style.display = 'none';
         document.getElementById('grp-geo').style.display = 'none';
         document.getElementById('grp-app').style.display = 'none';
@@ -592,12 +597,11 @@ function updatePropsPanel() {
         return;
     }
 
-    // CASO ÚNICO (NORMAL)
+    // CASO ÚNICO
     document.getElementById('grp-general').style.display = 'block';
     document.getElementById('grp-geo').style.display = 'block';
     document.getElementById('grp-app').style.display = 'block';
     
-    // Configurar Hero y Título
     let displayTitle = "Elemento";
     if (el.tipo === 'tuberia') displayTitle = "Tubería";
     else if (el.props.nombre) displayTitle = el.props.nombre;
@@ -623,7 +627,6 @@ function updatePropsPanel() {
 
     contDatos.innerHTML = ''; 
 
-    // Mapeo de valores básicos
     document.getElementById('p-visible').checked = (el.visible !== false); 
     document.getElementById('p-color').value = ensureHex(el.props.customColor || el.props.color || '#cccccc');
     document.getElementById('p-tag').value = el.props.tag || '';
@@ -637,7 +640,6 @@ function updatePropsPanel() {
     const rowFinal = document.getElementById('row-altura-final'); 
     document.getElementById('lbl-unit-z-final').innerText = u.label;
     
-    // Lógica Específica
     if (el && el.props.tipo === 'tanque_glp') {
         generarFormularioTanque(el, contDatos);
         if(divAdjust) divAdjust.style.display = 'none';
@@ -671,7 +673,6 @@ function updatePropsPanel() {
         } else { divAdjust.style.display = 'none'; }
     }
     
-    // Bloque Flujo Genérico (Si no es actuada/tanque/tuberia)
     if (el.tipo !== 'tuberia' && el.tipo !== 'cota' && el.tipo !== 'texto' && el.props.tipo !== 'tanque_glp' && el.props.tipo !== 'actuada') {
         const grpFlow = document.createElement('div'); grpFlow.className = 'acc-group'; grpFlow.id='grp-flow';
         const headFlow = document.createElement('div'); headFlow.className = 'acc-header'; headFlow.innerText = 'Conexiones y Flujo';
@@ -742,7 +743,6 @@ function updatePropsPanel() {
     }
 }
 
-// NUEVO: Función de Batch Update
 window.updateBatchProp = function(key, val) {
     if(window.estado.selection.length < 2) return;
     window.estado.selection.forEach(id => {
@@ -814,7 +814,6 @@ function generarFormularioValvulaActuada(el, container) {
     `;
     container.appendChild(grp);
     
-    // Listeners para guardar cambios
     container.querySelectorAll('.inp-actuada').forEach(inp => {
         inp.onchange = (e) => {
             el.props[e.target.dataset.key] = e.target.value;
@@ -920,19 +919,14 @@ function generarFormularioTanque(el, container) {
     };
 }
 
-// Función auxiliar para dibujar Tanque
 function dibujarTanqueGLP(g, s, el, col) {
-    // Cuerpo tanque
     const gC = document.createElementNS("http://www.w3.org/2000/svg","rect");
-    // Tamaño relativo (simplificado para el icono en canvas)
-    // En realidad debería escalar con el zoom, pero para icono basta esto
     gC.setAttribute("x", s.x - 20); gC.setAttribute("y", s.y - 10);
     gC.setAttribute("width", 40); gC.setAttribute("height", 20);
     gC.setAttribute("rx", 5); gC.setAttribute("ry", 5);
     gC.setAttribute("fill", "#222"); gC.setAttribute("stroke", col);
     g.appendChild(gC);
     
-    // Texto
     const t = document.createElementNS("http://www.w3.org/2000/svg","text");
     t.setAttribute("x", s.x); t.setAttribute("y", s.y+4); 
     t.setAttribute("text-anchor", "middle"); t.setAttribute("font-size", "8px"); 
@@ -1004,4 +998,4 @@ window.updateAltura = function(valUser) {
     window.saveState(); renderScene(); renderEffects(); updatePropsPanel();
 }
 
-console.log("✅ Renderer cargado con Blue Stream UI (Drag & Drop + Smart Pos + Multi-Edit Fix)");
+console.log("✅ Renderer cargado con Blue Stream UI (Drag Fixed)");
