@@ -1,6 +1,9 @@
+{
+type: uploaded file
+fileName: Cad Gas V2.4/js/utils.js
+fullContent:
 // js/utils.js - Funciones Matemáticas, de Formato y UI Utilities
 
-// Asegurar que window.UNITS exista si config.js falló
 if(!window.UNITS) {
     window.UNITS = { 'm': { factor: 1, label: 'm', precision: 2 } };
 }
@@ -11,7 +14,7 @@ if(!window.CONFIG) {
 window.parseInputFloat = function(str) {
     if (typeof str === 'number') return str;
     if (!str) return NaN;
-    str = str.replace(',', '.');
+    str = str.toString().replace(',', '.');
     return parseFloat(str);
 };
 
@@ -70,25 +73,37 @@ window.calcularFlujoGas = function(diam, len, caudal, tipoGas, presionEntrada) {
         D = parseFloat(diam.replace('mm','')) / 25.4;
     }
 
+    // Evitar division por cero o valores absurdos
+    if (len <= 0.001) len = 0.001; 
+    if (D <= 0) D = 0.5;
+
     let drop = 0;
     let vel = 0;
     
-    // Formula simplificada Mueller
+    // Formula simplificada Mueller (Baja presión / Aproximación común)
+    // h = (Q^2 * L * S) / (C * D^5) -> Simplificado en tu código original
+    // Mantengo tu constante 1000 para respetar calibración previa
     drop = (caudal * caudal * len * S) / (1000 * Math.pow(D, 5));
     
     const area = Math.PI * Math.pow((D * 0.0254)/2, 2);
-    vel = (caudal / 3600) / area;
+    // Caudal viene en m3/h -> /3600 para m3/s
+    if (area > 0) vel = (caudal / 3600) / area;
 
     let estado = "OK";
     if (vel > 20) estado = "ALERTA";
     if (vel > 30) estado = "CRÍTICO";
     
+    // Calcula la presión de salida restando la caída
+    const pSalida = Math.max(0, presionEntrada - drop);
+
     return {
         estado: estado,
-        caidaPresion: drop.toFixed(4) + " mbar",
-        porcentajeCaida: ((drop/presionEntrada)*100).toFixed(2) + "%",
+        caidaPresion: drop, // Numérico para cálculos posteriores
+        caidaPresionStr: drop.toFixed(4) + " mbar",
+        porcentajeCaida: (presionEntrada > 0 ? ((drop/presionEntrada)*100).toFixed(2) : "0") + "%",
         velocidad: vel.toFixed(2) + " m/s",
-        presionSalida: (presionEntrada - drop).toFixed(2) + " mbar",
+        presionSalida: pSalida, // Numérico
+        presionSalidaStr: pSalida.toFixed(2) + " mbar",
         formula: "Mueller (Aprox)",
         alertas: (vel > 20) ? "Velocidad excesiva" : ""
     };
@@ -101,33 +116,21 @@ window.arePointsEqual = function(p1, p2) {
 
 // --- FIX SISTEMA DE ARRASTRE (DRAG & DROP) ---
 window.makeDraggable = function(el) {
-    // Buscamos el header, si no existe usamos el elemento completo
     const header = el.querySelector('.pc-header') || el;
-    
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
 
     header.onmousedown = function(e) {
-        // 1. IMPORTANTE: Si clicamos en el botón de cerrar o sus hijos, NO iniciar arrastre
         if(e.target.closest('.pc-close') || e.target.closest('button')) {
             return;
         }
-
-        e.preventDefault(); // Evita selección de texto indeseada al arrastrar
+        e.preventDefault(); 
         isDragging = true;
-        
-        // 2. Capturamos posición inicial del ratón
         startX = e.clientX;
         startY = e.clientY;
-        
-        // 3. Capturamos posición inicial del elemento (relativa al padre, no al viewport)
-        // Esto corrige el bug de que se "pierda" al soltarlo o se resetee.
         initialLeft = el.offsetLeft;
         initialTop = el.offsetTop;
-        
-        // 4. Desactivamos transición temporalmente para que el arrastre sea instantáneo (sin lag)
         el.style.transition = "none";
-
         document.addEventListener('mousemove', elementDrag);
         document.addEventListener('mouseup', closeDragElement);
     };
@@ -135,26 +138,19 @@ window.makeDraggable = function(el) {
     function elementDrag(e) {
         if (!isDragging) return;
         e.preventDefault();
-        
-        // Calcular desplazamiento
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
-
-        // Aplicar nueva posición
         el.style.left = (initialLeft + dx) + "px";
         el.style.top = (initialTop + dy) + "px";
-        
-        // NOTA: No tocamos 'transform' aquí para no romper la animación de escala CSS
     }
 
     function closeDragElement() {
         isDragging = false;
-        // Restaurar transiciones (vacío vuelve al valor del CSS)
         el.style.transition = ""; 
-        
         document.removeEventListener('mouseup', closeDragElement);
         document.removeEventListener('mousemove', elementDrag);
     }
 };
 
-console.log("✅ Utils cargados (Fixed Draggable System)");
+console.log("✅ Utils cargados");
+}
