@@ -1,4 +1,4 @@
-// js/renderer.js - Visualización y Seguridad contra fallos
+// js/renderer.js - Visualización y Seguridad (Multi-Edit Ready)
 
 function isoToScreen(x, y, z) {
     const ang = window.estado.view.angle;
@@ -234,18 +234,14 @@ function renderScene() {
                  }
              }
              else {
-                // RENDERIZADO GENÉRICO (TRANSVERSALIZADO)
                 const scaleFactor = el.props.scaleFactor || 1.0; 
                 const baseSize = (window.CONFIG.tileW * 0.25) * scaleFactor; 
                 const halfS = baseSize / 2;
-                
-                // Cálculo de Offset Transversal
                 let dx = -halfS;
                 if (el.props.anchor === 'start') dx = 0;
                 if (el.props.anchor === 'end') dx = -baseSize;
                 
                 const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
-                // Usamos dx para posición horizontal relativa a la rotación
                 r.setAttribute("x", s.x + dx); r.setAttribute("y", s.y - halfS); 
                 r.setAttribute("width", baseSize); r.setAttribute("height", baseSize);
                 r.setAttribute("fill", "#222"); r.setAttribute("stroke", col);
@@ -275,12 +271,10 @@ function renderScene() {
                 path.setAttribute("d", d); path.setAttribute("stroke", fit.color); path.setAttribute("stroke-width", fit.width); path.setAttribute("class", "fitting-auto");
                 g.appendChild(path);
                 const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                // MODIFICADO: Radio reducido a 0.2
                 c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.2); c.setAttribute("fill", fit.color);
                 g.appendChild(c);
             } else if (fit.tipo === 'tee_auto' || fit.tipo === 'cruz_auto') {
                 const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                // MODIFICADO: Radio reducido a 0.2
                 c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", fit.width * 0.2);
                 c.setAttribute("fill", "#222"); c.setAttribute("stroke", fit.color); c.setAttribute("stroke-width", fit.width);
                 g.appendChild(c);
@@ -319,7 +313,13 @@ function renderEffects() {
         }
     };
     if(window.estado.hoverID && window.estado.tool==='select') draw(window.estado.hoverID, ch, 'hover-halo');
-    if(window.estado.selID) draw(window.estado.selID, cs, 'sel-halo');
+    
+    // MODIFICADO: Iterar sobre el array de selección
+    if(window.estado.selection && window.estado.selection.length > 0) {
+        window.estado.selection.forEach(id => {
+             draw(id, cs, 'sel-halo');
+        });
+    }
 }
 
 function renderInterface() {
@@ -398,8 +398,10 @@ function toggleTags() {
 function resetView() { 
     const svg = document.getElementById('lienzo-cad');
     const rect = svg.getBoundingClientRect(); window.estado.view.angle = Math.PI / 4; 
-    if (window.estado.selID) {
-        const el = window.elementos.find(e => e.id === window.estado.selID);
+    
+    // Zoom a la selección (si hay) o reset general
+    if (window.estado.selection && window.estado.selection.length > 0) {
+        const el = window.elementos.find(e => e.id === window.estado.selection[0]);
         if(el) {
             let ox = el.x, oy = el.y, oz = el.z; if(el.tipo === 'tuberia' || el.tipo === 'cota') { ox += el.dx/2; oy += el.dy/2; oz += el.dz/2; }
             const ptLocal = isoToScreen(ox, oy, oz);
@@ -431,7 +433,6 @@ function resetView() {
 function togglePanel(id) { document.getElementById(id).classList.toggle('closed'); setTimeout(() => { updateTransform(); }, 410); }
 function toggleGroup(id) { document.querySelectorAll('.lib-items').forEach(el => { if(el.id !== id) el.classList.remove('open'); }); document.getElementById(id).classList.toggle('open'); }
 
-// --- NUEVO: Función Global de Acordeón Robusta ---
 window.toggleAccordion = function(id) { 
     const el = document.getElementById(id); 
     if(el) { el.classList.toggle('collapsed'); } 
@@ -452,10 +453,8 @@ function initLibrary() {
             }
             const div = document.createElement('div'); div.className='tool-item';
             
-            // Renderizar icono en biblioteca (SVG o texto)
             let iconHtml = it.icon;
             if(it.icon && it.icon.startsWith('<svg')) {
-                // Pequeño hack para ajustar SVG en botón
                 iconHtml = it.icon.replace('<svg', `<svg style="width:20px;height:20px;stroke:${it.color||'#aaa'};fill:none;"`);
             } else {
                 iconHtml = `<div style="font-size:1.2rem;">${it.icon||'▪'}</div>`;
@@ -497,36 +496,34 @@ function renderLayersUI() {
     window.layers.forEach(l => { const opt = document.createElement('option'); opt.value=l.id; opt.innerText=l.name; sel.appendChild(opt); });
 }
 
-// === NUEVA LÓGICA DE UI FLOTANTE ===
+// === NUEVA LÓGICA DE UI FLOTANTE (REPARADA) ===
 
 window.cerrarPropiedades = function() {
     document.getElementById('prop-card').classList.remove('active');
-    window.estado.selID = null;
+    // CORRECCIÓN: Limpiar selección al cerrar panel manualmente
+    window.estado.selection = []; 
     if(typeof renderEffects === 'function') renderEffects();
 };
 
 function updatePropsPanel() {
-    const el = window.elementos.find(x => x.id === window.estado.selID);
+    const el = window.elementos.find(x => x.id === (window.estado.selection.length > 0 ? window.estado.selection[0] : null));
     const card = document.getElementById('prop-card');
     
-    // --- LÓGICA DRAG & DROP ---
+    // Init Drag si no existe
     if (!card.getAttribute('data-draggable-init')) {
         if(window.makeDraggable) window.makeDraggable(card);
         card.setAttribute('data-draggable-init', 'true');
     }
 
     // --- POSICIONAMIENTO INTELIGENTE ---
-    // Si la tarjeta no estaba visible, la movemos cerca del objeto seleccionado
     if (el && !card.classList.contains('active')) {
         const screenPos = isoToScreen(el.x, el.y, el.z);
-        let finalLeft = screenPos.x + 60; // Offset inicial a la derecha
-        let finalTop = screenPos.y - 40;  // Offset inicial arriba
-        
-        // Evitar salirse de pantalla
+        let finalLeft = screenPos.x + 60; 
+        let finalTop = screenPos.y - 40;  
         const maxLeft = window.innerWidth - 340;
         const maxTop = window.innerHeight - 400;
         
-        if (finalLeft > maxLeft) finalLeft = screenPos.x - 340; // Mover a la izq si no cabe
+        if (finalLeft > maxLeft) finalLeft = screenPos.x - 340; 
         if (finalLeft < 0) finalLeft = 20;
         if (finalTop < 60) finalTop = 80;
         if (finalTop > maxTop) finalTop = maxTop;
@@ -534,22 +531,21 @@ function updatePropsPanel() {
         card.style.left = finalLeft + 'px';
         card.style.top = finalTop + 'px';
         
-        // Reset transform para evitar bugs visuales con el drag
         card.style.transform = "scale(0.95)";
         setTimeout(() => card.style.transform = "scale(1)", 50);
     }
-    // ----------------------------
 
     const f = document.getElementById('prop-form'); 
     const v = document.getElementById('prop-vacio');
     const hero = document.getElementById('pc-hero-container');
     const title = document.getElementById('pc-title-text');
-    
     const divAdjust = document.getElementById('obj-adjust-controls');
     const contDatos = document.getElementById('prop-datos-tecnicos-container'); 
     
-    // Si no hay selección, ocultar tarjeta
-    if (!el) {
+    const selCount = window.estado.selection.length;
+
+    // CASO 0: Nada seleccionado
+    if (selCount === 0) {
         card.classList.remove('active');
         return;
     }
@@ -558,6 +554,48 @@ function updatePropsPanel() {
     card.classList.add('active');
     f.style.display = 'block'; 
     v.style.display = 'none';
+
+    // CASO MULTI-SELECCIÓN (BATCH)
+    if (selCount > 1) {
+        title.innerText = `Selección (${selCount})`;
+        hero.innerHTML = '<div style="font-size:40px; color:#fff;">📚</div>';
+        contDatos.innerHTML = '';
+        
+        // Formulario Batch simplificado
+        contDatos.innerHTML = `
+            <div class="acc-group">
+                <div class="acc-header">Edición Masiva</div>
+                <div class="acc-content">
+                    <div class="prop-row"><label>Capa Común</label><select id="p-batch-capa" class="btn"></select></div>
+                    <div class="prop-row"><label>Color Común</label><input type="color" id="p-batch-color" style="height:35px; width:100%"></div>
+                    <div class="prop-row row-h"><label style="flex:1">Visible</label><input type="checkbox" id="p-batch-visible" checked></div>
+                    <div style="margin-top:20px;">
+                        <button class="btn danger" onclick="borrarSeleccion()" style="width:100%;">Eliminar Todos (${selCount})</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const selCapa = document.getElementById('p-batch-capa');
+        window.layers.forEach(l => { const opt = document.createElement('option'); opt.value=l.id; opt.innerText=l.name; selCapa.appendChild(opt); });
+        
+        // Listeners Batch
+        selCapa.onchange = (e) => window.updateBatchProp('layerId', e.target.value);
+        document.getElementById('p-batch-color').onchange = (e) => window.updateBatchProp('customColor', e.target.value);
+        document.getElementById('p-batch-visible').onchange = (e) => window.updateBatchProp('visible', e.target.checked);
+        
+        // Ocultar resto
+        document.getElementById('grp-general').style.display = 'none';
+        document.getElementById('grp-geo').style.display = 'none';
+        document.getElementById('grp-app').style.display = 'none';
+        
+        return;
+    }
+
+    // CASO ÚNICO (NORMAL)
+    document.getElementById('grp-general').style.display = 'block';
+    document.getElementById('grp-geo').style.display = 'block';
+    document.getElementById('grp-app').style.display = 'block';
     
     // Configurar Hero y Título
     let displayTitle = "Elemento";
@@ -704,7 +742,21 @@ function updatePropsPanel() {
     }
 }
 
-// Generar Formulario Específico para Válvula Actuada
+// NUEVO: Función de Batch Update
+window.updateBatchProp = function(key, val) {
+    if(window.estado.selection.length < 2) return;
+    window.estado.selection.forEach(id => {
+        const el = window.elementos.find(x => x.id === id);
+        if (el) {
+            if (key === 'layerId' || key === 'visible') el[key] = val;
+            else if (key === 'customColor') el.props.customColor = val;
+        }
+    });
+    window.saveState();
+    renderScene();
+    renderEffects();
+}
+
 function generarFormularioValvulaActuada(el, container) {
     const grp = document.createElement('div');
     grp.className = 'acc-group';
@@ -868,22 +920,50 @@ function generarFormularioTanque(el, container) {
     };
 }
 
+// Función auxiliar para dibujar Tanque
+function dibujarTanqueGLP(g, s, el, col) {
+    // Cuerpo tanque
+    const gC = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    // Tamaño relativo (simplificado para el icono en canvas)
+    // En realidad debería escalar con el zoom, pero para icono basta esto
+    gC.setAttribute("x", s.x - 20); gC.setAttribute("y", s.y - 10);
+    gC.setAttribute("width", 40); gC.setAttribute("height", 20);
+    gC.setAttribute("rx", 5); gC.setAttribute("ry", 5);
+    gC.setAttribute("fill", "#222"); gC.setAttribute("stroke", col);
+    g.appendChild(gC);
+    
+    // Texto
+    const t = document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute("x", s.x); t.setAttribute("y", s.y+4); 
+    t.setAttribute("text-anchor", "middle"); t.setAttribute("font-size", "8px"); 
+    t.setAttribute("fill", col); t.textContent = "GLP";
+    g.appendChild(t);
+}
+
 window.togLay = (id) => { const l=window.layers.find(x=>x.id===id); l.visible=!l.visible; renderLayersUI(); renderScene(); }
 window.addLayer = () => { window.layers.push({id:'l'+Date.now(), name:'Nueva', color:'#fff', visible:true}); renderLayersUI(); }
+
 window.updateAlturaFinal = function(valUser) {
-    const el = window.elementos.find(x => x.id === window.estado.selID); if (!el || (el.tipo !== 'tuberia' && el.tipo !== 'cota')) return;
+    if (window.estado.selection.length !== 1) return;
+    const el = window.elementos.find(x => x.id === window.estado.selection[0]); if (!el || (el.tipo !== 'tuberia' && el.tipo !== 'cota')) return;
     const num = parseInputFloat(valUser); if (isNaN(num)) return;
     const u = window.UNITS[window.CONFIG.unit]; const newFinalZ = num / u.factor; el.dz = newFinalZ - el.z;
     window.saveState(); renderScene(); renderEffects(); updatePropsPanel(); 
 }
 window.changeMaterial = function(newMat) {
-    const el = window.elementos.find(x=>x.id===window.estado.selID); if(!el) return;
+    if (window.estado.selection.length !== 1) return;
+    const el = window.elementos.find(x=>x.id===window.estado.selection[0]); if(!el) return;
     const catItem = window.CATALOGO.mat.find(m => m.props.material === newMat);
     if(catItem) { el.props.material = newMat; el.props.customColor = null; el.props.color = catItem.color; el.props.diametroNominal = catItem.props.diametroNominal; window.saveState(); updatePropsPanel(); renderScene(); }
 }
-window.updateDiametro = function(val) { const el = window.elementos.find(x=>x.id===window.estado.selID); if(el){ el.props.diametroNominal = val; window.saveState(); renderScene(); renderEffects(); } }
+window.updateDiametro = function(val) { 
+    if (window.estado.selection.length !== 1) return;
+    const el = window.elementos.find(x=>x.id===window.estado.selection[0]); 
+    if(el){ el.props.diametroNominal = val; window.saveState(); renderScene(); renderEffects(); } 
+}
 window.updateStyleProp = function(k,v) { 
-    const el=window.elementos.find(x=>x.id===window.estado.selID); 
+    if (window.estado.selection.length !== 1) return;
+    const el=window.elementos.find(x=>x.id===window.estado.selection[0]); 
     if(el){ 
         if(k==='color') { el.props.customColor = v; } 
         else if (k === 'scaleFactor') { el.props[k] = parseFloat(v); document.getElementById('p-scale-val').textContent = v; } 
@@ -892,26 +972,36 @@ window.updateStyleProp = function(k,v) {
     } 
 }
 window.invertirFlujo = function() {
-    const el = window.elementos.find(x => x.id === window.estado.selID);
+    if (window.estado.selection.length !== 1) return;
+    const el = window.elementos.find(x => x.id === window.estado.selection[0]);
     if (el && el.props) {
         el.props.rotacion = (parseFloat(el.props.rotacion || 0) + 180) % 360;
         document.getElementById('p-rot').value = el.props.rotacion;
         window.saveState(); renderScene();
     }
 }
-window.updateBooleanProp = function(k, val) { const el = window.elementos.find(x=>x.id===window.estado.selID); if(el){ el.props[k] = val; window.saveState(); renderScene(); } }
-window.updateRootProp = function(k, val) { const el = window.elementos.find(x=>x.id===window.estado.selID); if(el){ el[k] = val; window.saveState(); renderScene(); renderEffects(); } }
+window.updateBooleanProp = function(k, val) { 
+    if (window.estado.selection.length !== 1) return;
+    const el = window.elementos.find(x=>x.id===window.estado.selection[0]); if(el){ el.props[k] = val; window.saveState(); renderScene(); } 
+}
+window.updateRootProp = function(k, val) { 
+    if (window.estado.selection.length !== 1) return;
+    const el = window.elementos.find(x=>x.id===window.estado.selection[0]); if(el){ el[k] = val; window.saveState(); renderScene(); renderEffects(); } 
+}
 window.updateLongitud = function(valUser) {
-    const el = window.elementos.find(x=>x.id===window.estado.selID); if(!el || el.tipo !== 'tuberia') return;
+    if (window.estado.selection.length !== 1) return;
+    const el = window.elementos.find(x=>x.id===window.estado.selection[0]); if(!el || el.tipo !== 'tuberia') return;
     const currentLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2); if(currentLen < 0.0001) return;
     const newValMeters = parseToMeters(parseInputFloat(valUser)); if(isNaN(newValMeters) || newValMeters <= 0) return;
     const ratio = newValMeters / currentLen; el.dx *= ratio; el.dy *= ratio; el.dz *= ratio;
     window.saveState(); renderScene();
 }
 window.updateAltura = function(valUser) {
-    const el = window.elementos.find(x=>x.id===window.estado.selID); if(!el) return;
+    if (window.estado.selection.length !== 1) return;
+    const el = window.elementos.find(x=>x.id===window.estado.selection[0]); if(!el) return;
     const num = parseInputFloat(valUser); if(isNaN(num)) return;
     const u = window.UNITS[window.CONFIG.unit]; el.z = num / u.factor;
     window.saveState(); renderScene(); renderEffects(); updatePropsPanel();
 }
-console.log("✅ Renderer cargado con Blue Stream UI (Drag & Drop + Smart Pos)");
+
+console.log("✅ Renderer cargado con Blue Stream UI (Drag & Drop + Smart Pos + Multi-Edit Fix)");
