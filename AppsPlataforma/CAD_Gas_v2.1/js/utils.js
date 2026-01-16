@@ -1,4 +1,4 @@
-// js/utils.js - Funciones Matemáticas y de Formato
+// js/utils.js - Funciones Matemáticas, de Formato y UI Utilities
 
 // Asegurar que window.UNITS exista si config.js falló
 if(!window.UNITS) {
@@ -30,30 +30,28 @@ window.parseToMeters = function(valUser) {
 
 window.parseDiameterToScale = function(diamStr) {
     if(!diamStr) return 2;
-    // Extraer número de strings como '1/2"' o '32mm'
     let num = 1;
     if(diamStr.includes('"')) {
         const frac = diamStr.replace('"','').split('/');
         if(frac.length === 2) num = parseFloat(frac[0])/parseFloat(frac[1]);
         else num = parseFloat(frac[0]);
-        return Math.max(2, num * 3); // Escalar pulgadas para visualización
+        return Math.max(2, num * 3); 
     } 
     else if (diamStr.toLowerCase().includes('mm')) {
         num = parseFloat(diamStr.toLowerCase().replace('mm',''));
-        return Math.max(2, num * 0.15); // Escalar mm
+        return Math.max(2, num * 0.15);
     }
     return 2;
 };
 
 window.getKey = function(x, y, z) {
-    const prec = 1000; // Precisión grid (Epsilon)
+    const prec = 1000; 
     return `${Math.round(x*prec)}_${Math.round(y*prec)}_${Math.round(z*prec)}`;
 };
 
 window.ensureHex = function(color) {
     if(!color) return '#cccccc';
     if(color.startsWith('#')) return color;
-    // Mapeo básico de colores nombrados si es necesario
     const ctx = document.createElement('canvas').getContext('2d');
     ctx.fillStyle = color;
     return ctx.fillStyle;
@@ -63,7 +61,6 @@ window.ensureHex = function(color) {
 window.calcularFlujoGas = function(diam, len, caudal, tipoGas, presionEntrada) {
     const S = (tipoGas === 'glp') ? 1.52 : 0.60;
     
-    // Diámetro interno aprox (pulgadas)
     let D = 1.0; 
     if(diam.includes('"')) {
         const parts = diam.replace('"','').split('/');
@@ -76,10 +73,9 @@ window.calcularFlujoGas = function(diam, len, caudal, tipoGas, presionEntrada) {
     let drop = 0;
     let vel = 0;
     
-    const factorK = (tipoGas === 'glp') ? 0.8 : 1.0;
+    // Formula simplificada Mueller
     drop = (caudal * caudal * len * S) / (1000 * Math.pow(D, 5));
     
-    // Velocidad (m/s) aprox
     const area = Math.PI * Math.pow((D * 0.0254)/2, 2);
     vel = (caudal / 3600) / area;
 
@@ -103,50 +99,62 @@ window.arePointsEqual = function(p1, p2) {
     return Math.abs(p1.x - p2.x) < e && Math.abs(p1.y - p2.y) < e && Math.abs(p1.z - p2.z) < e;
 };
 
-// --- FIX FUNCIÓN DE ARRASTRE ---
+// --- FIX SISTEMA DE ARRASTRE (DRAG & DROP) ---
 window.makeDraggable = function(el) {
+    // Buscamos el header, si no existe usamos el elemento completo
     const header = el.querySelector('.pc-header') || el;
+    
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
 
     header.onmousedown = function(e) {
-        // CORRECCIÓN CLAVE: Si el clic es en el botón de cerrar, no iniciar Drag
-        if(e.target.classList.contains('pc-close') || e.target.closest('.pc-close')) {
+        // 1. IMPORTANTE: Si clicamos en el botón de cerrar o sus hijos, NO iniciar arrastre
+        if(e.target.closest('.pc-close') || e.target.closest('button')) {
             return;
         }
 
-        e.preventDefault();
+        e.preventDefault(); // Evita selección de texto indeseada al arrastrar
         isDragging = true;
+        
+        // 2. Capturamos posición inicial del ratón
         startX = e.clientX;
         startY = e.clientY;
         
-        const rect = el.getBoundingClientRect();
-        initialLeft = rect.left;
-        initialTop = rect.top;
+        // 3. Capturamos posición inicial del elemento (relativa al padre, no al viewport)
+        // Esto corrige el bug de que se "pierda" al soltarlo o se resetee.
+        initialLeft = el.offsetLeft;
+        initialTop = el.offsetTop;
+        
+        // 4. Desactivamos transición temporalmente para que el arrastre sea instantáneo (sin lag)
+        el.style.transition = "none";
 
-        document.addEventListener('mouseup', closeDragElement);
         document.addEventListener('mousemove', elementDrag);
+        document.addEventListener('mouseup', closeDragElement);
     };
 
     function elementDrag(e) {
         if (!isDragging) return;
         e.preventDefault();
         
+        // Calcular desplazamiento
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
 
+        // Aplicar nueva posición
         el.style.left = (initialLeft + dx) + "px";
         el.style.top = (initialTop + dy) + "px";
         
-        el.style.transform = "none"; 
-        el.style.opacity = "1";
+        // NOTA: No tocamos 'transform' aquí para no romper la animación de escala CSS
     }
 
     function closeDragElement() {
         isDragging = false;
+        // Restaurar transiciones (vacío vuelve al valor del CSS)
+        el.style.transition = ""; 
+        
         document.removeEventListener('mouseup', closeDragElement);
         document.removeEventListener('mousemove', elementDrag);
     }
 };
 
-console.log("✅ Utils cargados (Drag fix)");
+console.log("✅ Utils cargados (Fixed Draggable System)");
