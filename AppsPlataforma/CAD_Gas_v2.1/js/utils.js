@@ -1,9 +1,6 @@
-{
-type: uploaded file
-fileName: Cad Gas V2.4/js/utils.js
-fullContent:
 // js/utils.js - Funciones Matemáticas, de Formato y UI Utilities
 
+// Inicialización segura de globales
 if(!window.UNITS) {
     window.UNITS = { 'm': { factor: 1, label: 'm', precision: 2 } };
 }
@@ -55,54 +52,57 @@ window.getKey = function(x, y, z) {
 window.ensureHex = function(color) {
     if(!color) return '#cccccc';
     if(color.startsWith('#')) return color;
+    // Fallback para colores nombrados
     const ctx = document.createElement('canvas').getContext('2d');
     ctx.fillStyle = color;
     return ctx.fillStyle;
 };
 
-// Cálculo de Flujo de Gas (Mueller)
+// --- CÁLCULO DE FLUJO DE GAS (Mueller) ---
 window.calcularFlujoGas = function(diam, len, caudal, tipoGas, presionEntrada) {
+    // Constantes de Gravedad Específica (S)
     const S = (tipoGas === 'glp') ? 1.52 : 0.60;
     
+    // Parsear Diámetro a Pulgadas Reales (D)
     let D = 1.0; 
-    if(diam.includes('"')) {
+    if(diam && diam.includes('"')) {
         const parts = diam.replace('"','').split('/');
         if(parts.length===2) D = parseFloat(parts[0])/parseFloat(parts[1]);
         else D = parseFloat(parts[0]);
-    } else if (diam.includes('mm')) {
+    } else if (diam && diam.toLowerCase().includes('mm')) {
         D = parseFloat(diam.replace('mm','')) / 25.4;
     }
 
-    // Evitar division por cero o valores absurdos
+    // Protecciones contra valores cero o negativos
     if (len <= 0.001) len = 0.001; 
     if (D <= 0) D = 0.5;
+    if (caudal < 0) caudal = 0;
 
-    let drop = 0;
+    // Fórmula Mueller (Baja Presión - Simplificada)
+    // h = (Q^2 * L * S) / (C * D^5)
+    // Usamos constante C=1000 aprox para mantener consistencia con tu versión anterior
+    const drop = (caudal * caudal * len * S) / (1000 * Math.pow(D, 5));
+    
+    // Cálculo de Velocidad
+    const area = Math.PI * Math.pow((D * 0.0254)/2, 2); // Area en m2
     let vel = 0;
-    
-    // Formula simplificada Mueller (Baja presión / Aproximación común)
-    // h = (Q^2 * L * S) / (C * D^5) -> Simplificado en tu código original
-    // Mantengo tu constante 1000 para respetar calibración previa
-    drop = (caudal * caudal * len * S) / (1000 * Math.pow(D, 5));
-    
-    const area = Math.PI * Math.pow((D * 0.0254)/2, 2);
-    // Caudal viene en m3/h -> /3600 para m3/s
-    if (area > 0) vel = (caudal / 3600) / area;
+    if (area > 0) vel = (caudal / 3600) / area; // m/s
 
+    // Estado según velocidad
     let estado = "OK";
     if (vel > 20) estado = "ALERTA";
     if (vel > 30) estado = "CRÍTICO";
     
-    // Calcula la presión de salida restando la caída
+    // Presión final
     const pSalida = Math.max(0, presionEntrada - drop);
 
     return {
         estado: estado,
-        caidaPresion: drop, // Numérico para cálculos posteriores
+        caidaPresion: drop, // Valor numérico para lógica
         caidaPresionStr: drop.toFixed(4) + " mbar",
         porcentajeCaida: (presionEntrada > 0 ? ((drop/presionEntrada)*100).toFixed(2) : "0") + "%",
         velocidad: vel.toFixed(2) + " m/s",
-        presionSalida: pSalida, // Numérico
+        presionSalida: pSalida, // Valor numérico para lógica
         presionSalidaStr: pSalida.toFixed(2) + " mbar",
         formula: "Mueller (Aprox)",
         alertas: (vel > 20) ? "Velocidad excesiva" : ""
@@ -116,12 +116,13 @@ window.arePointsEqual = function(p1, p2) {
 
 // --- FIX SISTEMA DE ARRASTRE (DRAG & DROP) ---
 window.makeDraggable = function(el) {
+    if(!el) return;
     const header = el.querySelector('.pc-header') || el;
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
 
     header.onmousedown = function(e) {
-        if(e.target.closest('.pc-close') || e.target.closest('button')) {
+        if(e.target.closest('.pc-close') || e.target.closest('button') || e.target.closest('input')) {
             return;
         }
         e.preventDefault(); 
@@ -151,6 +152,3 @@ window.makeDraggable = function(el) {
         document.removeEventListener('mousemove', elementDrag);
     }
 };
-
-console.log("✅ Utils cargados");
-}
