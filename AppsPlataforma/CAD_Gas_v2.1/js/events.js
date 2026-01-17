@@ -1,4 +1,4 @@
-// js/events.js - Control de Eventos (Multi-Select & Escape Fix)
+// js/events.js - Control de Eventos (LIMPIO)
 
 const svg = document.getElementById('lienzo-cad');
 
@@ -15,12 +15,10 @@ svg.addEventListener('mousedown', e => {
     if(e.button === 0) { 
         window.estado.startAction = {x: e.clientX, y: e.clientY}; 
         // Si estamos sobre un objeto que YA está seleccionado, iniciamos potencial arrastre (Drag)
-        // Esto permite mover grupos seleccionados sin deseleccionarlos
         if (window.estado.tool === 'select' && window.estado.hoverID) { 
             if (window.estado.selection.includes(window.estado.hoverID)) {
                 window.estado.action = 'potential_drag';
             } else {
-                // Si no está seleccionado, el click lo seleccionará, pero el drag potencial sigue
                 window.estado.action = 'potential_drag';
             }
         } else { 
@@ -49,11 +47,11 @@ svg.addEventListener('mousemove', e => {
 
     // PAN (Mover cámara)
     if(window.estado.action === 'pan') { 
-        window.estado.view.x += e.clientX - window.estado.startAction.x; 
+        window.estado.view.x += e.clientX - window.estado.startAction.x;
         window.estado.view.y += e.clientY - window.estado.startAction.y; 
         window.estado.startAction = {x: e.clientX, y: e.clientY}; 
         updateTransform(); 
-        return; 
+        return;
     }
     
     // Calculo de coordenadas mouse
@@ -61,7 +59,7 @@ svg.addEventListener('mousemove', e => {
     const adjustedY = p.y + zOffsetHeight;
     const isoRaw = screenToIso(p.x, adjustedY);
     window.estado.mouseIso = { x: isoRaw.x, y: isoRaw.y };
-    
+
     // SNAP
     let sn = null; let snID = null;
     if (window.CONFIG.enableSnap) {
@@ -70,7 +68,6 @@ svg.addEventListener('mousemove', e => {
             const el = window.elementos[i];
             if (el.visible === false) continue;
             if (Math.abs(el.x - window.estado.mouseIso.x) > 10 && Math.abs(el.y - window.estado.mouseIso.y) > 10) continue;
-
             const pts = getSnapPoints(el); 
             for (let j = 0; j < pts.length; j++) {
                 const pt = pts[j];
@@ -82,11 +79,10 @@ svg.addEventListener('mousemove', e => {
         }
     }
     window.estado.snapped = sn;
-    if (snID) window.estado.hoverID = snID; 
-    
-    // DRAG (Mover objetos MULTIPLES)
+    if (snID) window.estado.hoverID = snID;
+
+    // DRAG (Mover objetos)
     if (window.estado.action === 'dragging' && window.estado.selection.length > 0) {
-        // Usamos el primer elemento como referencia para el movimiento
         const refId = window.estado.selection[0];
         const el = window.elementos.find(x => x.id === refId);
         if (el) {
@@ -102,35 +98,29 @@ svg.addEventListener('mousemove', e => {
             }
 
             if (Math.abs(diffX) > 0.001 || Math.abs(diffY) > 0.001 || Math.abs(diffZ) > 0.001) {
-                 // Movemos el líder
                  window.moverConConexiones(el.id, diffX, diffY, diffZ);
-                 
-                 // Movemos el resto de la selección con el mismo delta
                  for (let i=1; i<window.estado.selection.length; i++) {
                      window.moverConConexiones(window.estado.selection[i], diffX, diffY, diffZ);
                  }
-                 
-                 renderScene(); 
-                 renderEffects();
+                 renderScene(); renderEffects();
             }
         }
     } else if (window.estado.action === 'potential_drag') {
             const distDrag = Math.hypot(e.clientX - window.estado.startAction.x, e.clientY - window.estado.startAction.y);
             if(distDrag > 5) { 
-                window.estado.action = 'dragging'; 
-                // Si arrastramos algo no seleccionado, lo seleccionamos
+                window.estado.action = 'dragging';
                 if (window.estado.hoverID && !window.estado.selection.includes(window.estado.hoverID)) {
                      window.estado.selection = [window.estado.hoverID];
                      updatePropsPanel();
                 }
-                window.saveState(); 
+                window.saveState();
             }
     }
     
-    // HOVER SELECT / CUT (Igual que antes pero usa array selection)
+    // HOVER SELECT / CUT
     if(window.estado.tool === 'select' && !window.estado.action && !window.estado.snapped) {
-        // ... (Lógica de hover existente)
-        const tol = 8 / window.estado.view.scale; let h = null; let minD = tol; 
+        const tol = 8 / window.estado.view.scale;
+        let h = null; let minD = tol; 
         window.elementos.forEach(el => {
             if(el.visible === false) return; 
             const s = isoToScreen(el.x, el.y, el.z); let d = 10000;
@@ -164,25 +154,20 @@ svg.addEventListener('mousemove', e => {
 window.addEventListener('mouseup', (e) => {
     const dist = Math.abs(e.clientX - window.estado.startAction.x) + Math.abs(e.clientY - window.estado.startAction.y);
     const isClick = dist < 5;
-    
-    // Si fue un click, procesar selección/acción
     if (isClick && (window.estado.action === 'rotate' || window.estado.action === 'potential_drag')) { 
         window.handleCanvasClick(e); 
     }
-    
     if (window.estado.action === 'dragging') window.saveState();
     window.estado.action = null; 
 });
 
-// Zoom Wheel (Mantener)
+// Zoom Wheel
 svg.addEventListener('wheel', e => { 
     e.preventDefault(); 
     let newScale = window.estado.view.scale * (e.deltaY > 0 ? 0.9 : 1.1); 
     if (newScale < 0.1) newScale = 0.1; if (newScale > 20) newScale = 20; 
     
-    // Zoom hacia el mouse o selección
     if(window.estado.selection.length > 0) {
-        // Zoom al primer elemento seleccionado
         const el = window.elementos.find(x => x.id === window.estado.selection[0]);
         if(el) {
             let ox = el.x, oy = el.y, oz = el.z; if(el.tipo === 'tuberia' || el.tipo === 'cota') { ox += el.dx/2; oy += el.dy/2; oz += el.dz/2; }
@@ -200,12 +185,11 @@ svg.addEventListener('wheel', e => {
             window.estado.view.y = mouseY - (mouseY - window.estado.view.y) * (newScale / oldScale);
             window.estado.view.scale = newScale;
     }
-    updateTransform(); renderEffects(); 
+    updateTransform(); renderEffects();
 }, { passive: false });
 
-// Teclado (FIX ESCAPE Y DELETE)
+// Teclado
 window.addEventListener('keydown', e => {
-    // Si está escribiendo en un input, escape solo hace blur
     if(document.activeElement && (document.activeElement.classList.contains('hud-input') || document.activeElement.classList.contains('float-input'))) {
          if(e.key === 'Escape') {
              document.getElementById('dynamic-input-container').style.display = 'none';
@@ -216,11 +200,9 @@ window.addEventListener('keydown', e => {
          return;
     }
     
-    // COPY / PASTE
+    // Copy/Paste
     if(e.ctrlKey && e.key.toLowerCase() === 'c') {
-        // Copiar selección
         if(window.estado.selection.length > 0) {
-            // Clonar array de objetos seleccionados
             window.estado.clipboard = window.elementos.filter(x => window.estado.selection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
             console.log(`Copiados ${window.estado.clipboard.length} elementos`);
         }
@@ -228,17 +210,15 @@ window.addEventListener('keydown', e => {
     }
     if(e.ctrlKey && e.key.toLowerCase() === 'v') {
         if(window.estado.clipboard && window.estado.clipboard.length > 0) {
-            // Pegar en la posición del mouse (ajustando offset relativo al primero)
             const ref = window.estado.clipboard[0];
             const dx = window.estado.mouseIso.x - ref.x;
             const dy = window.estado.mouseIso.y - ref.y;
-            
             const newIds = [];
             window.estado.clipboard.forEach(item => {
                 const copy = JSON.parse(JSON.stringify(item));
                 copy.id = Date.now() + Math.random();
-                copy.x += dx; copy.y += dy; // Mantiene posición relativa
-                copy.z = window.estado.currentZ; // Forza Z actual
+                copy.x += dx; copy.y += dy; 
+                copy.z = window.estado.currentZ;
                 window.elementos.push(copy);
                 newIds.push(copy.id);
             });
@@ -251,17 +231,20 @@ window.addEventListener('keydown', e => {
     if(e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); window.undo(); return; }
     if(e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); window.redo(); return; }
 
-    // Elevación rápida (Q/A)
+    // Elevación
     const k = e.key.toLowerCase();
     if (k === 'q' || k === 'a') {
         let originPoint = null;
         if (window.estado.drawing && window.estado.inicio) { 
-            originPoint = window.estado.inicio; 
+            originPoint = window.estado.inicio;
         } else if (window.estado.selection.length > 0) {
             const el = window.elementos.find(x => x.id === window.estado.selection[0]);
-            if(el) { originPoint = { x: el.x, y: el.y, z: el.z }; window.estado.drawing = true; window.estado.inicio = originPoint; window.estado.activeItem = el.tipo === 'tuberia' ? { type: 'tuberia', props: el.props, color: el.props.customColor } : window.estado.activeItem; }
+            if(el) { originPoint = { x: el.x, y: el.y, z: el.z }; window.estado.drawing = true; window.estado.inicio = originPoint;
+            window.estado.activeItem = el.tipo === 'tuberia' ? { type: 'tuberia', props: el.props, color: el.props.customColor } : window.estado.activeItem;
+            }
         } else {
-            if(k==='q') window.estado.currentZ += 1; if(k==='a') window.estado.currentZ -= 1; syncZInput(); renderInterface(); return;
+            if(k==='q') window.estado.currentZ += 1;
+            if(k==='a') window.estado.currentZ -= 1; syncZInput(); renderInterface(); return;
         }
 
         if (originPoint) {
@@ -281,26 +264,18 @@ window.addEventListener('keydown', e => {
         return;
     }
     
-    // ESCAPE FIX (Cierre global)
     if(e.key==='Escape') { 
-        // 1. Cerrar inputs flotantes
         document.getElementById('dynamic-input-container').style.display = 'none';
         document.getElementById('vertical-input-container').style.display = 'none';
-        
-        // 2. Cerrar Modales
         document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-        
-        // 3. Cancelar dibujo
         window.estado.drawing = false; 
-        window.setTool('select'); 
-        
-        // 4. Limpiar selección y cerrar propiedades
+        window.setTool('select');
         window.estado.selection = [];
-        window.cerrarPropiedades(); // Esta función limpia y renderiza
+        window.cerrarPropiedades();
     } 
     
-    // DELETE
-    if(e.key==='Delete') window.borrarSeleccion(); renderInterface();
+    if(e.key==='Delete') window.borrarSeleccion();
+    renderInterface();
 });
 
 // Click fuera para cerrar menús
@@ -311,7 +286,6 @@ window.onclick = function(event) {
     }
 }
 
-// Inputs flotantes
 document.getElementById('dynamic-len').addEventListener('keydown', (e) => { if (e.key === 'Enter') window.confirmarInput(); if (e.key === 'Escape') { document.getElementById('dynamic-input-container').style.display = 'none'; window.estado.tempVector = null; } e.stopPropagation(); });
 
 document.getElementById('v-len').addEventListener('keydown', (e) => {
@@ -324,7 +298,8 @@ document.getElementById('v-len').addEventListener('keydown', (e) => {
             if (window.estado.activeItem && window.estado.activeItem.type === 'tuberia') { props = JSON.parse(JSON.stringify(window.estado.activeItem.props)); } else { props = { material: 'acero', diametroNominal: '1"' }; }
             const col = window.estado.activeItem?.color || '#ccc';
             window.addEl({ tipo: 'tuberia', x: window.estado.inicio.x, y: window.estado.inicio.y, z: window.estado.inicio.z, dx: 0, dy: 0, dz: dz, props: props, customColor: col });
-            window.estado.inicio.z += dz; window.estado.currentZ = window.estado.inicio.z; syncZInput();
+            window.estado.inicio.z += dz; window.estado.currentZ = window.estado.inicio.z;
+            syncZInput();
             document.getElementById('vertical-input-container').style.display = 'none';
             window.estado.verticalPendingDir = 0;
             renderScene(); renderInterface(); 
@@ -332,4 +307,4 @@ document.getElementById('v-len').addEventListener('keydown', (e) => {
     }
 });
 
-console.log("✅ Eventos cargados (Fixes applied)");
+console.log("✅ Events cargado OK (Sin errores)");
