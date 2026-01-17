@@ -2,14 +2,13 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CAD Gas V2.5.15 - System Calculation</title>
+<title>CAD Gas v2.4 - Fixed Edition</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-
 <style>
     :root { 
-        --bg: #141414;
+        --bg: #141414; 
         --panel: #1f1f1f; 
         --border: #333; 
         --accent: #0071eb; 
@@ -65,6 +64,7 @@
     .grid-path { stroke: #333; stroke-width: 1; fill: none; vector-effect: non-scaling-stroke; }
     .grid-axis { stroke: #555; stroke-width: 2; fill: none; vector-effect: non-scaling-stroke; }
     
+    /* MODIFICADO: Eliminado 'vector-effect: non-scaling-stroke' para que la tubería escale con el zoom */
     .tuberia { fill: none; cursor: pointer; stroke-linecap: round; } 
     .tuberia:hover { stroke-opacity: 0.8; }
     .fitting-auto { fill: none; stroke-linecap: round; stroke-linejoin: round; }
@@ -82,17 +82,35 @@
 
     /* UI Flotante MEJORADA PARA DRAG & DROP */
     #prop-card {
-        position: absolute; top: 60px; left: 20px; width: 320px; max-height: 85vh;
-        background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(10px);
-        border: 1px solid #333; border-top: 3px solid var(--accent);
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); border-radius: 6px; z-index: 1000;
-        display: flex; flex-direction: column; opacity: 0; transform: scale(0.95); pointer-events: none; transition: opacity 0.3s, transform 0.3s;
+        position: absolute; 
+        top: 60px; 
+        left: 20px; 
+        width: 320px; 
+        max-height: 85vh;
+        background: rgba(20, 20, 20, 0.95); 
+        backdrop-filter: blur(10px);
+        border: 1px solid #333; 
+        border-top: 3px solid var(--accent);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); 
+        border-radius: 6px; 
+        z-index: 1000;
+        display: flex; 
+        flex-direction: column; 
+        opacity: 0; 
+        transform: scale(0.95); 
+        pointer-events: none; 
+        transition: opacity 0.3s, transform 0.3s;
     }
     #prop-card.active { opacity: 1; transform: scale(1); pointer-events: auto; }
     
     .pc-header { 
-        padding: 15px 20px; background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%); 
-        display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none;
+        padding: 15px 20px; 
+        background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%); 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        cursor: move; 
+        user-select: none;
     }
     .pc-title { font-size: 1.1rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
     .pc-close { background: transparent; border: none; color: #888; font-size: 1.2rem; cursor: pointer; }
@@ -119,9 +137,7 @@
 
     .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:200; justify-content:center; align-items:center; backdrop-filter: blur(2px); }
     .modal-box { background: #1f1f1f; padding:25px; border:1px solid #444; width:500px; border-radius:6px; box-shadow: 0 20px 50px rgba(0,0,0,0.7); max-height: 90vh; overflow-y: auto;}
-    /* Nuevo estilo para modal grande de resultados */
-    .modal-box.large { width: 800px; max-width: 90%; }
-
+    
     #dynamic-input-container, #vertical-input-container { position: absolute; background: rgba(30, 30, 30, 0.95); border: 1px solid var(--accent); padding: 5px 8px; border-radius: 4px; display: none; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
     .float-input { width: 70px; background: #000; border: 1px solid #444; color: #fff; padding: 2px 5px; outline: none; }
     
@@ -131,20 +147,12 @@
     .layer-row-header { display: flex; align-items: center; padding: 5px 10px; gap: 8px; cursor: pointer; }
     .layer-row-header:hover { background: #333; }
     .layer-row-header.active { border-left: 3px solid var(--accent); background: #2a2a2a; }
-
-    /* Estilos Tabla Resultados V2.5 */
-    .res-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    .res-table th { text-align: left; background: #333; padding: 5px; color: #fff; }
-    .res-table td { border-bottom: 1px solid #333; padding: 5px; color: #ccc; }
-    .res-ok { color: #4f4; }
-    .res-warn { color: #fa0; font-weight: bold; }
-    .res-crit { color: #f44; font-weight: bold; }
 </style>
 </head>
 <body>
 
 <header>
-    <div class="brand"><span>CAD</span> GAS v2.5.15</div>
+    <div class="brand"><span>CAD</span> GAS v2.4</div>
     <div class="toolbar-sep"></div>
     <button class="btn" id="btn-undo" onclick="undo()" title="Deshacer">↩</button>
     <button class="btn" id="btn-redo" onclick="redo()" title="Rehacer">↪</button>
@@ -171,7 +179,10 @@
     </div>
     <button id="btn-toggle-tags" class="btn active" onclick="toggleTags()">🏷️ Etiquetas</button>
     <div class="toolbar-sep"></div>
-    <button class="btn primary" onclick="mostrarCalculoGlobal()">⚡ Calc. Red</button>
+    <select class="btn" onchange="setUnit(this.value)">
+        <option value="m">Metros (m)</option>
+        <option value="dm">dm</option> <option value="cm">cm</option> <option value="mm">mm</option>
+    </select>
     <div class="toolbar-sep"></div>
     <button class="btn" onclick="mostrarReporte()">📋 Lista</button>
     <button class="btn primary" onclick="prepararPDF()">📄 PDF Pro</button>
@@ -189,7 +200,7 @@
         <div class="lib-group"><div class="lib-group-title" onclick="toggleGroup('grp-cons')">Consumibles <span>▼</span></div><div class="lib-items" id="grp-cons"></div></div>
     </div>
     <div class="panel-handle handle-left" onclick="togglePanel('left-panel')">🛠️</div>
-   
+    
     <div id="main-area">
         <div id="cmd-panel">
             <button id="cmd-grid" class="btn active" onclick="toggleConfig('grid')">Grid ▦</button>
@@ -238,7 +249,7 @@
                 <div class="acc-group" id="grp-geo">
                     <div class="acc-header" onclick="toggleAccordion('grp-geo')">Geometría</div>
                     <div class="acc-content">
-                         <div class="prop-row"><label>Elevación Z1 (<span id="lbl-unit-z">m</span>)</label><input type="text" id="p-altura" onchange="updateAltura(this.value)"></div>
+                        <div class="prop-row"><label>Elevación Z1 (<span id="lbl-unit-z">m</span>)</label><input type="text" id="p-altura" onchange="updateAltura(this.value)"></div>
                         <div class="prop-row" id="row-altura-final"><label>Elevación Z2 (<span id="lbl-unit-z-final">m</span>)</label><input type="text" id="p-altura-final" onchange="updateAlturaFinal(this.value)"></div>
                         <div class="prop-row" id="row-longitud"><label>Longitud (<span id="lbl-unit">m</span>)</label><input type="text" id="p-longitud" onchange="updateLongitud(this.value)"></div>
                     </div>
@@ -265,59 +276,11 @@
     </div>
 </div>
 
-<div id="modal-resultados-global" class="modal" onclick="this.style.display='none'">
-    <div class="modal-box large" onclick="event.stopPropagation()">
-        <h3 style="border-bottom:1px solid var(--accent); padding-bottom:10px;">Cálculo Hidráulico - Mueller (Red Completa)</h3>
-        
-        <div style="display:flex; gap:10px; margin-bottom:15px; background:#222; padding:10px; border-radius:4px;">
-            <div style="flex:1">
-                <label style="font-size:0.75rem; color:#aaa;">Presión Entrada (mbar)</label>
-                <input type="number" id="glob-presion" class="btn-input" value="23" style="width:100%">
-            </div>
-            <div style="flex:1">
-                <label style="font-size:0.75rem; color:#aaa;">Tipo Gas</label>
-                <select id="glob-gas" class="btn" style="width:100%">
-                    <option value="natural">Gas Natural (S=0.6)</option>
-                    <option value="glp">GLP (S=1.52)</option>
-                </select>
-            </div>
-            <div style="display:flex; align-items:flex-end;">
-                <button class="btn primary" onclick="ejecutarCalculoGlobal()"> ▶ Calcular</button>
-            </div>
-        </div>
-
-        <div style="max-height:400px; overflow-y:auto; margin-bottom:10px;">
-            <table class="res-table">
-                <thead>
-                    <tr>
-                        <th>Tramo / Tubería</th>
-                        <th>Long (m)</th>
-                        <th>Diam</th>
-                        <th>Q Total (m³/h)</th>
-                        <th>Vel (m/s)</th>
-                        <th>ΔP (mbar)</th>
-                        <th>P. Final (mbar)</th>
-                    </tr>
-                </thead>
-                <tbody id="tabla-resultados-body">
-                    <tr><td colspan="7" style="text-align:center; padding:20px; color:#666;">Configure los parámetros y presione Calcular.<br>Asegúrese de definir el "Consumo" en los equipos finales.</td></tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <div id="res-summary" style="font-size:0.9rem; padding:10px; border-top:1px solid #444; text-align:right;"></div>
-
-        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
-            <button class="btn" onclick="document.getElementById('modal-resultados-global').style.display='none'">Cerrar</button>
-        </div>
-    </div>
-</div>
-
 <div id="modal-reporte" class="modal" onclick="this.style.display='none'"><div class="modal-box" onclick="event.stopPropagation()"><h3>Listado de Materiales</h3><table id="tabla-res" style="width:100%; font-size:0.9rem; border-collapse: collapse; color:#ccc;"></table><br><div style="display:flex; justify-content:space-between;"><button class="btn primary" onclick="exportarCSV()">Exportar CSV</button><button class="btn" onclick="document.getElementById('modal-reporte').style.display='none'">Cerrar</button></div></div></div>
 <div id="modal-guardar" class="modal"><div class="modal-box"><h3>Guardar Proyecto</h3><div style="margin-bottom:15px;">Nombre:</div><input type="text" id="input-filename" class="btn-input" value="proyecto_gas" style="width:100%; margin-bottom:15px;"><div style="display:flex; gap:10px; justify-content:flex-end;"><button class="btn" onclick="guardarEnNavegador()">Navegador</button><button class="btn primary" onclick="confirmarDescarga()">Descargar JSON</button><button class="btn" onclick="document.getElementById('modal-guardar').style.display='none'">Cancelar</button></div></div></div>
 <div id="modal-insertar" class="modal"><div class="modal-box"><h3>Insertar Elemento</h3><div class="prop-row"><label>Elemento:</label><select id="ins-select" class="btn" style="width:100%" onchange="checkInsertType()"></select></div><div class="prop-row row-h" style="margin-top:10px;"><label>Z1:</label><input type="text" id="ins-z1" class="btn-input" style="width:100px"><label>Z2 (Tub):</label><input type="text" id="ins-z2" class="btn-input" style="width:100px"></div><div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn primary" onclick="ejecutarInsercion()">Insertar</button><button class="btn" onclick="cerrarModalInsertar()">Cancelar</button></div></div></div>
 <div id="modal-pdf" class="modal"><div class="modal-box"><h3>Reporte PDF</h3><div class="prop-row"><label>Proyecto:</label><input type="text" id="pdf-nombre" class="btn-input"></div><div class="prop-row"><label>ID:</label><input type="text" id="pdf-id" class="btn-input"></div><div class="prop-row"><label>Autor:</label><input type="text" id="pdf-autor" class="btn-input"></div><div class="prop-row row-h"><label>Incluir Ecuaciones</label><input type="checkbox" id="pdf-include-eq"></div><div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn primary" onclick="generarPDF()">Generar</button><button class="btn" onclick="document.getElementById('modal-pdf').style.display='none'">Cancelar</button></div></div></div>
-<div id="modal-ecuaciones" class="modal" onclick="this.style.display='none'"><div class="modal-box" onclick="event.stopPropagation()"><h3>Fórmulas Mueller</h3><div style="background:#ddd; color:#000; padding:10px; margin-bottom:10px;"><b>Fórmula General:</b><br>Usada para el cálculo iterativo de tramos.</div></div></div>
+<div id="modal-ecuaciones" class="modal" onclick="this.style.display='none'"><div class="modal-box" onclick="event.stopPropagation()"><h3>Fórmulas Mueller</h3><div style="background:#ddd; color:#000; padding:10px; margin-bottom:10px;"><b>Baja:</b> Q = ...</div><div style="background:#ddd; color:#000; padding:10px;"><b>Media:</b> Q = ...</div></div></div>
 
 <script src="./js/config.js"></script>
 <script src="./js/utils.js"></script>
@@ -327,45 +290,33 @@
 
 <script>
     window.onload = function() {
-        try {
-            console.log("🚀 Iniciando CAD Gas v2.5 SYSTEM CALC EDITION...");
-            
-            // Verificaciones de Seguridad
-            if(typeof window.saveState !== 'function') console.warn("saveState no encontrado en core.js");
-            if(typeof renderGrid !== 'function') console.warn("renderGrid no encontrado en renderer.js");
-            
-            if(typeof window.saveState === 'function') window.saveState(); 
-            if(typeof renderGrid === 'function') renderGrid(); 
-            if(typeof renderGizmo === 'function') renderGizmo(); 
-            if(typeof initLibrary === 'function') initLibrary();
-             
-            const canvas = document.getElementById('lienzo-cad');
-            if(canvas) {
-                const rectInit = canvas.getBoundingClientRect();
-                if(window.estado && window.estado.view) {
-                    window.estado.view.x = rectInit.width/2;
-                    window.estado.view.y = rectInit.height/2; 
-                }
-                if(typeof updateTransform === 'function') updateTransform();
-            }
-            
-            setTimeout(function() {
-                const backup = localStorage.getItem('backup_cad_gas'); 
-                if (backup && confirm("Existe un proyecto guardado en memoria. ¿Deseas recuperarlo?")) { 
-                    try { 
-                        const d = JSON.parse(backup); 
-                        if(d.layers) window.layers = d.layers; 
-                        if(d.elementos) window.elementos = d.elementos; 
-                        if(typeof window.saveState === 'function') window.saveState(); 
-                        if(typeof renderScene === 'function') renderScene(); 
-                        if(typeof renderLayersUI === 'function') renderLayersUI(); 
-                    } catch(e) { console.error("Error al cargar backup:", e); } 
-                } 
-            }, 500);
-        } catch(e) {
-            console.error("CRITICAL ERROR: ", e);
-            alert("Error al iniciar la aplicación. Revise la consola (F12) para más detalles.");
+        console.log("🚀 Iniciando CAD Gas v2.0 FIXED...");
+        if(typeof window.saveState === 'function') window.saveState(); 
+        if(typeof renderGrid === 'function') renderGrid(); 
+        if(typeof renderGizmo === 'function') renderGizmo(); 
+        if(typeof initLibrary === 'function') initLibrary();
+        
+        const canvas = document.getElementById('lienzo-cad');
+        if(canvas) {
+            const rectInit = canvas.getBoundingClientRect(); 
+            window.estado.view.x = rectInit.width/2; 
+            window.estado.view.y = rectInit.height/2; 
+            if(typeof updateTransform === 'function') updateTransform();
         }
+        
+        setTimeout(function() {
+            const backup = localStorage.getItem('backup_cad_gas'); 
+            if (backup && confirm("Existe un proyecto guardado en memoria. ¿Deseas recuperarlo?")) { 
+                try { 
+                    const d = JSON.parse(backup); 
+                    window.layers = d.layers; 
+                    window.elementos = d.elementos; 
+                    window.saveState(); 
+                    if(typeof renderScene === 'function') renderScene(); 
+                    if(typeof renderLayersUI === 'function') renderLayersUI(); 
+                } catch(e) { console.error(e); } 
+            } 
+        }, 500);
     };
 </script>
 </body>
