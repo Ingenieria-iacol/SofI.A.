@@ -1,7 +1,10 @@
-// js/renderer.js - Visualización y UI (CORREGIDO Y COMPLETO)
+// js/renderer.js - Visualización y UI (Optimizado V2.5)
 
+// ==========================================
+// UTILIDADES UI GLOBALES
+// ==========================================
 window.toggleAccordion = function(id) { 
-    const el = document.getElementById(id); 
+    const el = document.getElementById(id);
     if(el) { el.classList.toggle('collapsed'); } 
 };
 
@@ -29,28 +32,35 @@ function screenToIso(sx, sy) {
     const ny = sy / window.CONFIG.tileH;
     const x = nx * Math.cos(-ang) - ny * Math.sin(-ang);
     const y = nx * Math.sin(-ang) + ny * Math.cos(-ang);
-    return { x: x, y: y }; 
+    return { x: x, y: y };
 }
 
 function updateTransform() {
     const world = document.getElementById('world-transform');
     if(world) {
         world.setAttribute('transform', `translate(${window.estado.view.x}, ${window.estado.view.y}) scale(${window.estado.view.scale})`);
-        const inpScale = document.getElementById('hud-scale-input');
-        if(inpScale) inpScale.value = Math.round(window.estado.view.scale*100);
-        const inpRot = document.getElementById('hud-rot-input');
-        if(inpRot) inpRot.value = Math.round(window.estado.view.angle * 180/Math.PI);
+        // Actualizar HUD
+        const hudScale = document.getElementById('hud-scale-input');
+        if(hudScale) hudScale.value = Math.round(window.estado.view.scale*100);
+        const hudRot = document.getElementById('hud-rot-input');
+        if(hudRot) hudRot.value = Math.round(window.estado.view.angle * 180/Math.PI);
         renderGizmo();
     }
 }
 
 function updateZoomInput(val) {
-    let v = window.parseInputFloat(val); if(isNaN(v) || v < 10) v = 10; if(v > 2000) v = 2000;
-    window.estado.view.scale = v / 100; updateTransform(); renderEffects();
+    let v = window.parseInputFloat(val);
+    if(isNaN(v) || v < 10) v = 10; if(v > 2000) v = 2000;
+    window.estado.view.scale = v / 100; updateTransform();
+    renderEffects();
 }
 
 function updateRotInput(val) {
-    let v = window.parseInputFloat(val); if(!isNaN(v)) { window.estado.view.angle = v * Math.PI / 180; updateTransform(); renderGrid(); renderScene(); renderEffects(); }
+    let v = window.parseInputFloat(val); 
+    if(!isNaN(v)) { 
+        window.estado.view.angle = v * Math.PI / 180;
+        updateTransform(); renderGrid(); renderScene(); renderEffects(); 
+    }
 }
 
 function updateZInput(val) {
@@ -67,23 +77,25 @@ function syncZInput() {
 
 function renderGrid() {
     const pMaj = document.getElementById('grid-path'); const pMin = document.getElementById('grid-minor'); const a = document.getElementById('grid-axis');
-    if(!window.CONFIG.showGrid) { if(pMaj) pMaj.setAttribute('d', ''); if(pMin) pMin.setAttribute('d', ''); if(a) a.setAttribute('d', ''); return; }
-    let dMaj="", dMin="", da=""; const sz=20; const step = 1; 
+    if(!window.CONFIG.showGrid) { pMaj.setAttribute('d', ''); pMin.setAttribute('d', ''); a.setAttribute('d', ''); return; }
+    let dMaj="", dMin="", da=""; const sz=20;
+    const step = 1; 
     for(let i=-sz; i<=sz; i+=step) {
-        let p1=isoToScreen(-sz,i,0), p2=isoToScreen(sz,i,0); let seg = `M${p1.x},${p1.y} L${p2.x},${p2.y} `;
-        if(i===0) da+=seg; else if(i%5 === 0) dMaj+=seg; else dMin+=seg; 
-    }
-    for(let i=-sz; i<=sz; i+=step) {
-        let p1=isoToScreen(i,-sz,0), p2=isoToScreen(i,sz,0); let seg = `M${p1.x},${p1.y} L${p2.x},${p2.y} `;
+        let p1=isoToScreen(-sz,i,0), p2=isoToScreen(sz,i,0);
+        let seg = `M${p1.x},${p1.y} L${p2.x},${p2.y} `;
         if(i===0) da+=seg; else if(i%5 === 0) dMaj+=seg; else dMin+=seg;
     }
-    if(pMaj) pMaj.setAttribute('d', dMaj); 
-    if(pMin) pMin.setAttribute('d', dMin); 
-    if(a) a.setAttribute('d', da);
+    for(let i=-sz; i<=sz; i+=step) {
+        let p1=isoToScreen(i,-sz,0), p2=isoToScreen(i,sz,0);
+        let seg = `M${p1.x},${p1.y} L${p2.x},${p2.y} `;
+        if(i===0) da+=seg; else if(i%5 === 0) dMaj+=seg; else dMin+=seg;
+    }
+    pMaj.setAttribute('d', dMaj); pMin.setAttribute('d', dMin); a.setAttribute('d', da);
 }
 
 function renderGizmo() {
-    const c = document.getElementById('gizmo-axes'); if(!c) return;
+    const c = document.getElementById('gizmo-axes');
+    if(!c) return;
     c.innerHTML = '';
     const ang = window.estado.view.angle;
     const axesData = [ { id:'X', x:1, y:0, z:0, col:'#f44' }, { id:'Y', x:0, y:1, z:0, col:'#4f4' }, { id:'Z', x:0, y:0, z:1, col:'#44f' } ];
@@ -103,9 +115,7 @@ function renderGizmo() {
 function renderScene() {
     const cont = document.getElementById('contenedor-elementos'); 
     const capFit = document.getElementById('capa-fittings');
-    if(!cont || !capFit) return;
-
-    cont.innerHTML = ''; capFit.innerHTML = ''; 
+    cont.innerHTML = ''; capFit.innerHTML = '';
     window.elementos.forEach(el => {
         const lay = window.layers.find(l=>l.id===el.layerId); 
         if(!lay || !lay.visible) return;
@@ -124,12 +134,15 @@ function renderScene() {
             const body = document.createElementNS("http://www.w3.org/2000/svg", "line");
             body.setAttribute("x1",s.x); body.setAttribute("y1",s.y); body.setAttribute("x2",e.x); body.setAttribute("y2",e.y);
             body.setAttribute("class","tuberia"); body.setAttribute("stroke", col); body.setAttribute("stroke-width", width);
+            
             if(el.props.tipoLinea === 'dashed') body.setAttribute("stroke-dasharray", "6,4");
             else if(el.props.tipoLinea === 'dotted') body.setAttribute("stroke-dasharray", "2,2");
             g.appendChild(body);
+            
             const midX = (s.x + e.x)/2; const midY = (s.y + e.y)/2;
             let angDeg = Math.atan2(e.y - s.y, e.x - s.x) * (180 / Math.PI);
             if (angDeg > 90 || angDeg < -90) { angDeg += 180; }
+            
             if(showLabel && (el.props.diametroNominal || el.props.material)) {
                 const matRaw = el.props.material || '';
                 const matDisplay = matRaw.charAt(0).toUpperCase() + matRaw.slice(1);
@@ -153,6 +166,7 @@ function renderScene() {
             const midX = (s.x + e.x) / 2; const midY = (s.y + e.y) / 2;
             let angDeg = Math.atan2(e.y - s.y, e.x - s.x) * (180 / Math.PI);
             if (angDeg > 90 || angDeg < -90) { angDeg += 180; }
+            
             if(showLabel) {
                 const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
                 t.setAttribute("x", midX); t.setAttribute("y", midY); t.setAttribute("class","dim-text");
@@ -168,14 +182,15 @@ function renderScene() {
             g.appendChild(t);
         } 
         else {
+             // Equipos y válvulas
              let rot = 0;
              if (el.props.dirVector) {
-                 const p1 = isoToScreen(0, 0, 0); 
+                 const p1 = isoToScreen(0, 0, 0);
                  const p2 = isoToScreen(el.props.dirVector.dx, el.props.dirVector.dy, el.props.dirVector.dz);
                  rot = Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180 / Math.PI);
              } else { rot = parseFloat(el.props.rotacion || 0); }
              g.setAttribute("transform", `translate(${s.x},${s.y}) rotate(${rot}) translate(${-s.x},${-s.y})`);
-
+             
              if (el.props.tipo === 'tanque_glp') { dibujarTanqueGLP(g, s, el, col); } 
              else if (el.icon && el.icon.trim().startsWith('<svg')) {
                  const scale = el.props.scaleFactor || 1.0;
@@ -185,11 +200,12 @@ function renderScene() {
                  iconWrapper.innerHTML = el.icon; 
                  const svgContent = iconWrapper.querySelector('svg');
                  if(svgContent) {
-                     let dx = -halfSize; 
+                     let dx = -halfSize;
                      if (el.props.anchor === 'start') dx = 0; 
                      if (el.props.anchor === 'end') dx = -size; 
                      let dy = -halfSize; 
-                     svgContent.setAttribute("width", size); svgContent.setAttribute("height", size);
+                     svgContent.setAttribute("width", size);
+                     svgContent.setAttribute("height", size);
                      svgContent.setAttribute("x", s.x + dx); svgContent.setAttribute("y", s.y + dy);
                      svgContent.setAttribute("fill", "none"); svgContent.setAttribute("stroke", col); svgContent.setAttribute("stroke-width", "2"); svgContent.setAttribute("overflow", "visible");
                      const fills = svgContent.querySelectorAll(".filled");
@@ -205,6 +221,7 @@ function renderScene() {
                  }
              }
              else {
+                // Icono fallback
                 const scaleFactor = el.props.scaleFactor || 1.0; 
                 const baseSize = (window.CONFIG.tileW * 0.25) * scaleFactor; 
                 const halfS = baseSize / 2;
@@ -226,6 +243,7 @@ function renderScene() {
         cont.appendChild(g);
     });
     
+    // Renderizado de Accesorios Automáticos (Codos, Tees generados por core.js)
     if (typeof window.analizarRed === 'function') {
         const autoFittings = window.analizarRed();
         autoFittings.forEach(fit => {
@@ -234,9 +252,11 @@ function renderScene() {
             if (fit.tipo === 'codo_auto') {
                 const scaleW = fit.width / window.CONFIG.tileW; 
                 const elbowRadius = Math.max(scaleW * 2.5, 0.02); 
+    
                 const v1 = fit.dirs[0]; const v2 = fit.dirs[1];
                 const p1 = isoToScreen(fit.x + v1.x * elbowRadius, fit.y + v1.y * elbowRadius, fit.z + v1.z * elbowRadius);
                 const p2 = isoToScreen(fit.x + v2.x * elbowRadius, fit.y + v2.y * elbowRadius, fit.z + v2.z * elbowRadius);
+               
                 const d = `M${p1.x},${p1.y} Q${s.x},${s.y} ${p2.x},${p2.y}`;
                 const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 path.setAttribute("d", d); path.setAttribute("stroke", fit.color); path.setAttribute("stroke-width", fit.width); path.setAttribute("class", "fitting-auto");
@@ -254,10 +274,12 @@ function renderScene() {
 }
 
 function renderEffects() {
-    const ch = document.getElementById('capa-hover'); if(ch) ch.innerHTML='';
-    const cs = document.getElementById('capa-seleccion'); if(cs) cs.innerHTML='';
+    const ch = document.getElementById('capa-hover'); ch.innerHTML='';
+    const cs = document.getElementById('capa-seleccion'); cs.innerHTML='';
+    
     const draw = (id, root, cls) => {
-        const el = window.elementos.find(x=>x.id===id); if(!el || el.visible === false) return; 
+        const el = window.elementos.find(x=>x.id===id);
+        if(!el || el.visible === false) return; 
         const s = isoToScreen(el.x, el.y, el.z);
         if(el.tipo === 'tuberia' || el.tipo === 'cota') {
             const e = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz);
@@ -266,28 +288,32 @@ function renderEffects() {
             l.setAttribute("class", cls); root.appendChild(l);
         } else {
             const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
-            c.setAttribute("cx",s.x); c.setAttribute("cy",s.y); c.setAttribute("r",10); 
+            c.setAttribute("cx",s.x); c.setAttribute("cy",s.y);
+            c.setAttribute("r",10); 
             c.setAttribute("class", cls); root.appendChild(c);
         }
     };
-    if(window.estado.hoverID && window.estado.tool==='select' && ch) draw(window.estado.hoverID, ch, 'hover-halo');
-    if(window.estado.selection && window.estado.selection.length > 0 && cs) {
+    if(window.estado.hoverID && window.estado.tool==='select') draw(window.estado.hoverID, ch, 'hover-halo');
+    if(window.estado.selection && window.estado.selection.length > 0) {
         window.estado.selection.forEach(id => draw(id, cs, 'sel-halo'));
     }
 }
 
 function renderInterface() {
-    const g = document.getElementById('capa-interfaz'); if(!g) return;
-    g.innerHTML='';
+    const g = document.getElementById('capa-interfaz'); g.innerHTML='';
     if(window.estado.action === 'rotate' || window.estado.action === 'pan') return;
+
     let tx = window.estado.snapped ? window.estado.snapped.x : window.estado.mouseIso.x;
     let ty = window.estado.snapped ? window.estado.snapped.y : window.estado.mouseIso.y;
     let tz = window.estado.snapped ? window.estado.snapped.z : window.estado.currentZ;
+    
     const worldPoint = isoToScreen(tx, ty, tz);
+
     if(window.estado.snapped) {
         const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
         r.setAttribute("x", worldPoint.x-5); r.setAttribute("y",worldPoint.y-5); r.setAttribute("width",10); r.setAttribute("height",10);
-        r.setAttribute("class","snap-marker"); r.setAttribute("stroke", "#00FFFF"); r.setAttribute("stroke-width", "2"); g.appendChild(r);
+        r.setAttribute("class","snap-marker");
+        r.setAttribute("stroke", "#00FFFF"); r.setAttribute("stroke-width", "2"); g.appendChild(r);
     } else {
         const path = document.createElementNS("http://www.w3.org/2000/svg","path");
         path.setAttribute("d", `M${worldPoint.x-15},${worldPoint.y} L${worldPoint.x+15},${worldPoint.y} M${worldPoint.x},${worldPoint.y-15} L${worldPoint.x},${worldPoint.y+15}`);
@@ -297,7 +323,8 @@ function renderInterface() {
 
 function initLibrary() {
     const fillGroup = (id, items) => {
-        const c = document.getElementById(id); if(!c) return; c.innerHTML='';
+        const c = document.getElementById(id);
+        if(!c) return; c.innerHTML='';
         if (!items) return; 
         items.forEach(it => {
             const div = document.createElement('div'); div.className='tool-item';
@@ -305,6 +332,7 @@ function initLibrary() {
             if(it.icon && it.icon.startsWith('<svg')) {
                 iconHtml = it.icon.replace('<svg', `<svg style="width:20px;height:20px;stroke:${it.color||'#aaa'};fill:none;"`);
             } else { iconHtml = `<div style="font-size:1.2rem;">${it.icon||'▪'}</div>`; }
+       
             div.innerHTML = `<div class="tool-icon">${iconHtml}</div><div class="tool-name">${it.name}</div>`;
             div.onclick = () => { 
                 document.querySelectorAll('.tool-item').forEach(x=>x.classList.remove('active')); div.classList.add('active'); 
@@ -317,7 +345,8 @@ function initLibrary() {
     const C = window.CATALOGO;
     if(C) {
         fillGroup('grp-mat', C.mat); fillGroup('grp-comp', C.comp); fillGroup('grp-eq', C.eq);
-        fillGroup('grp-inst', C.inst); fillGroup('grp-perif', C.perif); fillGroup('grp-cons', C.cons); 
+        fillGroup('grp-inst', C.inst); fillGroup('grp-perif', C.perif);
+        fillGroup('grp-cons', C.cons); 
     }
     renderLayersUI();
 }
@@ -336,25 +365,24 @@ function renderLayersUI() {
     }
 }
 
-// === LÓGICA DE UI FLOTANTE ===
+// === LÓGICA DE UI FLOTANTE (Propiedades REPARADA Y OPTIMIZADA) ===
 function updatePropsPanel() {
     const elId = window.estado.selection.length > 0 ? window.estado.selection[0] : null;
     const el = window.elementos.find(x => x.id === elId);
     const card = document.getElementById('prop-card');
-    
-    // Inicializar Drag & Drop solo una vez
-    if (card && !card.getAttribute('data-draggable-init')) {
+
+    // Inicializar Drag & Drop
+    if (!card.getAttribute('data-draggable-init')) {
         if(window.makeDraggable) window.makeDraggable(card);
         card.setAttribute('data-draggable-init', 'true');
     }
 
-    if (!el) { if(card) card.classList.remove('active'); return; }
+    if (!el) { card.classList.remove('active'); return; }
 
-    // Posicionar el panel cerca del objeto solo si no está activo aún (para no saltar si ya se movió)
-    if (card && !card.classList.contains('active')) {
+    // Posicionamiento inteligente
+    if (!card.classList.contains('active')) {
         const screenPos = isoToScreen(el.x, el.y, el.z);
-        // Ajuste para que no salga de pantalla
-        let finalLeft = Math.max(20, Math.min(window.innerWidth - 340, screenPos.x + 60)); 
+        let finalLeft = Math.max(20, Math.min(window.innerWidth - 340, screenPos.x + 60));
         let finalTop = Math.max(60, Math.min(window.innerHeight - 400, screenPos.y - 40));  
         card.style.left = finalLeft + 'px'; card.style.top = finalTop + 'px';
     }
@@ -366,51 +394,53 @@ function updatePropsPanel() {
     const contDatos = document.getElementById('prop-datos-tecnicos-container'); 
     const selCount = window.estado.selection.length;
 
-    if(card) card.classList.add('active'); 
-    if(f) f.style.display = 'block'; 
-    if(v) v.style.display = 'none';
+    card.classList.add('active'); 
+    f.style.display = 'block'; 
+    v.style.display = 'none';
 
+    // Manejo de multiselección
     if (selCount > 1) {
-        if(title) title.innerText = `Selección (${selCount})`;
-        if(hero) hero.innerHTML = '<div style="font-size:40px; color:#fff;">📚</div>';
-        if(contDatos) contDatos.innerHTML = `<div style="padding:10px; color:#aaa; font-size:0.8rem;">Edición múltiple no disponible para todos los campos.</div>`;
+        title.innerText = `Selección (${selCount})`;
+        hero.innerHTML = '<div style="font-size:40px; color:#fff;">📚</div>';
+        contDatos.innerHTML = `<div style="padding:10px; color:#aaa; font-size:0.8rem;">Edición múltiple no disponible para todos los campos.</div>`;
         return;
     }
 
-    if(title) title.innerText = el.name || el.tipo.toUpperCase();
-    if(hero) hero.innerHTML = `<div class="pc-hero-icon">${el.icon || '▪'}</div>`;
-    if(contDatos) contDatos.innerHTML = ''; 
+    // Configuración normal (1 elemento)
+    title.innerText = el.name || el.tipo.toUpperCase();
+    hero.innerHTML = `<div class="pc-hero-icon">${el.icon || '▪'}</div>`;
+    contDatos.innerHTML = '';
 
     // Campos Generales
-    if(document.getElementById('p-visible')) document.getElementById('p-visible').checked = (el.visible !== false); 
-    if(document.getElementById('p-show-label')) document.getElementById('p-show-label').checked = (el.props.mostrarEtiqueta === true);
-    if(document.getElementById('p-color')) document.getElementById('p-color').value = ensureHex(el.props.customColor || el.props.color || '#cccccc');
-    if(document.getElementById('p-tag')) document.getElementById('p-tag').value = el.props.tag || '';
-    if(document.getElementById('p-linestyle')) document.getElementById('p-linestyle').value = el.props.tipoLinea || 'solid';
-    if(document.getElementById('p-capa')) document.getElementById('p-capa').value = el.layerId;
-    if(document.getElementById('p-grosor')) document.getElementById('p-grosor').value = el.props.grosor || 2;
-    if(document.getElementById('p-rot')) document.getElementById('p-rot').value = el.props.rotacion || 0;
+    document.getElementById('p-visible').checked = (el.visible !== false); 
+    document.getElementById('p-show-label').checked = (el.props.mostrarEtiqueta === true);
+    document.getElementById('p-color').value = ensureHex(el.props.customColor || el.props.color || '#cccccc');
+    document.getElementById('p-tag').value = el.props.tag || '';
+    document.getElementById('p-linestyle').value = el.props.tipoLinea || 'solid';
+    document.getElementById('p-capa').value = el.layerId;
+    document.getElementById('p-grosor').value = el.props.grosor || 2;
+    document.getElementById('p-rot').value = el.props.rotacion || 0;
     
     // Geometría
     const u = window.UNITS[window.CONFIG.unit];
-    if(document.getElementById('lbl-unit-z')) document.getElementById('lbl-unit-z').innerText = u.label; 
-    if(document.getElementById('p-altura')) document.getElementById('p-altura').value = ((el.z || 0) * u.factor).toFixed(u.precision);
+    document.getElementById('lbl-unit-z').innerText = u.label; 
+    document.getElementById('p-altura').value = ((el.z || 0) * u.factor).toFixed(u.precision);
     
     const rowFinal = document.getElementById('row-altura-final'); 
-    if(document.getElementById('lbl-unit-z-final')) document.getElementById('lbl-unit-z-final').innerText = u.label;
-    
+    document.getElementById('lbl-unit-z-final').innerText = u.label;
+
     // Lógica Específica por Tipo
     if (el.tipo === 'tuberia' || el.tipo === 'cota') {
-        const finalZ = el.z + el.dz; 
-        if(document.getElementById('p-altura-final')) document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
-        if(rowFinal) rowFinal.style.display = 'flex'; 
-        if(document.getElementById('row-longitud')) document.getElementById('row-longitud').style.display = 'flex';
+        const finalZ = el.z + el.dz;
+        document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
+        rowFinal.style.display = 'flex'; 
+        document.getElementById('row-longitud').style.display = 'flex';
         const rawLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
-        if(document.getElementById('p-longitud')) document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
+        document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
         
-        // Datos Tubería (Material y Diámetro)
         if (el.tipo === 'tuberia') {
-             const accGroup = document.createElement('div'); accGroup.className = 'acc-group';
+             const accGroup = document.createElement('div');
+             accGroup.className = 'acc-group';
              accGroup.innerHTML = `
              <div class="acc-header">Datos Tubería</div>
              <div class="acc-content">
@@ -419,7 +449,7 @@ function updatePropsPanel() {
              </div>`;
              contDatos.appendChild(accGroup);
              
-             // Llenar Materiales
+             // Llenar Materiales desde Catálogo
              const sM = accGroup.querySelector('#p-mat');
              if(window.CATALOGO && window.CATALOGO.mat) {
                  window.CATALOGO.mat.forEach(m => { 
@@ -429,7 +459,7 @@ function updatePropsPanel() {
                  });
              }
              sM.onchange = (e) => window.changeMaterial(e.target.value);
-             
+
              // Llenar Diámetros
              const sD = accGroup.querySelector('#p-diam');
              const list = window.DIAMETROS_DISPONIBLES ? (window.DIAMETROS_DISPONIBLES[el.props.material] || []) : [];
@@ -441,35 +471,32 @@ function updatePropsPanel() {
              sD.onchange = (e) => window.updateDiametro(e.target.value);
         }
     } else {
-        // NO es tubería (Equipos, Válvulas, Textos)
-        if(rowFinal) rowFinal.style.display = 'none'; 
-        if(document.getElementById('row-longitud')) document.getElementById('row-longitud').style.display = 'none';
-    }
+        // Equipos y otros
+        rowFinal.style.display = 'none';
+        document.getElementById('row-longitud').style.display = 'none';
 
-    // BLOQUE UNIFICADO DE DATOS DE PROCESO (Equipos Y Tuberías)
-    if (el.tipo !== 'texto' && el.tipo !== 'cota') {
-        const divConsumo = document.createElement('div');
-        divConsumo.className = 'acc-group';
-        divConsumo.innerHTML = `
-        <div class="acc-header">Carga / Consumo</div>
-        <div class="acc-content">
-            <div class="prop-row"><label>Consumo (m³/h)</label><input type="number" id="p-caudal" value="${el.props.caudal || 0}" step="0.01" class="btn-input" style="width:100%"></div>
-            <small style="color:#777; font-size:0.7rem;">Si es tubería, la carga se suma al nodo final.</small>
-        </div>`;
-        contDatos.appendChild(divConsumo);
-        
-        const inpC = divConsumo.querySelector('#p-caudal');
-        inpC.onchange = (e) => { 
-            el.props.caudal = parseFloat(e.target.value); 
-            window.saveState(); 
-        };
-        
-        if (el.props.tipo === 'tanque_glp') generarFormularioTanque(el, contDatos);
+        if (el.tipo !== 'texto') {
+             const divConsumo = document.createElement('div');
+             divConsumo.className = 'acc-group';
+             divConsumo.innerHTML = `
+                <div class="acc-header">Datos de Proceso</div>
+                <div class="acc-content">
+                    <div class="prop-row"><label>Caudal / Consumo (m³/h)</label><input type="number" id="p-caudal" value="${el.props.caudal || 0}" step="0.1" class="btn-input" style="width:100%"></div>
+                    <small style="color:#777; font-size:0.7rem;">Requerido para el cálculo de Mueller</small>
+                </div>`;
+             contDatos.appendChild(divConsumo);
+             const inpC = divConsumo.querySelector('#p-caudal');
+             inpC.onchange = (e) => { 
+                 el.props.caudal = parseFloat(e.target.value);
+                 window.saveState(); 
+             };
+             
+             if (el.props.tipo === 'tanque_glp') generarFormularioTanque(el, contDatos);
+        }
     }
 }
 
-// === FUNCIONES DE MODAL RESULTADOS ===
-
+// === FUNCIONES DE MODAL RESULTADOS (NUEVO V2.5) ===
 window.mostrarCalculoGlobal = function() {
     const m = document.getElementById('modal-resultados-global');
     if(m) m.style.display = 'flex';
@@ -483,8 +510,14 @@ window.ejecutarCalculoGlobal = function() {
     
     body.innerHTML = '<tr><td colspan="7" style="text-align:center;">Calculando...</td></tr>';
     
-    // Timeout para permitir que la UI se renderice antes del cálculo pesado
+    // Timeout para renderizar la UI antes del bloqueo del hilo por cálculo
     setTimeout(() => {
+        // Llamada a core.js (debe estar cargado)
+        if(typeof window.calcularTodaLaRed !== 'function') {
+            body.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red">Error: Motor de cálculo (core.js) no actualizado.</td></tr>';
+            return;
+        }
+
         const res = window.calcularTodaLaRed(pIn, gas);
         
         if (res.error) {
@@ -523,9 +556,9 @@ window.ejecutarCalculoGlobal = function() {
         
         body.innerHTML = html;
         sum.innerHTML = `
-            <strong>Total Tramos:</strong> ${res.tramos.length} | 
+            <strong>Total Tramos:</strong> ${res.tramos.length} |
             <strong>Velocidad Máx:</strong> ${maxVel.toFixed(2)} m/s | 
-            <strong>Fuente Detectada:</strong> ${res.source.isSource ? 'Sí' : 'Automática (Primer nodo)'}
+            <strong>Fuente:</strong> ${res.source.isSource ? 'Manual' : 'Automática'}
         `;
     }, 100);
 }
@@ -533,12 +566,18 @@ window.ejecutarCalculoGlobal = function() {
 // Funciones Auxiliares UI
 window.togLay = (id) => { const l=window.layers.find(x=>x.id===id); l.visible=!l.visible; renderLayersUI(); renderScene(); }
 window.addLayer = () => { window.layers.push({id:'l'+Date.now(), name:'Nueva', color:'#fff', visible:true}); renderLayersUI(); }
+
 window.changeMaterial = function(newMat) {
     if (window.estado.selection.length !== 1) return;
     const el = window.elementos.find(x=>x.id===window.estado.selection[0]);
     if(window.CATALOGO && window.CATALOGO.mat) {
         const catItem = window.CATALOGO.mat.find(m => m.props.material === newMat);
-        if(catItem) { el.props.material = newMat; el.props.color = catItem.color; el.props.diametroNominal = catItem.props.diametroNominal; window.saveState(); updatePropsPanel(); renderScene(); }
+        if(catItem) { 
+            el.props.material = newMat; 
+            el.props.color = catItem.color; 
+            el.props.diametroNominal = catItem.props.diametroNominal; 
+            window.saveState(); updatePropsPanel(); renderScene(); 
+        }
     }
 }
 window.updateDiametro = function(val) { 
@@ -574,10 +613,14 @@ window.updateLongitud = function(v){
      const cur = Math.sqrt(el.dx**2+el.dy**2+el.dz**2);
      if(cur > 0.0001) { const r = l/cur; el.dx*=r; el.dy*=r; el.dz*=r; window.saveState(); renderScene(); }
 }
+
+// Helpers para Tanques (Mantenidos por compatibilidad visual)
 window.dibujarTanqueGLP = function(g,s,el,c) {
     const r=document.createElementNS("http://www.w3.org/2000/svg","rect");
     r.setAttribute("x",s.x-20); r.setAttribute("y",s.y-10); r.setAttribute("width",40); r.setAttribute("height",20); r.setAttribute("rx",5); r.setAttribute("fill","#222"); r.setAttribute("stroke",c); g.appendChild(r);
 }
-window.generarFormularioTanque = function(el, c) { /* Placeholder */ }
+window.generarFormularioTanque = function(el, c) { 
+    c.innerHTML += `<div style="padding:10px; color:#aaa;">Configuración detallada disponible en versión Pro</div>`;
+}
 
-console.log("✅ Renderer UI (RESTAURADO y FUNCIONAL) cargado");
+console.log("✅ Renderer v2.5 cargado (Optimizado y Reparado)");
