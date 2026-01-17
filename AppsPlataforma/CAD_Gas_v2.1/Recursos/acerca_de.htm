@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acerca de - CAD Gas v2.4</title>
+    <style>
+        :root {
+            --bg-color: #141414;
+            --card-bg: #1f1f1f;
+            --text-main: #e5e5e5;
+            --text-muted: #aaaaaa;
+            --accent: #0071eb;
+            --accent-hover: #005a9e;
+            --border: #333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Consolas, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding-bottom: 40px;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, var(--bg-color) 100%);
+            padding: 40px 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        h1 span {
+            color: var(--accent);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        /* Cards */
+        .feature-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 25px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            border-color: var(--accent);
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            margin-bottom: 15px;
+            color: var(--accent);
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        ul {
+            list-style: none;
+        }
+
+        li {
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            color: #ddd;
+            padding-left: 15px;
+            position: relative;
+        }
+
+        li::before {
+            content: "•";
+            color: var(--accent);
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+
+        /* Footer / Navigation */
+        .footer-nav {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .btn-back {
+            display: inline-block;
+            background-color: var(--accent);
+            color: white;
+            text-decoration: none;
+            padding: 10px 25px;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .btn-back:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .version-info {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #666;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1><span>CAD</span> GAS v2.4</h1>
+        <p class="subtitle">Plataforma integral para el diseño, modelado isométrico y cálculo hidráulico de redes de gas.</p>
+    </header>
+
+    <main class="container">
+        
+        <article class="feature-card">
+            <span class="card-icon">📐</span>
+            <h2>Diseño Isométrico 3D</h2>
+            <ul>
+                <li>Dibujo de tuberías en espacio tridimensional (X, Y, Z).</li>
+                <li>Gestión de elevación con atajos de teclado (Q/A) y montantes verticales.</li>
+                <li>Catálogo de materiales: Acero (Sch40/80/160), Cobre (K/L/M/Flex), PE-AL-PE y Polietileno.</li>
+                <li>Personalización visual: Colores por capa, estilos de línea (sólida/punteada) y grosores.</li>
+                <li>Herramientas de corte (tijera) y ajuste de precisión.</li>
+            </ul>
+        </article>
+
+        <article class="feature-card">
+            <span class="card-icon">📚</span>
+            <h2>Librería de Componentes</h2>
+            <ul>
+                <li><strong>Válvulas:</strong> Bola, Globo, Aguja, Cheque y Exceso de Flujo.</li>
+                <li><strong>Actuadas:</strong> Configuración eléctrica (Voltaje, Corriente AC/DC) y mecánica.</li>
+                <li><strong>Tanques GLP:</strong> Paramétricos (dimensiones y capacidad) con gestión dinámica de boquillas.</li>
+                <li><strong>Equipos:</strong> Medidores, Reguladores, Compresores y Correctores.</li>
+                <li>Instrumentación y soportería.</li>
+            </ul>
+        </article>
+
+        <article class="feature-card">
+            <span class="card-icon">⚡</span>
+            <h2>Automatización</h2>
+            <ul>
+                <li><strong>Auto-Fittings:</strong> Generación automática de accesorios en intersecciones.</li>
+                <li>Detección de codos (90°), Tes y Cruces según la geometría.</li>
+                <li>Inserción automática de reductores cónicos al cambiar diámetros.</li>
+                <li>Snap magnético para conexiones precisas.</li>
+            </ul>
+        </article>
+
+        <article class="feature-card">
+            <span class="card-icon">🛠️</span>
+            <h2>Herramientas de Edición</h2>
+            <ul>
+                <li>Selección múltiple (Shift + Clic) y edición en lote (Batch Editing).</li>
+                <li><strong>Arrastre Inteligente:</strong> Mueve componentes manteniendo las conexiones de tubería unidas.</li>
+                <li>Portapapeles: Copiar y Pegar grupos de elementos.</li>
+                <li>Historial completo de Deshacer/Rehacer.</li>
+            </ul>
+        </article>
+
+        <article class="feature-card">
+            <span class="card-icon">🧮</span>
+            <h2>Cálculo e Ingeniería</h2>
+            <ul>
+                <li>Cálculo hidráulico integrado basado en la <strong>Fórmula de Mueller</strong>.</li>
+                <li>Análisis de Caudal, Presión de entrada y Tipo de Gas (Natural/GLP).</li>
+                <li>Resultados instantáneos: Caída de presión (ΔP), Presión de salida y Velocidad.</li>
+                <li>Sistema de alertas por velocidad excesiva (>20 m/s).</li>
+            </ul>
+        </article>
+
+        <article class="feature-card">
+            <span class="card-icon">📄</span>
+            <h2>Reportes y Salidas</h2>
+            <ul>
+                <li><strong>PDF Profesional:</strong> Generación de planos con rótulo, isométrico y listado de materiales.</li>
+                <li><strong>Lista de Materiales (BOM):</strong> Conteo automático de tuberías, accesorios y equipos.</li>
+                <li>Exportación a <strong>CSV/Excel</strong> para presupuestos.</li>
+            </ul>
+        </article>
+
+    </main>
+
+    <div class="footer-nav">
+        <a href="../index.html" class="btn-back">⬅ Volver al Diseñador</a>
+        <div class="version-info">
+            CAD Gas v2.4 Fixed Edition • Desarrollado con tecnología Web Estándar
+        </div>
+    </div>
+
+</body>
+</html>
