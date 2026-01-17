@@ -1,4 +1,4 @@
-// js/renderer.js - Visualización y UI (Panel de Propiedades Reparado)
+// js/renderer.js - Visualización y UI (CORREGIDO Y COMPLETO)
 
 window.toggleAccordion = function(id) { 
     const el = document.getElementById(id); 
@@ -36,8 +36,10 @@ function updateTransform() {
     const world = document.getElementById('world-transform');
     if(world) {
         world.setAttribute('transform', `translate(${window.estado.view.x}, ${window.estado.view.y}) scale(${window.estado.view.scale})`);
-        document.getElementById('hud-scale-input').value = Math.round(window.estado.view.scale*100);
-        document.getElementById('hud-rot-input').value = Math.round(window.estado.view.angle * 180/Math.PI);
+        const inpScale = document.getElementById('hud-scale-input');
+        if(inpScale) inpScale.value = Math.round(window.estado.view.scale*100);
+        const inpRot = document.getElementById('hud-rot-input');
+        if(inpRot) inpRot.value = Math.round(window.estado.view.angle * 180/Math.PI);
         renderGizmo();
     }
 }
@@ -65,7 +67,7 @@ function syncZInput() {
 
 function renderGrid() {
     const pMaj = document.getElementById('grid-path'); const pMin = document.getElementById('grid-minor'); const a = document.getElementById('grid-axis');
-    if(!window.CONFIG.showGrid) { pMaj.setAttribute('d', ''); pMin.setAttribute('d', ''); a.setAttribute('d', ''); return; }
+    if(!window.CONFIG.showGrid) { if(pMaj) pMaj.setAttribute('d', ''); if(pMin) pMin.setAttribute('d', ''); if(a) a.setAttribute('d', ''); return; }
     let dMaj="", dMin="", da=""; const sz=20; const step = 1; 
     for(let i=-sz; i<=sz; i+=step) {
         let p1=isoToScreen(-sz,i,0), p2=isoToScreen(sz,i,0); let seg = `M${p1.x},${p1.y} L${p2.x},${p2.y} `;
@@ -75,7 +77,9 @@ function renderGrid() {
         let p1=isoToScreen(i,-sz,0), p2=isoToScreen(i,sz,0); let seg = `M${p1.x},${p1.y} L${p2.x},${p2.y} `;
         if(i===0) da+=seg; else if(i%5 === 0) dMaj+=seg; else dMin+=seg;
     }
-    pMaj.setAttribute('d', dMaj); pMin.setAttribute('d', dMin); a.setAttribute('d', da);
+    if(pMaj) pMaj.setAttribute('d', dMaj); 
+    if(pMin) pMin.setAttribute('d', dMin); 
+    if(a) a.setAttribute('d', da);
 }
 
 function renderGizmo() {
@@ -99,6 +103,8 @@ function renderGizmo() {
 function renderScene() {
     const cont = document.getElementById('contenedor-elementos'); 
     const capFit = document.getElementById('capa-fittings');
+    if(!cont || !capFit) return;
+
     cont.innerHTML = ''; capFit.innerHTML = ''; 
     window.elementos.forEach(el => {
         const lay = window.layers.find(l=>l.id===el.layerId); 
@@ -248,8 +254,8 @@ function renderScene() {
 }
 
 function renderEffects() {
-    const ch = document.getElementById('capa-hover'); ch.innerHTML='';
-    const cs = document.getElementById('capa-seleccion'); cs.innerHTML='';
+    const ch = document.getElementById('capa-hover'); if(ch) ch.innerHTML='';
+    const cs = document.getElementById('capa-seleccion'); if(cs) cs.innerHTML='';
     const draw = (id, root, cls) => {
         const el = window.elementos.find(x=>x.id===id); if(!el || el.visible === false) return; 
         const s = isoToScreen(el.x, el.y, el.z);
@@ -264,14 +270,15 @@ function renderEffects() {
             c.setAttribute("class", cls); root.appendChild(c);
         }
     };
-    if(window.estado.hoverID && window.estado.tool==='select') draw(window.estado.hoverID, ch, 'hover-halo');
-    if(window.estado.selection && window.estado.selection.length > 0) {
+    if(window.estado.hoverID && window.estado.tool==='select' && ch) draw(window.estado.hoverID, ch, 'hover-halo');
+    if(window.estado.selection && window.estado.selection.length > 0 && cs) {
         window.estado.selection.forEach(id => draw(id, cs, 'sel-halo'));
     }
 }
 
 function renderInterface() {
-    const g = document.getElementById('capa-interfaz'); g.innerHTML='';
+    const g = document.getElementById('capa-interfaz'); if(!g) return;
+    g.innerHTML='';
     if(window.estado.action === 'rotate' || window.estado.action === 'pan') return;
     let tx = window.estado.snapped ? window.estado.snapped.x : window.estado.mouseIso.x;
     let ty = window.estado.snapped ? window.estado.snapped.y : window.estado.mouseIso.y;
@@ -329,22 +336,22 @@ function renderLayersUI() {
     }
 }
 
-// === LÓGICA DE UI FLOTANTE (Propiedades REPARADA) ===
+// === LÓGICA DE UI FLOTANTE ===
 function updatePropsPanel() {
     const elId = window.estado.selection.length > 0 ? window.estado.selection[0] : null;
     const el = window.elementos.find(x => x.id === elId);
     const card = document.getElementById('prop-card');
     
     // Inicializar Drag & Drop solo una vez
-    if (!card.getAttribute('data-draggable-init')) {
+    if (card && !card.getAttribute('data-draggable-init')) {
         if(window.makeDraggable) window.makeDraggable(card);
         card.setAttribute('data-draggable-init', 'true');
     }
 
-    if (!el) { card.classList.remove('active'); return; }
+    if (!el) { if(card) card.classList.remove('active'); return; }
 
     // Posicionar el panel cerca del objeto solo si no está activo aún (para no saltar si ya se movió)
-    if (!card.classList.contains('active')) {
+    if (card && !card.classList.contains('active')) {
         const screenPos = isoToScreen(el.x, el.y, el.z);
         // Ajuste para que no salga de pantalla
         let finalLeft = Math.max(20, Math.min(window.innerWidth - 340, screenPos.x + 60)); 
@@ -359,47 +366,47 @@ function updatePropsPanel() {
     const contDatos = document.getElementById('prop-datos-tecnicos-container'); 
     const selCount = window.estado.selection.length;
 
-    card.classList.add('active'); 
-    f.style.display = 'block'; 
-    v.style.display = 'none';
+    if(card) card.classList.add('active'); 
+    if(f) f.style.display = 'block'; 
+    if(v) v.style.display = 'none';
 
     if (selCount > 1) {
-        title.innerText = `Selección (${selCount})`;
-        hero.innerHTML = '<div style="font-size:40px; color:#fff;">📚</div>';
-        contDatos.innerHTML = `<div style="padding:10px; color:#aaa; font-size:0.8rem;">Edición múltiple no disponible para todos los campos.</div>`;
+        if(title) title.innerText = `Selección (${selCount})`;
+        if(hero) hero.innerHTML = '<div style="font-size:40px; color:#fff;">📚</div>';
+        if(contDatos) contDatos.innerHTML = `<div style="padding:10px; color:#aaa; font-size:0.8rem;">Edición múltiple no disponible para todos los campos.</div>`;
         return;
     }
 
-    title.innerText = el.name || el.tipo.toUpperCase();
-    hero.innerHTML = `<div class="pc-hero-icon">${el.icon || '▪'}</div>`;
-    contDatos.innerHTML = ''; 
+    if(title) title.innerText = el.name || el.tipo.toUpperCase();
+    if(hero) hero.innerHTML = `<div class="pc-hero-icon">${el.icon || '▪'}</div>`;
+    if(contDatos) contDatos.innerHTML = ''; 
 
     // Campos Generales
-    document.getElementById('p-visible').checked = (el.visible !== false); 
-    document.getElementById('p-show-label').checked = (el.props.mostrarEtiqueta === true);
-    document.getElementById('p-color').value = ensureHex(el.props.customColor || el.props.color || '#cccccc');
-    document.getElementById('p-tag').value = el.props.tag || '';
-    document.getElementById('p-linestyle').value = el.props.tipoLinea || 'solid';
-    document.getElementById('p-capa').value = el.layerId;
-    document.getElementById('p-grosor').value = el.props.grosor || 2;
-    document.getElementById('p-rot').value = el.props.rotacion || 0;
+    if(document.getElementById('p-visible')) document.getElementById('p-visible').checked = (el.visible !== false); 
+    if(document.getElementById('p-show-label')) document.getElementById('p-show-label').checked = (el.props.mostrarEtiqueta === true);
+    if(document.getElementById('p-color')) document.getElementById('p-color').value = ensureHex(el.props.customColor || el.props.color || '#cccccc');
+    if(document.getElementById('p-tag')) document.getElementById('p-tag').value = el.props.tag || '';
+    if(document.getElementById('p-linestyle')) document.getElementById('p-linestyle').value = el.props.tipoLinea || 'solid';
+    if(document.getElementById('p-capa')) document.getElementById('p-capa').value = el.layerId;
+    if(document.getElementById('p-grosor')) document.getElementById('p-grosor').value = el.props.grosor || 2;
+    if(document.getElementById('p-rot')) document.getElementById('p-rot').value = el.props.rotacion || 0;
     
     // Geometría
     const u = window.UNITS[window.CONFIG.unit];
-    document.getElementById('lbl-unit-z').innerText = u.label; 
-    document.getElementById('p-altura').value = ((el.z || 0) * u.factor).toFixed(u.precision);
+    if(document.getElementById('lbl-unit-z')) document.getElementById('lbl-unit-z').innerText = u.label; 
+    if(document.getElementById('p-altura')) document.getElementById('p-altura').value = ((el.z || 0) * u.factor).toFixed(u.precision);
     
     const rowFinal = document.getElementById('row-altura-final'); 
-    document.getElementById('lbl-unit-z-final').innerText = u.label;
+    if(document.getElementById('lbl-unit-z-final')) document.getElementById('lbl-unit-z-final').innerText = u.label;
     
     // Lógica Específica por Tipo
     if (el.tipo === 'tuberia' || el.tipo === 'cota') {
         const finalZ = el.z + el.dz; 
-        document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
-        rowFinal.style.display = 'flex'; 
-        document.getElementById('row-longitud').style.display = 'flex';
+        if(document.getElementById('p-altura-final')) document.getElementById('p-altura-final').value = (finalZ * u.factor).toFixed(u.precision);
+        if(rowFinal) rowFinal.style.display = 'flex'; 
+        if(document.getElementById('row-longitud')) document.getElementById('row-longitud').style.display = 'flex';
         const rawLen = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
-        document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
+        if(document.getElementById('p-longitud')) document.getElementById('p-longitud').value = (rawLen * u.factor).toFixed(u.precision);
         
         // Datos Tubería (Material y Diámetro)
         if (el.tipo === 'tuberia') {
@@ -435,28 +442,29 @@ function updatePropsPanel() {
         }
     } else {
         // NO es tubería (Equipos, Válvulas, Textos)
-        rowFinal.style.display = 'none'; 
-        document.getElementById('row-longitud').style.display = 'none';
+        if(rowFinal) rowFinal.style.display = 'none'; 
+        if(document.getElementById('row-longitud')) document.getElementById('row-longitud').style.display = 'none';
+    }
 
-        if (el.tipo !== 'texto') {
-             const divConsumo = document.createElement('div');
-             divConsumo.className = 'acc-group';
-             divConsumo.innerHTML = `
-                <div class="acc-header">Datos de Proceso</div>
-                <div class="acc-content">
-                    <div class="prop-row"><label>Caudal / Consumo (m³/h)</label><input type="number" id="p-caudal" value="${el.props.caudal || 0}" step="0.1" class="btn-input" style="width:100%"></div>
-                    <small style="color:#777; font-size:0.7rem;">Defina > 0 si este elemento consume gas.</small>
-                </div>`;
-             contDatos.appendChild(divConsumo);
-             
-             const inpC = divConsumo.querySelector('#p-caudal');
-             inpC.onchange = (e) => { 
-                 el.props.caudal = parseFloat(e.target.value); 
-                 window.saveState(); 
-             };
-             
-             if (el.props.tipo === 'tanque_glp') generarFormularioTanque(el, contDatos);
-        }
+    // BLOQUE UNIFICADO DE DATOS DE PROCESO (Equipos Y Tuberías)
+    if (el.tipo !== 'texto' && el.tipo !== 'cota') {
+        const divConsumo = document.createElement('div');
+        divConsumo.className = 'acc-group';
+        divConsumo.innerHTML = `
+        <div class="acc-header">Carga / Consumo</div>
+        <div class="acc-content">
+            <div class="prop-row"><label>Consumo (m³/h)</label><input type="number" id="p-caudal" value="${el.props.caudal || 0}" step="0.01" class="btn-input" style="width:100%"></div>
+            <small style="color:#777; font-size:0.7rem;">Si es tubería, la carga se suma al nodo final.</small>
+        </div>`;
+        contDatos.appendChild(divConsumo);
+        
+        const inpC = divConsumo.querySelector('#p-caudal');
+        inpC.onchange = (e) => { 
+            el.props.caudal = parseFloat(e.target.value); 
+            window.saveState(); 
+        };
+        
+        if (el.props.tipo === 'tanque_glp') generarFormularioTanque(el, contDatos);
     }
 }
 
@@ -570,6 +578,6 @@ window.dibujarTanqueGLP = function(g,s,el,c) {
     const r=document.createElementNS("http://www.w3.org/2000/svg","rect");
     r.setAttribute("x",s.x-20); r.setAttribute("y",s.y-10); r.setAttribute("width",40); r.setAttribute("height",20); r.setAttribute("rx",5); r.setAttribute("fill","#222"); r.setAttribute("stroke",c); g.appendChild(r);
 }
-window.generarFormularioTanque = function(el, c) { /* Placeholder para mantener compatibilidad */ }
+window.generarFormularioTanque = function(el, c) { /* Placeholder */ }
 
-console.log("✅ Renderer UI (Panel Propiedades REPARADO) cargado");
+console.log("✅ Renderer UI (RESTAURADO y FUNCIONAL) cargado");
