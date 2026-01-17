@@ -1,4 +1,4 @@
-// js/core.js - Cerebro de la Aplicación
+// js/core.js - Cerebro de la Aplicación (CORREGIDO Y COMPLETO)
 
 window.EPSILON_GRID = 0.001; 
 window.layers = [{ id: 'l_gas', name: 'Gas', color: '#FFD700', visible: true }];
@@ -113,7 +113,7 @@ window.setTool = function(t) {
     if(activeBtn) activeBtn.classList.add('active'); 
 }
 
-// --- TOPOLOGÍA Y CÁLCULO DE RED (NUEVO) ---
+// --- TOPOLOGÍA Y CÁLCULO DE RED (MEJORADO CON CARGAS EN TUBERÍAS) ---
 window.calcularTodaLaRed = function(presionEntrada, tipoGas) {
     // 1. Construir Grafo
     const nodes = new Map(); 
@@ -138,6 +138,11 @@ window.calcularTodaLaRed = function(presionEntrada, tipoGas) {
             const start = getNode(el.x, el.y, el.z);
             const end = getNode(el.x + el.dx, el.y + el.dy, el.z + el.dz);
             const len = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+            
+            // --- NUEVA LÓGICA: Cargas en Tuberías ---
+            if (el.props.caudal && parseFloat(el.props.caudal) > 0) {
+                end.load += parseFloat(el.props.caudal);
+            }
             
             start.neighbors.push({ target: end.key, pipeId: el.id });
             end.neighbors.push({ target: start.key, pipeId: el.id });
@@ -194,7 +199,7 @@ window.calcularTodaLaRed = function(presionEntrada, tipoGas) {
 
     // 4. Calcular Presiones (Forward-calculation)
     const results = [];
-    const visitedPress = new Set(); // Para evitar ciclos infinitos si hay loops
+    const visitedPress = new Set(); 
     
     const calculatePressureRecursively = (currentNodeKey, parentKey, currentP) => {
         visitedPress.add(currentNodeKey);
@@ -604,7 +609,52 @@ window.mostrarReporte = function() {
     const table = document.getElementById('tabla-res'); if (table) { table.innerHTML = html; document.getElementById('modal-reporte').style.display = 'flex'; }
 };
 
-window.exportarCSV = function() { alert("Funcionalidad simplificada para brevedad"); }
+// === EXPORTAR CSV (FUNCIONALIDAD REAL) ===
+window.exportarCSV = function() {
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM para acentos
+    csvContent += "Categoria,Elemento,Detalle,Cantidad/Longitud (m),Caudal (m3/h)\n";
+
+    // Agrupar Tuberías
+    const tuberias = {};
+    window.elementos.forEach(el => {
+        if (!el.visible) return;
+        if (el.tipo === 'tuberia') {
+            let k = `${el.props.material} - ${el.props.diametroNominal}`;
+            const len = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+            if (!tuberias[k]) tuberias[k] = 0;
+            tuberias[k] += len;
+        } else if (el.tipo !== 'cota' && el.tipo !== 'texto') {
+            const nombre = el.name || el.props.nombre || el.tipo;
+            const detalle = el.props.modelo || el.props.tipo || "-";
+            const caudal = el.props.caudal || 0;
+            csvContent += `Equipo,${nombre},${detalle},1,${caudal}\n`;
+        }
+    });
+
+    for (const key in tuberias) {
+        csvContent += `Tuberia,${key},-,${tuberias[key].toFixed(2)},-\n`;
+    }
+
+    if (typeof window.analizarRed === 'function') {
+        const fits = window.analizarRed();
+        const fitCounts = {};
+        fits.forEach(f => {
+            const n = f.tipo === 'codo_auto' ? 'Codo 90' : (f.tipo === 'tee_auto' ? 'Tee' : 'Cruz');
+            fitCounts[n] = (fitCounts[n] || 0) + 1;
+        });
+        for (const k in fitCounts) {
+            csvContent += `Accesorio,${k},Generado Auto,${fitCounts[k]},-\n`;
+        }
+    }
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "listado_materiales_gas.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
 
 window.realizarCalculo = function() {
     if (window.estado.selection.length !== 1) { alert("Seleccione una única tubería."); return; }
@@ -621,7 +671,111 @@ window.realizarCalculo = function() {
 
 window.mostrarEcuaciones = function() { document.getElementById('modal-ecuaciones').style.display = 'flex'; }
 window.prepararPDF = function() { document.getElementById('modal-pdf').style.display = 'flex'; }
-window.generarPDF = function() { alert("Simulado"); document.getElementById('modal-pdf').style.display = 'none'; }
+
+// === GENERAR PDF (FUNCIONALIDAD REAL CON JSPDF) ===
+window.generarPDF = function() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Datos del Modal
+    const nombreProy = document.getElementById('pdf-nombre').value || "Proyecto Gas";
+    const autor = document.getElementById('pdf-autor').value || "Usuario CAD";
+    const fecha = new Date().toLocaleDateString();
+
+    // Encabezado
+    doc.setFontSize(18);
+    doc.setTextColor(0, 113, 235); // Color Accent
+    doc.text("Reporte Técnico - Instalación de Gas", 14, 20);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Proyecto: ${nombreProy}`, 14, 30);
+    doc.text(`Autor: ${autor}`, 14, 36);
+    doc.text(`Fecha: ${fecha}`, 14, 42);
+
+    // --- TABLA DE MATERIALES ---
+    doc.setFontSize(14);
+    doc.setTextColor(0);
+    doc.text("1. Listado de Materiales", 14, 55);
+
+    const rowsMat = [];
+    // Lógica de agrupación (similar a CSV)
+    const tuberias = {};
+    window.elementos.forEach(el => {
+        if (!el.visible) return;
+        if (el.tipo === 'tuberia') {
+            let k = `${el.props.material} [${el.props.diametroNominal}]`;
+            const len = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+            tuberias[k] = (tuberias[k] || 0) + len;
+        } else if (el.tipo !== 'cota' && el.tipo !== 'texto') {
+            const n = el.name || el.props.nombre || el.tipo;
+            rowsMat.push(["Equipo", n, "1 ud"]);
+        }
+    });
+    for (const key in tuberias) {
+        rowsMat.push(["Tubería", key, window.formatLength(tuberias[key])]);
+    }
+    // Fittings auto
+    if (typeof window.analizarRed === 'function') {
+        const fits = window.analizarRed();
+        const fc = {};
+        fits.forEach(f => fc[f.tipo] = (fc[f.tipo]||0)+1);
+        for(let k in fc) rowsMat.push(["Accesorio", k.replace('_auto','').toUpperCase(), fc[k]+" ud"]);
+    }
+
+    doc.autoTable({
+        startY: 60,
+        head: [['Categoría', 'Descripción', 'Cantidad']],
+        body: rowsMat,
+        theme: 'grid',
+        headStyles: { fillColor: [40, 40, 40] }
+    });
+
+    // --- TABLA DE CÁLCULO (Si se ejecutó previamente) ---
+    let finalY = doc.lastAutoTable.finalY + 15;
+    
+    // Ejecutar un cálculo rápido silencioso para tener datos frescos
+    const pres = parseFloat(document.getElementById('glob-presion').value) || 23;
+    const gas = document.getElementById('glob-gas').value || 'natural';
+    const resCalc = window.calcularTodaLaRed(pres, gas);
+
+    if (!resCalc.error) {
+        doc.text("2. Memoria de Cálculo (Mueller)", 14, finalY);
+        
+        const rowsCalc = resCalc.tramos.map(t => {
+            const pipe = window.elementos.find(x => x.id === t.pipeId);
+            const ref = pipe ? `${pipe.props.material} ${pipe.props.diametroNominal}` : "Tramo";
+            return [
+                ref,
+                t.len.toFixed(2),
+                t.flow.toFixed(2),
+                t.vel, // Velocidad
+                t.drop.toFixed(3),
+                t.pOut.toFixed(2)
+            ];
+        });
+
+        doc.autoTable({
+            startY: finalY + 5,
+            head: [['Tramo', 'Long (m)', 'Q (m³/h)', 'Vel (m/s)', 'Caída (mbar)', 'P. Final']],
+            body: rowsCalc,
+            theme: 'striped',
+            headStyles: { fillColor: [0, 113, 235] }
+        });
+        
+        // Notas finales
+        finalY = doc.lastAutoTable.finalY + 10;
+        doc.setFontSize(10);
+        doc.text(`Presión Entrada: ${pres} mbar | Gas: ${gas.toUpperCase()}`, 14, finalY);
+    } else {
+        doc.setTextColor(255, 0, 0);
+        doc.text("Error en cálculo: Verifique conectividad de la red.", 14, finalY);
+    }
+
+    doc.save(`${nombreProy.replace(/\s+/g, '_')}.pdf`);
+    document.getElementById('modal-pdf').style.display = 'none';
+};
+
 window.setUnit = function(u) {
     if (window.UNITS[u]) {
         window.CONFIG.unit = u;
@@ -631,3 +785,5 @@ window.setUnit = function(u) {
         const lbl = document.getElementById('hud-z-unit'); if(lbl) lbl.innerText = window.UNITS[u].label;
     }
 };
+
+console.log("✅ Core System (RESTAURADO y FUNCIONAL) cargado");
