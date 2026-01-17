@@ -1,310 +1,770 @@
-// js/events.js - Control de Eventos (LIMPIO)
+// js/core.js - Cerebro de la Aplicación (Fixed Multi-Select)
 
-const svg = document.getElementById('lienzo-cad');
+// ==========================================
+// 1. ESTADO GLOBAL Y VARIABLES
+// ==========================================
+window.EPSILON_GRID = 0.001; 
+window.layers = [{ id: 'l_gas', name: 'Gas', color: '#FFD700', visible: true }];
+window.activeLayerId = 'l_gas';
+window.elementos = [];
 
-// Desactivar menú contextual
-svg.addEventListener('contextmenu', e => e.preventDefault());
-
-// Mouse Down
-svg.addEventListener('mousedown', e => {
-    if(e.button === 2) { 
-        window.estado.action = 'pan'; 
-        window.estado.startAction = {x: e.clientX, y: e.clientY}; 
-        return; 
-    }
-    if(e.button === 0) { 
-        window.estado.startAction = {x: e.clientX, y: e.clientY}; 
-        // Si estamos sobre un objeto que YA está seleccionado, iniciamos potencial arrastre (Drag)
-        if (window.estado.tool === 'select' && window.estado.hoverID) { 
-            if (window.estado.selection.includes(window.estado.hoverID)) {
-                window.estado.action = 'potential_drag';
-            } else {
-                window.estado.action = 'potential_drag';
-            }
-        } else { 
-            window.estado.action = 'rotate'; 
-        } 
-    }
-});
-
-// Mouse Move
-svg.addEventListener('mousemove', e => {
-    const p = getSVGPoint(e.clientX, e.clientY);
-
-    // ROTAR
-    if(window.estado.action === 'rotate') { 
-        const mx_local = (e.clientX - window.estado.view.x) / window.estado.view.scale;
-        const my_local = (e.clientY - window.estado.view.y) / window.estado.view.scale;
-        const pivotIso = screenToIso(mx_local, my_local);
-        window.estado.view.angle += (e.clientX - window.estado.startAction.x) * 0.01;
-        const newScreenPos = isoToScreen(pivotIso.x, pivotIso.y, 0);
-        window.estado.view.x = e.clientX - (newScreenPos.x * window.estado.view.scale);
-        window.estado.view.y = e.clientY - (newScreenPos.y * window.estado.view.scale);
-        window.estado.startAction = {x: e.clientX, y: e.clientY}; 
-        renderGrid(); renderScene(); renderEffects(); updateTransform(); 
-        return; 
-    }
-
-    // PAN (Mover cámara)
-    if(window.estado.action === 'pan') { 
-        window.estado.view.x += e.clientX - window.estado.startAction.x;
-        window.estado.view.y += e.clientY - window.estado.startAction.y; 
-        window.estado.startAction = {x: e.clientX, y: e.clientY}; 
-        updateTransform(); 
-        return;
-    }
+// Estado de la herramienta y vista
+window.estado = {
+    tool: 'select', 
+    activeItem: null, 
+    mouseIso: {x:0, y:0}, 
+    snapped: null, 
+    currentZ: 0,
+    drawing: false, 
+    startPt: null, 
     
-    // Calculo de coordenadas mouse
-    const zOffsetHeight = (window.estado.currentZ || 0) * window.CONFIG.tileW * 0.7;
-    const adjustedY = p.y + zOffsetHeight;
-    const isoRaw = screenToIso(p.x, adjustedY);
-    window.estado.mouseIso = { x: isoRaw.x, y: isoRaw.y };
-
-    // SNAP
-    let sn = null; let snID = null;
-    if (window.CONFIG.enableSnap) {
-        const tol = window.CONFIG.snapRadius / window.estado.view.scale;
-        for (let i = 0; i < window.elementos.length; i++) {
-            const el = window.elementos[i];
-            if (el.visible === false) continue;
-            if (Math.abs(el.x - window.estado.mouseIso.x) > 10 && Math.abs(el.y - window.estado.mouseIso.y) > 10) continue;
-            const pts = getSnapPoints(el); 
-            for (let j = 0; j < pts.length; j++) {
-                const pt = pts[j];
-                const s = isoToScreen(pt.x, pt.y, pt.z); 
-                const distSq = (p.x - s.x)**2 + (p.y - s.y)**2;
-                if(distSq < tol**2) { sn = pt; snID = el.id; break; }
-            }
-            if (sn) break;
-        }
-    }
-    window.estado.snapped = sn;
-    if (snID) window.estado.hoverID = snID;
-
-    // DRAG (Mover objetos)
-    if (window.estado.action === 'dragging' && window.estado.selection.length > 0) {
-        const refId = window.estado.selection[0];
-        const el = window.elementos.find(x => x.id === refId);
-        if (el) {
-            const gridX = Math.round(window.estado.mouseIso.x * 10) / 10;
-            const gridY = Math.round(window.estado.mouseIso.y * 10) / 10;
-            const targetPos = window.estado.snapped || { x: gridX, y: gridY, z: el.z };
-            
-            const diffX = targetPos.x - el.x;
-            const diffY = targetPos.y - el.y;
-            let diffZ = 0;
-            if (window.estado.snapped && window.estado.snapped.z !== undefined) {
-                 diffZ = window.estado.snapped.z - el.z;
-            }
-
-            if (Math.abs(diffX) > 0.001 || Math.abs(diffY) > 0.001 || Math.abs(diffZ) > 0.001) {
-                 window.moverConConexiones(el.id, diffX, diffY, diffZ);
-                 for (let i=1; i<window.estado.selection.length; i++) {
-                     window.moverConConexiones(window.estado.selection[i], diffX, diffY, diffZ);
-                 }
-                 renderScene(); renderEffects();
-            }
-        }
-    } else if (window.estado.action === 'potential_drag') {
-            const distDrag = Math.hypot(e.clientX - window.estado.startAction.x, e.clientY - window.estado.startAction.y);
-            if(distDrag > 5) { 
-                window.estado.action = 'dragging';
-                if (window.estado.hoverID && !window.estado.selection.includes(window.estado.hoverID)) {
-                     window.estado.selection = [window.estado.hoverID];
-                     updatePropsPanel();
-                }
-                window.saveState();
-            }
-    }
+    // CAMBIO IMPORTANTE: Array para selección múltiple
+    selection: [], // Array de IDs
+    // Getter para compatibilidad con lógica antigua de "un solo item"
+    get selID() { return this.selection.length === 1 ? this.selection[0] : null; },
     
-    // HOVER SELECT / CUT
-    if(window.estado.tool === 'select' && !window.estado.action && !window.estado.snapped) {
-        const tol = 8 / window.estado.view.scale;
-        let h = null; let minD = tol; 
-        window.elementos.forEach(el => {
-            if(el.visible === false) return; 
-            const s = isoToScreen(el.x, el.y, el.z); let d = 10000;
-            if(el.tipo==='tuberia') {
-                const en = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz); const L2 = (en.x-s.x)**2 + (en.y-s.y)**2;
-                if(L2>0) { let t = ((p.x-s.x)*(en.x-s.x)+(p.y-s.y)*(en.y-s.y))/L2; t = Math.max(0, Math.min(1, t)); d = Math.sqrt((p.x - (s.x+t*(en.x-s.x)))**2 + (p.y - (s.y+t*(en.y-s.y)))**2); }
-            } else { d = Math.sqrt((p.x-s.x)**2+(p.y-s.y)**2); }
-            if(d < minD) { minD=d; h=el.id; }
-        });
-        if(h !== window.estado.hoverID) { window.estado.hoverID = h; renderEffects(); }
-    } 
-    
-    // TOOLTIP
-    const tooltip = document.getElementById('hover-tooltip');
-    if (window.estado.hoverID) {
-        const el = window.elementos.find(x => x.id === window.estado.hoverID);
-        if(el) {
-            let txt = `Z: ${formatLength(el.z)}`;
-            if (el.tipo === 'tuberia' && Math.abs(el.dz) > 0.01) { txt = `Z: ${formatLength(el.z)} ⮕ ${formatLength(el.z + el.dz)}`; }
-            tooltip.innerText = txt;
-            tooltip.style.display = 'block';
-            tooltip.style.left = (e.clientX + 15) + 'px';
-            tooltip.style.top = (e.clientY + 15) + 'px';
-        }
-    } else { tooltip.style.display = 'none'; }
+    hoverID: null,
+    view: { x: 0, y: 0, scale: 1, angle: Math.PI/4 },
+    action: null, 
+    startAction: {x:0, y:0}, 
+    snapDir: null, 
+    tempVector: null,
+    verticalPendingDir: 0, 
+    clipboard: [] // Ahora clipboard puede ser un array
+};
 
-    renderInterface();
-});
+let historyStack = [];
+let historyIndex = -1;
+const MAX_HISTORY = 50;
+let insertCoords = { x:0, y:0 }; 
 
-// Mouse Up
-window.addEventListener('mouseup', (e) => {
-    const dist = Math.abs(e.clientX - window.estado.startAction.x) + Math.abs(e.clientY - window.estado.startAction.y);
-    const isClick = dist < 5;
-    if (isClick && (window.estado.action === 'rotate' || window.estado.action === 'potential_drag')) { 
-        window.handleCanvasClick(e); 
+// ==========================================
+// 2. SISTEMA DE HISTORIAL (UNDO/REDO)
+// ==========================================
+window.saveState = function() {
+    if (historyIndex < historyStack.length - 1) {
+        historyStack = historyStack.slice(0, historyIndex + 1);
     }
-    if (window.estado.action === 'dragging') window.saveState();
-    window.estado.action = null; 
-});
+    const state = JSON.stringify(window.elementos);
+    historyStack.push(state);
+    if (historyStack.length > MAX_HISTORY) historyStack.shift();
+    historyIndex = historyStack.length - 1;
+    updateUndoRedoUI();
+}
 
-// Zoom Wheel
-svg.addEventListener('wheel', e => { 
-    e.preventDefault(); 
-    let newScale = window.estado.view.scale * (e.deltaY > 0 ? 0.9 : 1.1); 
-    if (newScale < 0.1) newScale = 0.1; if (newScale > 20) newScale = 20; 
-    
-    if(window.estado.selection.length > 0) {
-        const el = window.elementos.find(x => x.id === window.estado.selection[0]);
-        if(el) {
-            let ox = el.x, oy = el.y, oz = el.z; if(el.tipo === 'tuberia' || el.tipo === 'cota') { ox += el.dx/2; oy += el.dy/2; oz += el.dz/2; }
-            const ptLocal = isoToScreen(ox, oy, oz); 
-            const rect = svg.getBoundingClientRect();
-            window.estado.view.scale = newScale;
-            window.estado.view.x = (rect.width / 2) - (ptLocal.x * newScale); 
-            window.estado.view.y = (rect.height / 2) - (ptLocal.y * newScale);
-        }
-    } else {
-            const rect = svg.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
-            const oldScale = window.estado.view.scale;
-            window.estado.view.x = mouseX - (mouseX - window.estado.view.x) * (newScale / oldScale);
-            window.estado.view.y = mouseY - (mouseY - window.estado.view.y) * (newScale / oldScale);
-            window.estado.view.scale = newScale;
-    }
-    updateTransform(); renderEffects();
-}, { passive: false });
-
-// Teclado
-window.addEventListener('keydown', e => {
-    if(document.activeElement && (document.activeElement.classList.contains('hud-input') || document.activeElement.classList.contains('float-input'))) {
-         if(e.key === 'Escape') {
-             document.getElementById('dynamic-input-container').style.display = 'none';
-             document.getElementById('vertical-input-container').style.display = 'none';
-             window.estado.verticalPendingDir = 0;
-             document.activeElement.blur();
-         }
-         return;
-    }
-    
-    // Copy/Paste
-    if(e.ctrlKey && e.key.toLowerCase() === 'c') {
-        if(window.estado.selection.length > 0) {
-            window.estado.clipboard = window.elementos.filter(x => window.estado.selection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
-            console.log(`Copiados ${window.estado.clipboard.length} elementos`);
-        }
-        return;
-    }
-    if(e.ctrlKey && e.key.toLowerCase() === 'v') {
-        if(window.estado.clipboard && window.estado.clipboard.length > 0) {
-            const ref = window.estado.clipboard[0];
-            const dx = window.estado.mouseIso.x - ref.x;
-            const dy = window.estado.mouseIso.y - ref.y;
-            const newIds = [];
-            window.estado.clipboard.forEach(item => {
-                const copy = JSON.parse(JSON.stringify(item));
-                copy.id = Date.now() + Math.random();
-                copy.x += dx; copy.y += dy; 
-                copy.z = window.estado.currentZ;
-                window.elementos.push(copy);
-                newIds.push(copy.id);
-            });
-            window.estado.selection = newIds;
-            window.saveState(); renderScene(); renderEffects();
-        }
-        return;
-    }
-
-    if(e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); window.undo(); return; }
-    if(e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); window.redo(); return; }
-
-    // Elevación
-    const k = e.key.toLowerCase();
-    if (k === 'q' || k === 'a') {
-        let originPoint = null;
-        if (window.estado.drawing && window.estado.inicio) { 
-            originPoint = window.estado.inicio;
-        } else if (window.estado.selection.length > 0) {
-            const el = window.elementos.find(x => x.id === window.estado.selection[0]);
-            if(el) { originPoint = { x: el.x, y: el.y, z: el.z }; window.estado.drawing = true; window.estado.inicio = originPoint;
-            window.estado.activeItem = el.tipo === 'tuberia' ? { type: 'tuberia', props: el.props, color: el.props.customColor } : window.estado.activeItem;
-            }
-        } else {
-            if(k==='q') window.estado.currentZ += 1;
-            if(k==='a') window.estado.currentZ -= 1; syncZInput(); renderInterface(); return;
-        }
-
-        if (originPoint) {
-            e.preventDefault();
-            const dir = (k === 'q') ? 1 : -1;
-            window.estado.verticalPendingDir = dir;
-            const box = document.getElementById('vertical-input-container');
-            const title = document.getElementById('v-text');
-            const icon = document.getElementById('v-icon');
-            if (dir === 1) { title.innerText = "SUBIENDO"; icon.innerText = "⬆"; title.style.color = "#0f0"; }
-            else { title.innerText = "BAJANDO"; icon.innerText = "⬇"; title.style.color = "#f44"; }
-            const rect = svg.getBoundingClientRect();
-            box.style.left = (rect.width/2 - 75) + 'px'; box.style.top = (rect.height/2 - 50) + 'px';
-            box.style.display = 'flex';
-            const inp = document.getElementById('v-len'); inp.value = ''; inp.focus();
-        }
-        return;
-    }
-    
-    if(e.key==='Escape') { 
-        document.getElementById('dynamic-input-container').style.display = 'none';
-        document.getElementById('vertical-input-container').style.display = 'none';
-        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-        window.estado.drawing = false; 
-        window.setTool('select');
-        window.estado.selection = [];
-        window.cerrarPropiedades();
-    } 
-    
-    if(e.key==='Delete') window.borrarSeleccion();
-    renderInterface();
-});
-
-// Click fuera para cerrar menús
-window.onclick = function(event) {
-    if (!event.target.matches('.btn') && !event.target.closest('.layer-dropdown')) {
-        var dropdowns = document.getElementsByClassName("layer-content");
-        for (var i = 0; i < dropdowns.length; i++) { var openDropdown = dropdowns[i]; if (openDropdown.classList.contains('show')) { openDropdown.classList.remove('show'); } }
+window.undo = function() {
+    if (historyIndex > 0) {
+        historyIndex--;
+        restaurarEstado(historyStack[historyIndex]);
+        updateUndoRedoUI();
     }
 }
 
-document.getElementById('dynamic-len').addEventListener('keydown', (e) => { if (e.key === 'Enter') window.confirmarInput(); if (e.key === 'Escape') { document.getElementById('dynamic-input-container').style.display = 'none'; window.estado.tempVector = null; } e.stopPropagation(); });
+window.redo = function() {
+    if (historyIndex < historyStack.length - 1) {
+        historyIndex++;
+        restaurarEstado(historyStack[historyIndex]);
+        updateUndoRedoUI();
+    }
+}
 
-document.getElementById('v-len').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        const val = parseInputFloat(e.target.value);
-        if (!isNaN(val) && val > 0 && window.estado.verticalPendingDir !== 0 && window.estado.inicio) {
-            const u = window.UNITS[window.CONFIG.unit];
-            const lenMeters = val / u.factor; const dz = lenMeters * window.estado.verticalPendingDir;
-            let props = {};
-            if (window.estado.activeItem && window.estado.activeItem.type === 'tuberia') { props = JSON.parse(JSON.stringify(window.estado.activeItem.props)); } else { props = { material: 'acero', diametroNominal: '1"' }; }
-            const col = window.estado.activeItem?.color || '#ccc';
-            window.addEl({ tipo: 'tuberia', x: window.estado.inicio.x, y: window.estado.inicio.y, z: window.estado.inicio.z, dx: 0, dy: 0, dz: dz, props: props, customColor: col });
-            window.estado.inicio.z += dz; window.estado.currentZ = window.estado.inicio.z;
-            syncZInput();
-            document.getElementById('vertical-input-container').style.display = 'none';
-            window.estado.verticalPendingDir = 0;
-            renderScene(); renderInterface(); 
+function restaurarEstado(jsonState) {
+    window.elementos = JSON.parse(jsonState);
+    window.estado.selection = []; // Limpiar selección al deshacer para evitar errores
+    if(typeof renderScene === 'function') renderScene();
+    if(typeof updatePropsPanel === 'function') updatePropsPanel();
+}
+
+function updateUndoRedoUI() {
+    const btnUndo = document.getElementById('btn-undo');
+    const btnRedo = document.getElementById('btn-redo');
+    if(btnUndo) btnUndo.disabled = (historyIndex <= 0);
+    if(btnRedo) btnRedo.disabled = (historyIndex >= historyStack.length - 1);
+}
+
+// ==========================================
+// 3. GESTIÓN DE ELEMENTOS (CRUD)
+// ==========================================
+window.addEl = function(data) { 
+    // Heredar diámetro si hay un item activo seleccionado previamente
+    if(!data.props.diametroNominal && window.estado.activeItem?.props?.diametroNominal) { 
+        data.props.diametroNominal = window.estado.activeItem.props.diametroNominal; 
+    }
+    window.elementos.push({
+        id: Date.now(), 
+        layerId: window.activeLayerId, 
+        visible: true, 
+        ...data
+    }); 
+    window.saveState(); 
+    if(typeof renderScene === 'function') renderScene(); 
+}
+
+window.borrarSeleccion = function() { 
+    if (window.estado.selection.length === 0) return;
+    
+    // Filtrar eliminando TODOS los IDs seleccionados
+    window.elementos = window.elementos.filter(x => !window.estado.selection.includes(x.id));
+    
+    window.estado.selection = []; // Limpiar selección
+    window.saveState(); 
+    window.cerrarPropiedades(); // Cerrar panel
+    if(typeof renderScene === 'function') renderScene(); 
+}
+
+window.setTool = function(t) { 
+    window.estado.tool = (t==='cota'||t==='texto'||t==='select'||t==='insert'||t==='cut') ? t : 'draw'; 
+    window.estado.drawing = false; 
+    
+    // Al cambiar de herramienta, limpiamos selección
+    window.estado.selection = [];
+    window.cerrarPropiedades();
+
+    if(typeof renderEffects === 'function') renderEffects(); 
+    
+    document.querySelectorAll('.tool-item').forEach(x => x.classList.remove('active'));
+    ['btn-select','btn-cota','btn-texto', 'btn-insert','btn-cut'].forEach(id => { 
+        const btn = document.getElementById(id); 
+        if(btn) btn.classList.remove('active'); 
+    });
+    const activeBtn = document.getElementById('btn-'+t);
+    if(activeBtn) activeBtn.classList.add('active'); 
+}
+
+// ==========================================
+// 4. LÓGICA DE INGENIERÍA
+// ==========================================
+window.moverConConexiones = function(idElemento, dx, dy, dz) {
+    const el = window.elementos.find(e => e.id === idElemento); if (!el) return;
+    const oldStart = { x: el.x, y: el.y, z: el.z };
+    let oldEnd = null;
+    if (el.tipo === 'tuberia' || el.tipo === 'cota') { 
+        oldEnd = { x: el.x + el.dx, y: el.y + el.dy, z: el.z + el.dz }; 
+    }
+    
+    // Mover elemento principal
+    el.x += dx; el.y += dy; el.z += dz;
+
+    // Mover vecinos conectados (solo si NO están en la selección actual, para evitar doble movimiento)
+    // Si muevo 2 tubos conectados seleccionados a la vez, el loop principal de "dragging" ya mueve ambos.
+    // Esta función busca arrastrar cosas NO seleccionadas que estén pegadas.
+    const check = window.arePointsEqual;
+    
+    window.elementos.forEach(vecino => {
+        if (vecino.id === idElemento || vecino.visible === false) return;
+        // Si el vecino TAMBIÉN está seleccionado, no lo arrastramos "pasivamente", se moverá "activamente"
+        if (window.estado.selection.includes(vecino.id)) return;
+
+        if (check({x: vecino.x, y: vecino.y, z: vecino.z}, oldStart)) { 
+            vecino.x += dx; vecino.y += dy; vecino.z += dz; 
+        } else if (vecino.tipo === 'tuberia' || vecino.tipo === 'cota') {
+            const vecEnd = { x: vecino.x + vecino.dx, y: vecino.y + vecino.dy, z: vecino.z + vecino.dz };
+            if (check(vecEnd, oldStart)) { vecino.dx += dx; vecino.dy += dy; vecino.dz += dz; }
+        }
+        if (oldEnd) {
+            if (check({x: vecino.x, y: vecino.y, z: vecino.z}, oldEnd)) { 
+                vecino.x += dx; vecino.y += dy; vecino.z += dz; 
+            } else if (vecino.tipo === 'tuberia' || vecino.tipo === 'cota') {
+                const vecEnd = { x: vecino.x + vecino.dx, y: vecino.y + vecino.dy, z: vecino.z + vecino.dz };
+                if (check(vecEnd, oldEnd)) { vecino.dx += dx; vecino.dy += dy; vecino.dz += dz; }
+            }
+        }
+    });
+}
+
+window.cortarTuberia = function(idTuberia, xCorte, yCorte, zCorte) {
+    const el = window.elementos.find(e => e.id === idTuberia); if(!el || el.tipo !== 'tuberia') return;
+    const finalOriginal = { x: el.x + el.dx, y: el.y + el.dy, z: el.z + el.dz };
+    const propsOriginal = JSON.parse(JSON.stringify(el.props));
+    el.dx = xCorte - el.x; el.dy = yCorte - el.y; el.dz = zCorte - el.z;
+    const dx2 = finalOriginal.x - xCorte; 
+    const dy2 = finalOriginal.y - yCorte; 
+    const dz2 = finalOriginal.z - zCorte;
+    window.addEl({ 
+        tipo: 'tuberia', 
+        x: xCorte, y: yCorte, z: zCorte, 
+        dx: dx2, dy: dy2, dz: dz2, 
+        props: propsOriginal, 
+        layerId: el.layerId, 
+        customColor: el.props.customColor 
+    });
+}
+
+window.analizarRed = function() {
+    const mapNodos = new Map(); 
+    const accesorios = [];
+    window.elementos.forEach(el => {
+        if (el.tipo !== 'tuberia' || el.visible === false) return;
+        if (isNaN(el.x) || isNaN(el.dx)) return; 
+        const kStart = window.getKey(el.x, el.y, el.z); 
+        const kEnd = window.getKey(el.x + el.dx, el.y + el.dy, el.z + el.dz);
+        const len = Math.hypot(el.dx, el.dy, el.dz); if (len < 0.001) return;
+        let width = 2; 
+        if (el.props.diametroNominal) width = window.parseDiameterToScale(el.props.diametroNominal);
+        const dir = { x: el.dx/len, y: el.dy/len, z: el.dz/len }; 
+        const dirInv = { x: -dir.x, y: -dir.y, z: -dir.z };
+        const col = el.props.customColor || el.props.color || '#ccc';
+        if (!mapNodos.has(kStart)) mapNodos.set(kStart, []); mapNodos.get(kStart).push({ dir: dir, width: width, color: col });
+        if (!mapNodos.has(kEnd)) mapNodos.set(kEnd, []); mapNodos.get(kEnd).push({ dir: dirInv, width: width, color: col });
+    });
+
+    mapNodos.forEach((conns, key) => {
+        const parts = key.split('_').map(p => parseFloat(p) * window.EPSILON_GRID);
+        const x = parts[0], y = parts[1], z = parts[2]; 
+        const baseProps = conns[0] || { color: '#ccc', width: 2 };
+        if (conns.length === 2) {
+            const c1 = conns[0]; const c2 = conns[1];
+            const dot = c1.dir.x * c2.dir.x + c1.dir.y * c2.dir.y + c1.dir.z * c2.dir.z;
+            const maxWidth = Math.max(c1.width, c2.width);
+            if (dot < -0.99 && Math.abs(c1.width - c2.width) > 0.5) { 
+                accesorios.push({ tipo: 'reductor_auto', x, y, z, dirs: [c1.dir, c2.dir], color: baseProps.color, width: maxWidth }); 
+            } else if (dot > -0.99 && dot < 0.99) { 
+                accesorios.push({ tipo: 'codo_auto', x, y, z, dirs: [c1.dir, c2.dir], color: baseProps.color, width: maxWidth }); 
+            }
+        } else if (conns.length === 3) { 
+            accesorios.push({ tipo: 'tee_auto', x, y, z, dirs: conns.map(c=>c.dir), color: baseProps.color, width: baseProps.width }); 
+        } else if (conns.length === 4) { 
+            accesorios.push({ tipo: 'cruz_auto', x, y, z, dirs: conns.map(c=>c.dir), color: baseProps.color, width: baseProps.width }); 
+        }
+    });
+    return accesorios;
+}
+
+// ==========================================
+// 5. HELPERS DE INTERACCIÓN (Inputs y Clicks)
+// ==========================================
+window.mostrarInputDinámico = function(xScreen, yScreen, distActual, vectorData) {
+    const box = document.getElementById('dynamic-input-container'); 
+    const input = document.getElementById('dynamic-len');
+    window.estado.tempVector = { ...vectorData, distOriginal: distActual };
+    box.style.left = (xScreen + 15) + 'px'; 
+    box.style.top = (yScreen + 15) + 'px'; 
+    box.style.display = 'flex';
+    const u = window.UNITS[window.CONFIG.unit]; 
+    const valDisplay = distActual * u.factor;
+    input.value = valDisplay.toFixed(u.precision); 
+    input.focus(); input.select();
+}
+
+window.confirmarInput = function() {
+    const box = document.getElementById('dynamic-input-container'); 
+    const input = document.getElementById('dynamic-len');
+    const val = window.parseInputFloat(input.value); 
+    
+    if (window.estado.tempVector && !isNaN(val) && val > 0) {
+        let { dx, dy, dz, distOriginal } = window.estado.tempVector;
+        if (distOriginal < 0.001) distOriginal = 1; 
+        const valInMeters = window.parseToMeters(val); 
+        const ratio = valInMeters / distOriginal;
+        dx *= ratio; dy *= ratio; dz *= ratio;
+        
+        const tipo = window.estado.tool === 'cota' ? 'cota' : 'tuberia';
+        const props = window.estado.tool === 'cota' ? {} : JSON.parse(JSON.stringify(window.estado.activeItem.props));
+        
+        if(window.estado.activeItem?.props?.diametroNominal && !props.diametroNominal) { 
+            props.diametroNominal = window.estado.activeItem.props.diametroNominal; 
+        }
+        
+        window.addEl({ tipo, x: window.estado.inicio.x, y: window.estado.inicio.y, z: window.estado.inicio.z, dx, dy, dz, props });
+        
+        if (window.estado.tool !== 'cota') { 
+            window.estado.inicio = { x: window.estado.inicio.x + dx, y: window.estado.inicio.y + dy, z: window.estado.inicio.z + dz }; 
+            window.estado.drawing = true; 
+        } else { 
+            window.estado.drawing = false; 
         }
     }
-});
+    box.style.display = 'none'; window.estado.tempVector = null; 
+    if(typeof renderScene === 'function') renderScene(); 
+}
 
-console.log("✅ Events cargado OK (Sin errores)");
+function selectElementAt(mouseX, mouseY) {
+    if(!window.elementos.length) return null;
+    
+    // Convertir coordenadas de pantalla (Mouse) a coordenadas del Mundo (SVG interno)
+    const worldMx = (mouseX - window.estado.view.x) / window.estado.view.scale;
+    const worldMy = (mouseY - window.estado.view.y) / window.estado.view.scale;
+    
+    const threshold = 10 / window.estado.view.scale; 
+    const candidates = [];
+    
+    window.elementos.forEach(el => {
+        if(el.visible === false) return;
+        const s = isoToScreen(el.x, el.y, el.z);
+        let dist = 1000;
+        
+        if(el.tipo === 'tuberia' || el.tipo === 'cota') {
+            const e = isoToScreen(el.x+el.dx, el.y+el.dy, el.z+el.dz);
+            // Distancia punto a segmento
+            const l2 = (e.x-s.x)**2 + (e.y-s.y)**2;
+            if(l2 === 0) dist = Math.hypot(worldMx-s.x, worldMy-s.y);
+            else {
+                let t = ((worldMx-s.x)*(e.x-s.x) + (worldMy-s.y)*(e.y-s.y)) / l2;
+                t = Math.max(0, Math.min(1, t));
+                dist = Math.hypot(worldMx - (s.x + t*(e.x-s.x)), worldMy - (s.y + t*(e.y-s.y)));
+            }
+        } else {
+            // Distancia punto a punto
+            dist = Math.hypot(worldMx - s.x, worldMy - s.y);
+        }
+        
+        if(dist < threshold) {
+            candidates.push({ el: el, dist: dist });
+        }
+    });
+    
+    if(candidates.length === 0) return null;
+    
+    // Ordenar candidatos por proximidad (reverse para que el último dibujado tenga prioridad visual, o por dist)
+    // Aquí priorizamos el más cercano al mouse
+    candidates.sort((a,b) => a.dist - b.dist);
+
+    // Selección Cíclica: Si el objeto top ya está seleccionado, buscar el siguiente
+    const alreadySelected = candidates.find(c => window.estado.selection.includes(c.el.id));
+    if (alreadySelected && candidates.length > 1) {
+        // En lógica de clic simple, rotaríamos. 
+        // En selección múltiple, retornamos el mejor candidato y handleCanvasClick decide.
+        // Retornaremos el mejor candidato absoluto
+        return candidates[0].el.id;
+    }
+    
+    return candidates[0].el.id;
+}
+
+window.handleCanvasClick = function(e) {
+    if(document.getElementById('dynamic-input-container').style.display === 'flex' || 
+       document.getElementById('vertical-input-container').style.display === 'flex') return;
+    
+    // CORTAR
+    if(window.estado.tool === 'cut' && window.estado.hoverID) {
+        const tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
+        const ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
+        const tz = window.estado.snapped ? window.estado.snapped.z : window.estado.currentZ;
+        window.cortarTuberia(window.estado.hoverID, tx, ty, tz); 
+        window.saveState(); 
+        if(typeof renderScene === 'function') renderScene();
+        return;
+    }
+    
+    // INSERTAR
+    if(window.estado.tool === 'insert') {
+        const tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
+        const ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
+        const tz = window.estado.snapped ? window.estado.snapped.z : window.estado.currentZ;
+        window.abrirModalInsertar(tx, ty, tz); 
+        return; 
+    }
+    
+    // SELECCIONAR (Soporte SHIFT para Múltiple)
+    if(window.estado.tool === 'select') { 
+        const rect = document.getElementById('lienzo-cad').getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        
+        const pickedID = selectElementAt(mx, my);
+        
+        if (pickedID) {
+            if (e.shiftKey) {
+                // Toggle selección
+                const idx = window.estado.selection.indexOf(pickedID);
+                if (idx !== -1) {
+                    window.estado.selection.splice(idx, 1);
+                } else {
+                    window.estado.selection.push(pickedID);
+                }
+            } else {
+                // Si no hay shift, y clicamos uno que NO está seleccionado, limpiar y seleccionar ese.
+                // Si clicamos uno que YA está seleccionado (y es parte de un grupo), no hacer nada (para permitir drag de grupo)
+                // Pero aquí es 'Click' (mouseup), así que si fue un click simple sin arrastre, reseteamos a solo ese.
+                window.estado.selection = [pickedID];
+            }
+            
+            // Actualizar Z actual al del último objeto tocado
+            const el = window.elementos.find(x => x.id === pickedID);
+            if(el) { 
+                window.estado.currentZ = el.z; 
+                if(typeof syncZInput === 'function') syncZInput(); 
+            }
+        } else {
+            // Clic en vacío: Limpiar si no hay shift
+            if (!e.shiftKey) {
+                window.estado.selection = [];
+            }
+        }
+        
+        if(typeof updatePropsPanel === 'function') updatePropsPanel(); 
+        if(typeof renderEffects === 'function') renderEffects();
+        return; 
+    }
+    
+    // DIBUJAR
+    let tx = window.estado.snapped ? window.estado.snapped.x : Math.round(window.estado.mouseIso.x*10)/10;
+    let ty = window.estado.snapped ? window.estado.snapped.y : Math.round(window.estado.mouseIso.y*10)/10;
+    let tz = window.estado.snapped ? window.estado.snapped.z : window.estado.currentZ;
+    
+    if (window.estado.drawing && window.estado.inicio && !window.estado.snapped) {
+        const gridX = Math.round(window.estado.mouseIso.x * 10) / 10;
+        const gridY = Math.round(window.estado.mouseIso.y * 10) / 10;
+        const dx = gridX - window.estado.inicio.x; 
+        const dy = gridY - window.estado.inicio.y; 
+        const dz = window.estado.currentZ - window.estado.inicio.z;
+        const th = 0.5;
+        if (Math.abs(dy) < th && Math.abs(dz) < th) { ty = window.estado.inicio.y; tz = window.estado.inicio.z; tx = gridX; } 
+        else if (Math.abs(dx) < th && Math.abs(dz) < th) { tx = window.estado.inicio.x; tz = window.estado.inicio.z; ty = gridY; } 
+        else if (Math.abs(dx) < th && Math.abs(dy) < th) { tx = window.estado.inicio.x; ty = window.estado.inicio.y; tz = window.estado.inicio.z; }
+        else { tx = gridX; ty = gridY; }
+    }
+
+    if(window.estado.tool === 'texto') { 
+        const txt = prompt("Texto:", "Etiqueta"); 
+        if(txt) { window.addEl({tipo:'texto', x:tx, y:ty, z:tz, props:{text:txt}}); } 
+        return; 
+    }
+    
+    if(window.estado.activeItem?.type === 'tuberia' || window.estado.tool === 'cota') {
+        if(!window.estado.drawing) { 
+            window.estado.drawing = true; 
+            if (window.estado.snapped) { 
+                window.estado.currentZ = tz; 
+                if(typeof syncZInput === 'function') syncZInput(); 
+            }
+            window.estado.inicio = {x:tx, y:ty, z:tz}; 
+        } else {
+            let dx=tx-window.estado.inicio.x, dy=ty-window.estado.inicio.y, dz=tz-window.estado.inicio.z;
+            const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            if(dist > 0.01) { 
+                window.mostrarInputDinámico(window.event.clientX, window.event.clientY, dist, {dx, dy, dz}); 
+            } else { 
+                window.estado.drawing = false; 
+            }
+        }
+    } else if (window.estado.activeItem) {
+        const props = JSON.parse(JSON.stringify(window.estado.activeItem.props)); 
+        if (window.estado.snapDir && (window.estado.activeItem.type === 'valvula' || window.estado.activeItem.type === 'equipo')) { 
+            props.dirVector = window.estado.snapDir; 
+            delete props.rotacion; 
+        }
+        window.addEl({tipo: window.estado.activeItem.type, x:tx, y:ty, z:tz, props, icon: window.estado.activeItem.icon});
+    }
+    if(typeof renderInterface === 'function') renderInterface();
+}
+
+// Funciones de Modal Insertar y Guardar (sin cambios mayores)
+window.abrirModalInsertar = function(x, y, zDefault) {
+    insertCoords = { x, y };
+    const sel = document.getElementById('ins-select'); sel.innerHTML = '';
+    const groupNames = { mat: 'Materiales (Tuberías)', comp: 'Componentes', eq: 'Equipos', inst: 'Instrumentos', perif: 'Periféricos / Válvulas', cons: 'Consumibles' };
+    
+    if (window.CATALOGO) {
+        Object.keys(window.CATALOGO).forEach(key => {
+            const group = document.createElement('optgroup'); group.label = groupNames[key] || key.toUpperCase();
+            window.CATALOGO[key].forEach(item => { 
+                const opt = document.createElement('option'); 
+                opt.value = key + '|' + item.id; 
+                opt.innerText = item.name; 
+                opt.setAttribute('data-type', item.type); 
+                group.appendChild(opt); 
+            });
+            sel.appendChild(group);
+        });
+    }
+    
+    const u = window.UNITS[window.CONFIG.unit]; 
+    document.getElementById('ins-z1').value = (zDefault * u.factor).toFixed(u.precision); 
+    document.getElementById('ins-z2').value = (zDefault * u.factor).toFixed(u.precision);
+    window.checkInsertType(); 
+    document.getElementById('modal-insertar').style.display = 'flex';
+}
+
+window.cerrarModalInsertar = function() { 
+    document.getElementById('modal-insertar').style.display = 'none'; 
+    window.setTool('select'); 
+}
+
+window.checkInsertType = function() {
+    const sel = document.getElementById('ins-select'); if(!sel.options.length) return;
+    const opt = sel.options[sel.selectedIndex]; const type = opt.getAttribute('data-type');
+    const rowZ2 = document.getElementById('row-ins-z2'); 
+    if(type === 'tuberia') rowZ2.style.display = 'flex'; else rowZ2.style.display = 'none';
+}
+
+window.ejecutarInsercion = function() {
+    const sel = document.getElementById('ins-select'); const valParts = sel.value.split('|'); const groupKey = valParts[0]; const itemId = valParts[1];
+    const itemDef = window.CATALOGO[groupKey].find(x => x.id === itemId); if(!itemDef) return;
+    const rawZ1 = window.parseInputFloat(document.getElementById('ins-z1').value); 
+    const rawZ2 = window.parseInputFloat(document.getElementById('ins-z2').value);
+    const u = window.UNITS[window.CONFIG.unit]; 
+    const z1Meters = rawZ1 / u.factor; 
+    const z2Meters = rawZ2 / u.factor;
+    const props = JSON.parse(JSON.stringify(itemDef.props));
+    
+    if (itemDef.type === 'tuberia' && Math.abs(z1Meters - z2Meters) > 0.001) { 
+        window.addEl({ tipo: 'tuberia', x: insertCoords.x, y: insertCoords.y, z: z1Meters, dx: 0, dy: 0, dz: z2Meters - z1Meters, props: props, layerId: window.activeLayerId, customColor: itemDef.color }); 
+    } else { 
+        window.addEl({ tipo: itemDef.type, x: insertCoords.x, y: insertCoords.y, z: z1Meters, dx: 0, dy: 0, dz: 0, props: props, icon: itemDef.icon, layerId: window.activeLayerId, color: itemDef.color }); 
+    }
+    document.getElementById('modal-insertar').style.display = 'none'; 
+    window.setTool('select'); 
+    if(typeof renderScene === 'function') renderScene();
+}
+
+window.guardarProyecto = function() { 
+    document.getElementById('modal-guardar').style.display = 'flex'; 
+    document.getElementById('input-filename').focus(); 
+}
+
+window.confirmarDescarga = function() {
+    let nombre = document.getElementById('input-filename').value || 'proyecto_gas'; 
+    if (!nombre.endsWith('.json')) { nombre += '.json'; }
+    const datos = JSON.stringify({ layers: window.layers, elementos: window.elementos });
+    const blob = new Blob([datos], { type: "application/json" }); 
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = nombre; a.click();
+    URL.revokeObjectURL(url); 
+    document.getElementById('modal-guardar').style.display = 'none';
+}
+
+window.guardarEnNavegador = function() { 
+    try { 
+        const datos = JSON.stringify({ layers: window.layers, elementos: window.elementos }); 
+        localStorage.setItem('backup_cad_gas', datos); 
+        const msg = document.getElementById('msg-guardado'); 
+        if(msg) {
+            msg.style.display = 'block'; 
+            setTimeout(() => { msg.style.display = 'none'; document.getElementById('modal-guardar').style.display = 'none'; }, 1500); 
+        }
+    } catch (e) { alert("Error: Almacenamiento lleno."); } 
+}
+
+window.cargarProyecto = function(inputElement){ 
+    if (!inputElement.files.length) return;
+    const r = new FileReader(); 
+    r.onload = function(e) {
+        try {
+            const d = JSON.parse(e.target.result); 
+            if(d.layers) window.layers = d.layers; 
+            if(d.elementos) window.elementos = d.elementos; 
+            window.saveState(); 
+            if(typeof renderScene === 'function') renderScene(); 
+            if(typeof renderLayersUI === 'function') renderLayersUI();
+        } catch(err) { alert("Error al leer el archivo."); }
+    }; 
+    r.readAsText(inputElement.files[0]); 
+}
+
+window.limpiarTodo = function(){ 
+    if(confirm("¿Estás seguro de borrar todo?")){
+        window.elementos = []; window.saveState(); 
+        window.cerrarPropiedades();
+        if(typeof renderScene === 'function') renderScene();
+    } 
+}
+
+// Funciones de Reporte y PDF (Simplificadas en Core, UI en Renderer)
+window.mostrarReporte = function() {
+    // ... (Lógica igual, solo asegúrate de que exista la tabla)
+    const tuberias = {}; const accesorios = {}; const equipos = {};
+    window.elementos.forEach(el => {
+        if (el.visible === false) return;
+        if (el.tipo === 'tuberia') {
+            let matStr = el.props.material ? el.props.material.replace('_', ' ').toUpperCase() : "GENÉRICO";
+            let diamStr = el.props.diametroNominal || "?";
+            let key = `${matStr} [${diamStr}]`;
+            let len = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+            tuberias[key] = (tuberias[key] || 0) + len;
+        } else if (el.tipo === 'cota' || el.tipo === 'texto') {
+            return;
+        } else {
+            let cat = "Otros";
+            if (el.tipo === 'valvula') cat = "Válvulas";
+            if (el.props.tipo === 'tanque_glp') cat = "Tanques";
+            if (el.props.tipo === 'accesorio') cat = "Accesorios";
+            let name = el.name || el.props.nombre || el.tipo;
+            let det = el.props.modelo || el.props.diametro || "";
+            let key = `${name} ${det}`;
+            equipos[cat] = equipos[cat] || {}; equipos[cat][key] = (equipos[cat][key] || 0) + 1;
+        }
+    });
+
+    // ... (Cálculo de fittings autos)
+    if (typeof window.analizarRed === 'function') {
+        const autoFittings = window.analizarRed();
+        autoFittings.forEach(fit => {
+            let name = "Accesorio Auto";
+            if (fit.tipo === 'codo_auto') name = "Codo 90°";
+            else if (fit.tipo === 'tee_auto') name = "Tee Recta";
+            else if (fit.tipo === 'reductor_auto') name = "Reductor";
+            else if (fit.tipo === 'cruz_auto') name = "Cruz";
+            let key = `${name} (Generado)`;
+            accesorios[key] = (accesorios[key] || 0) + 1;
+        });
+    }
+
+    let html = "";
+    if (Object.keys(tuberias).length > 0) {
+        html += `<tr class="table-header"><td colspan="2">🔵 TUBERÍAS Y DUCTOS</td></tr>`;
+        for (let key in tuberias) html += `<tr><td>${key}</td><td align='right'><b>${window.formatLength(tuberias[key])}</b></td></tr>`;
+    }
+    let hayAccesorios = Object.keys(accesorios).length > 0 || (equipos['Accesorios'] && Object.keys(equipos['Accesorios']).length > 0);
+    if (hayAccesorios) {
+        html += `<tr class="table-header"><td colspan="2">🟠 ACCESORIOS Y CONEXIONES</td></tr>`;
+        for (let key in accesorios) html += `<tr><td>${key}</td><td align='right'>${accesorios[key]} und</td></tr>`;
+        if (equipos['Accesorios']) {
+            for (let key in equipos['Accesorios']) html += `<tr><td>${key}</td><td align='right'>${equipos['Accesorios'][key]} und</td></tr>`;
+            delete equipos['Accesorios']; 
+        }
+    }
+    for (let cat in equipos) {
+        html += `<tr class="table-header"><td colspan="2">🟢 ${cat.toUpperCase()}</td></tr>`;
+        for (let key in equipos[cat]) html += `<tr><td>${key}</td><td align='right'>${equipos[cat][key]} und</td></tr>`;
+    }
+
+    const table = document.getElementById('tabla-res');
+    if (table) { table.innerHTML = html; document.getElementById('modal-reporte').style.display = 'flex'; }
+};
+
+window.exportarCSV = function() {
+    let csvContent = "data:text/csv;charset=utf-8,"; csvContent += "Categoria,Elemento,Cantidad/Longitud,Unidad\r\n";
+    window.elementos.forEach(el => {
+        if(el.visible === false || el.tipo === 'cota' || el.tipo === 'texto') return;
+        let cat = "Otros", desc = el.name || el.tipo, val = 1, unit = "und";
+        if(el.tipo === 'tuberia') {
+            cat = "Tuberia"; desc = (el.props.material || "Generico") + " " + (el.props.diametroNominal || "");
+            val = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2); unit = "m";
+        } else if (el.props.tipo === 'tanque_glp') { cat = "Tanques"; desc = `Tanque GLP ${el.props.capacidadGalones}gl`; } 
+        else if (el.tipo === 'valvula') { cat = "Valvulas"; }
+        let valStr = val.toString().replace('.', ',');
+        csvContent += `${cat},${desc},${valStr},${unit}\r\n`;
+    });
+    const encodedUri = encodeURI(csvContent); 
+    const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "reporte_materiales_gas.csv"); 
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+
+window.realizarCalculo = function() {
+    if (window.estado.selection.length !== 1) { alert("Seleccione una única tubería."); return; }
+    const el = window.elementos.find(x => x.id === window.estado.selection[0]);
+    
+    if (!el || el.tipo !== 'tuberia') { alert("El elemento seleccionado no es una tubería."); return; }
+    
+    const Q = window.parseInputFloat(document.getElementById('calc-caudal').value);
+    const P = window.parseInputFloat(document.getElementById('calc-presion').value);
+    const Gas = document.getElementById('calc-gas').value;
+    const L = Math.sqrt(el.dx**2 + el.dy**2 + el.dz**2);
+    
+    if (Q <= 0 || P <= 0) { alert("Ingrese Caudal y Presión válidos (>0)."); return; }
+    
+    const res = window.calcularFlujoGas(el.props.diametroNominal, L, Q, Gas, P);
+    
+    const divRes = document.getElementById('calc-result');
+    if (res.error) {
+        divRes.innerHTML = `<div class="calc-result-box calc-err">❌ Error: ${res.error}</div>`;
+    } else {
+        let cls = "calc-ok"; if(res.estado === "ALERTA") cls = "calc-alert"; if(res.estado === "CRÍTICO") cls = "calc-err";
+        divRes.innerHTML = `
+            <div class="calc-result-box ${cls}">
+                <strong>Estado: ${res.estado}</strong><br>
+                ΔP: ${res.caidaPresion} (${res.porcentajeCaida})<br>
+                Velocidad: ${res.velocidad}<br>
+                P. Salida: ${res.presionSalida}<br>
+                <small style="color:#888">${res.formula}</small>
+                ${res.alertas ? `<br><small style="color:#f44">⚠ ${res.alertas}</small>` : ''}
+            </div>
+        `;
+    }
+}
+
+window.mostrarEcuaciones = function() {
+    document.getElementById('modal-ecuaciones').style.display = 'flex';
+}
+
+window.prepararPDF = function() {
+    document.getElementById('pdf-nombre').value = ""; document.getElementById('pdf-id').value = "";
+    document.getElementById('modal-pdf').style.display = 'flex';
+}
+
+window.generarPDF = function() {
+    // Misma lógica de PDF que tenías, sin cambios necesarios en core, solo asegurarse que llame a window.elementos
+    const nombre = document.getElementById('pdf-nombre').value.trim();
+    const id = document.getElementById('pdf-id').value.trim();
+    const autor = document.getElementById('pdf-autor').value.trim() || "Ingeniería";
+    const incluirEcuaciones = document.getElementById('pdf-include-eq').checked;
+
+    if (!nombre || !id) { alert("Por favor, ingrese el Nombre y el ID."); return; }
+
+    document.getElementById('modal-pdf').style.display = 'none';
+    const gizmo = document.getElementById('gizmo-container');
+    const hud = document.querySelector('.hud-overlay');
+    if(gizmo) gizmo.style.display = 'none'; if(hud) hud.style.display = 'none';
+
+    html2canvas(document.getElementById('main-area'), { backgroundColor: '#111111', scale: 1.5 }).then(canvas => {
+        if(gizmo) gizmo.style.display = 'block'; if(hud) hud.style.display = 'flex';
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.getWidth(); const pageHeight = doc.internal.pageSize.getHeight(); const margin = 15;
+
+        // ... Header del PDF ...
+        doc.setDrawColor(0); doc.setFillColor(240, 240, 240);
+        doc.rect(margin, margin, pageWidth - 2*margin, 25, 'F'); doc.rect(margin, margin, pageWidth - 2*margin, 25, 'S');
+        doc.setFontSize(14); doc.setFont("helvetica", "bold");
+        doc.text("REPORTE DE INGENIERÍA - ISOMÉTRICO DE GAS", pageWidth / 2, margin + 8, { align: "center" });
+        doc.setFontSize(10); doc.setFont("helvetica", "normal");
+        doc.text(`PROYECTO: ${nombre}`, margin + 5, margin + 16); doc.text(`ID: ${id}`, margin + 5, margin + 21);
+        doc.text(`FECHA: ${new Date().toLocaleDateString()}`, pageWidth - margin - 5, margin + 16, { align: "right" });
+        doc.text(`RESPONSABLE: ${autor}`, pageWidth - margin - 5, margin + 21, { align: "right" });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.9);
+        doc.addImage(imgData, 'JPEG', margin, margin + 30, pageWidth - 2*margin, 100);
+        doc.rect(margin, margin + 30, pageWidth - 2*margin, 100);
+
+        // ... Tabla de materiales ...
+        const tuberias = {}; const items = {};
+        window.elementos.forEach(el => {
+            if (el.visible === false || el.tipo ==='cota' || el.tipo ==='texto') return;
+            if(el.tipo === 'tuberia') {
+                let k = `${el.props.material || 'Genérico'} [${el.props.diametroNominal || '?'}]`;
+                tuberias[k] = (tuberias[k]||0) + Math.sqrt(el.dx**2+el.dy**2+el.dz**2);
+            } else {
+                let n = el.name || el.tipo; if(el.tipo==='valvula') n = "Válvula " + n;
+                let det = el.props.modelo || el.props.diametro || "";
+                items[`${n} ${det}`] = (items[`${n} ${det}`]||0) + 1;
+            }
+        });
+        // Auto fittings
+        if (typeof window.analizarRed === 'function') {
+            window.analizarRed().forEach(fit => {
+                let n = "Accesorio Auto"; if(fit.tipo==='codo_auto') n="Codo 90°"; else if(fit.tipo==='tee_auto') n="Tee";
+                items[`${n} (Generado)`] = (items[`${n} (Generado)`]||0) + 1;
+            });
+        }
+        
+        const tableBody = [];
+        for (let k in tuberias) tableBody.push(["Tubería", k, window.formatLength(tuberias[k])]);
+        for (let k in items) tableBody.push(["Elemento", k, items[k] + " und"]);
+
+        doc.autoTable({ startY: margin + 130 + 10, head: [['Categoría', 'Descripción', 'Cantidad']], body: tableBody, theme: 'grid', styles: { fontSize: 9, cellPadding: 2 }, margin: { left: margin, right: margin } });
+        doc.text("Pagina 1/2", pageWidth - margin, pageHeight - 10, {align:"right"});
+
+        if(incluirEcuaciones) {
+            doc.addPage();
+            // ... (Contenido ecuaciones)
+            doc.setFontSize(10); doc.text("Anexo de Ecuaciones...", margin, margin + 10);
+            doc.text("Pagina 2/2", pageWidth - margin, pageHeight - 10, {align:"right"});
+        }
+        doc.save(`Reporte_${id}.pdf`);
+    });
+}
+
+window.setUnit = function(u) {
+    if (window.UNITS[u]) {
+        window.CONFIG.unit = u;
+        if (typeof renderScene === 'function') renderScene();
+        if (typeof renderInterface === 'function') renderInterface();
+        if (typeof updatePropsPanel === 'function') updatePropsPanel();
+        const lbl = document.getElementById('hud-z-unit');
+        if(lbl) lbl.innerText = window.UNITS[u].label;
+    }
+};
+
+console.log("✅ Core Logic (Fixed Multi-Select + Escape + Cleanup) cargado");
