@@ -3,16 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal de Acceso V1 - Ingeniería</title>
+    <title>Portal de Acceso V2 - Ingeniería</title>
     
-    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     
-    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <script>
@@ -99,7 +96,7 @@
 
         const MOCK_USERS = [
             { id: 18, email: 'juvamo78@gmail.com', password: '1511', name: 'Julian Valencia', plan: 'premium', verified: true, type: 'personal' },
-            { id: 2, email: 'comservicios@gmail.com', password: '8734', name: 'Comservicios', plan: 'pro', verified: true, type: 'corporate' },
+            { id: 2, email: 'comservicios@gmail.com', password: '8734', name: 'Carlos Profesional', plan: 'pro', verified: true, type: 'corporate' },
             { id: 3, email: 'inse@gmail.com', password: '8734', name: 'Prof. Diana Plus', plan: 'plus', verified: true, type: 'corporate' },
             { id: 4, email: 'corp@premium.com', password: '1234', name: 'CEO Roberto Premium', plan: 'premium', verified: true, type: 'personal' },
             { id: 6, email: 'josetangarife14@gmail.com', password: '1204', name: 'Jose Tangarife', plan: 'premium', verified: true, type: 'personal' },
@@ -146,8 +143,19 @@
                     try {
                         const currentUrl = window.location.href;
                         const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
-                        const targetUrl = baseUrl + 'AppsPlataforma/catalogo.html';
+                        
+                        // --- LÓGICA DE REDIRECCIÓN ACTUALIZADA ---
+                        let targetPath = 'AppsPlataforma/catalogo.html'; // Ruta por defecto
+                        
+                        // Caso específico para Comservicios
+                        if (user.email === 'comservicios@gmail.com') {
+                            targetPath = '../comservicios/interfaz_colgas';
+                        }
+                        
+                        const targetUrl = baseUrl + targetPath;
                         window.location.href = targetUrl;
+                        // -----------------------------------------
+                        
                     } catch (err) {
                         console.error("Error en la redirección:", err);
                     }
@@ -333,9 +341,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
