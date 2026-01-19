@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fondo Documental Comservicios</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --card-bg: #2d2d2d;
+            --text-color: #e0e0e0;
+            --accent-color: #00bcd4; /* Azul Cyan ingeniería */
+            --border-color: #444;
+            --success-color: #4caf50;
+            --hover-color: #383838;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Courier New', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1200px;
+        }
+
+        /* HEADER & LOGO */
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 20px;
+        }
+
+        .logo-container img {
+            max-height: 80px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--accent-color);
+        }
+
+        h2 {
+            margin: 10px 0 0 0;
+            font-size: 1.1rem;
+            color: var(--success-color);
+            font-weight: 400;
+        }
+
+        /* AREA DE CARGA DE ARCHIVO */
+        .upload-section {
+            background-color: var(--card-bg);
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+
+        .upload-section:hover {
+            border-color: var(--accent-color);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .custom-file-upload {
+            display: inline-block;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #333;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .file-name-display {
+            margin-top: 10px;
+            font-style: italic;
+            color: #aaa;
+        }
+
+        /* BARRA DE HERRAMIENTAS (BOTONES) */
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 15px;
+            opacity: 0.5; /* Deshabilitado visualmente hasta cargar */
+            pointer-events: none;
+        }
+
+        .toolbar.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .btn {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--accent-color);
+            padding: 8px 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-color);
+            color: #000;
+        }
+
+        /* TABLA */
+        .table-container {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            overflow-x: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            min-height: 200px; /* Altura mínima estética */
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #333;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background-color: var(--hover-color);
+        }
+
+        /* LINKS Y ESTADOS */
+        a.doc-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            border: 1px solid var(--accent-color);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            display: inline-block;
+        }
+
+        a.doc-link:hover {
+            background-color: var(--accent-color);
+            color: #000;
+        }
+
+        .empty-state {
+            padding: 40px;
+            text-align: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <img src="ImagenesPlataformas/img_logo_colgas.jpg" alt="Logo Colgas" onerror="this.style.display='none'">
+            </div>
+            <h1>Fondo Documental Comservicios</h1>
+            <h2>DOCUMENTOS OK PARA SUBIR A KAGUA</h2>
+        </header>
+
+        <div class="upload-section">
+            <label for="fileInput" class="custom-file-upload">
+                📥 Cargar Archivo (Excel o CSV)
+            </label>
+            <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" />
+            <div id="fileNameDisplay" class="file-name-display">Ningún archivo seleccionado</div>
+        </div>
+
+        <div class="toolbar" id="toolbar">
+            <button class="btn" onclick="exportToExcel()">Descargar XLS</button>
+            <button class="btn" onclick="exportToPDF()">Descargar PDF</button>
+        </div>
+
+        <div class="table-container">
+            <table id="docTable">
+                <thead>
+                    <tr>
+                        <th>Sector</th>
+                        <th>Casa (CS)</th>
+                        <th>Nombre Original</th>
+                        <th>Carpeta</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            Sube un archivo .xlsx o .csv para visualizar los datos.<br>
+                            <small>El archivo debe tener columnas como: "Nombre del Archivo", "URL del Archivo", "Carpeta Contenedora"</small>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Variable global para almacenar los datos procesados
+        let globalData = [];
+
+        // Referencias al DOM
+        const fileInput = document.getElementById('fileInput');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const toolbar = document.getElementById('toolbar');
+        const tableBody = document.getElementById('tableBody');
+
+        // Escuchar cambios en el input de archivo
+        fileInput.addEventListener('change', handleFileSelect, false);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            fileNameDisplay.textContent = "Procesando: " + file.name;
+
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                // Tomamos la primera hoja del excel
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+
+                // Convertimos a JSON crudo
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                // Procesamos los datos con nuestra lógica de ingeniería
+                processAndRender(jsonData);
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processAndRender(rawData) {
+            // Limpiamos datos anteriores
+            globalData = [];
+
+            // Mapeo inteligente de columnas (basado en tu CSV anterior)
+            // Buscamos claves que se parezcan a tus headers originales
+            rawData.forEach(row => {
+                // Intentar encontrar las columnas correctas sin importar mayúsculas/minúsculas
+                const keys = Object.keys(row);
+                
+                const nameKey = keys.find(k => k.toLowerCase().includes("nombre")) || keys[0]; // Fallback a la primera col
+                const urlKey = keys.find(k => k.toLowerCase().includes("url")) || keys[1];
+                const folderKey = keys.find(k => k.toLowerCase().includes("carpeta")) || keys[2];
+
+                const nombreArchivo = row[nameKey] || "Sin Nombre";
+                const urlArchivo = row[urlKey] || "#";
+                const carpeta = row[folderKey] || "N/A";
+
+                // Lógica de Regex para extraer Sector y Casa
+                let sector = "N/A";
+                let casa = "N/A";
+                
+                const sectorMatch = String(nombreArchivo).match(/sector\s*(\d+)/i);
+                const casaMatch = String(nombreArchivo).match(/(?:CS|casa)\s*(\d+)/i);
+
+                if (sectorMatch) sector = sectorMatch[1];
+                if (casaMatch) casa = casaMatch[1];
+
+                globalData.push({
+                    sector: sector,
+                    casa: casa,
+                    nombre: nombreArchivo,
+                    carpeta: carpeta,
+                    url: urlArchivo
+                });
+            });
+
+            renderTable();
+            // Activar botones de descarga
+            toolbar.classList.add('active');
+            fileNameDisplay.textContent += " (Cargado ✔️)";
+            fileNameDisplay.style.color = "var(--success-color)";
+        }
+
+        function renderTable() {
+            tableBody.innerHTML = ''; // Limpiar tabla
+
+            if (globalData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No se encontraron datos válidos.</td></tr>';
+                return;
+            }
+
+            globalData.forEach(row => {
+                const tr = document.createElement('tr');
+                // Color sutil si falta info
+                if (row.sector === "N/A" && row.casa === "N/A") {
+                    tr.style.opacity = "0.7"; 
+                }
+
+                tr.innerHTML = `
+                    <td style="color: var(--accent-color); font-weight:bold;">${row.sector}</td>
+                    <td>${row.casa}</td>
+                    <td>${row.nombre}</td>
+                    <td>${row.carpeta}</td>
+                    <td>
+                        ${row.url && row.url !== '#' 
+                            ? `<a href="${row.url}" target="_blank" class="doc-link">ABRIR</a>` 
+                            : '<span style="color:#666; font-size:0.8rem">SIN URL</span>'}
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // --- FUNCIONES DE EXPORTACIÓN (Iguales a la versión anterior) ---
+
+        function exportToExcel() {
+            if (globalData.length === 0) return alert("No hay datos para exportar");
+
+            const dataToExport = globalData.map(d => ({
+                Sector: d.sector,
+                Casa: d.casa,
+                "Nombre Archivo": d.nombre,
+                Carpeta: d.carpeta,
+                URL: d.url
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Documentos_Kagua");
+            XLSX.writeFile(wb, "Reporte_Kagua.xlsx");
+        }
+
+        function exportToPDF() {
+            if (globalData.length === 0) return alert("No hay datos para exportar");
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFillColor(30, 30, 30); // Fondo oscuro cabecera simulación
+            doc.rect(0, 0, 210, 297, "F"); // Fondo página (opcional, mejor dejar blanco para imprimir)
+            
+            // Reiniciar a blanco para impresión limpia
+            doc.setFillColor(255, 255, 255);
+            doc.rect(0, 0, 210, 297, "F");
+
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.text("FONDO DOCUMENTAL COMSERVICIOS", 14, 15);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(76, 175, 80); // Verde success
+            doc.text("Documentos OK para subir a Kagua", 14, 22);
+
+            const tableColumn = ["Sector", "Casa", "Nombre Archivo", "Carpeta"];
+            const tableRows = [];
+
+            globalData.forEach(d => {
+                tableRows.push([d.sector, d.casa, d.nombre, d.carpeta]);
+            });
+
+            doc.autoTable({
+                head: [tableColumn],
+                body: tableRows,
+                startY: 30,
+                theme: 'grid',
+                headStyles: { fillColor: [0, 188, 212], textColor: 255 }, // Azul accent
+                styles: { fontSize: 8 }
+            });
+
+            doc.save("Reporte_Kagua.pdf");
+        }
+    </script>
+</body>
+</html>
