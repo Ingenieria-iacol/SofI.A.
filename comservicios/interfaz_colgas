@@ -3,413 +3,341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fondo Documental Comservicios</title>
+    <title>Portal de Acceso - Ingeniería</title>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        netflix: {
+                            dark: '#141414',
+                            card: 'rgba(0, 0, 0, 0.75)',
+                            input: '#333333',
+                        },
+                        metal: {
+                            light: '#60a5fa', 
+                            DEFAULT: '#2563eb', 
+                            dark: '#1e3a8a',  
+                        }
+                    },
+                    boxShadow: {
+                        'neon-blue': '0 0 20px rgba(37, 99, 235, 0.5)',
+                    },
+                    animation: {
+                        'logo-entry': 'logoFadeIn 1.5s ease-out forwards',
+                        'card-entry': 'cardFadeIn 1.2s ease-out 0.8s forwards',
+                    },
+                    keyframes: {
+                        logoFadeIn: {
+                            '0%': { opacity: '0', transform: 'scale(0.8)' },
+                            '100%': { opacity: '0.4', transform: 'scale(1)' },
+                        },
+                        cardFadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
     <style>
-        :root {
-            --bg-color: #1e1e1e;
-            --card-bg: #2d2d2d;
-            --text-color: #e0e0e0;
-            --accent-color: #00bcd4; /* Azul Cyan ingeniería */
-            --border-color: #444;
-            --success-color: #4caf50;
-            --hover-color: #383838;
-        }
-
         body {
-            font-family: 'Segoe UI', 'Roboto', 'Courier New', monospace;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
+            /* CAMBIO: Se establece color negro puro y se elimina la imagen de fondo duplicada */
+            background-color: #000;
+            /* background-image eliminado para permitir el mimetismo perfecto con la marca de agua */
+            
+            color: #fff;
+            min-height: 100vh;
             display: flex;
-            flex-direction: column;
             align-items: center;
+            justify-content: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        .streaming-panel {
+            background-color: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .container {
-            width: 95%;
-            max-width: 1200px;
-        }
-
-        /* HEADER & LOGO */
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid var(--accent-color);
-            padding-bottom: 20px;
-        }
-
-        .logo-container img {
-            max-height: 80px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 2rem;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: var(--accent-color);
-        }
-
-        h2 {
-            margin: 10px 0 0 0;
-            font-size: 1.1rem;
-            color: var(--success-color);
-            font-weight: 400;
-        }
-
-        /* AREA DE CARGA DE ARCHIVO */
-        .upload-section {
-            background-color: var(--card-bg);
-            border: 2px dashed var(--border-color);
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-            transition: border-color 0.3s;
-        }
-
-        .upload-section:hover {
-            border-color: var(--accent-color);
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        .custom-file-upload {
-            display: inline-block;
-            padding: 10px 20px;
-            cursor: pointer;
-            background-color: #333;
-            color: var(--accent-color);
-            border: 1px solid var(--accent-color);
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-        }
-
-        .file-name-display {
-            margin-top: 10px;
-            font-style: italic;
-            color: #aaa;
-        }
-
-        /* BARRA DE HERRAMIENTAS (BOTONES) */
-        .toolbar {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-bottom: 15px;
-            opacity: 0.5; /* Deshabilitado visualmente hasta cargar */
-            pointer-events: none;
-        }
-
-        .toolbar.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .btn {
-            background-color: var(--card-bg);
-            color: var(--text-color);
-            border: 1px solid var(--accent-color);
-            padding: 8px 16px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-        }
-
-        .btn:hover {
-            background-color: var(--accent-color);
-            color: #000;
-        }
-
-        /* TABLA */
-        .table-container {
-            background-color: var(--card-bg);
-            border-radius: 8px;
-            overflow-x: auto;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            min-height: 200px; /* Altura mínima estética */
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-        }
-
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        th {
-            background-color: #333;
-            color: var(--accent-color);
-            text-transform: uppercase;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-        }
-
-        tr:hover {
-            background-color: var(--hover-color);
-        }
-
-        /* LINKS Y ESTADOS */
-        a.doc-link {
-            color: var(--accent-color);
-            text-decoration: none;
-            border: 1px solid var(--accent-color);
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            display: inline-block;
-        }
-
-        a.doc-link:hover {
-            background-color: var(--accent-color);
-            color: #000;
-        }
-
-        .empty-state {
-            padding: 40px;
-            text-align: center;
-            color: #666;
-        }
+        .modal-enter { animation: modalIn 0.3s ease-out forwards; }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        .input-transition { transition: all 0.2s ease-in-out; }
     </style>
 </head>
 <body>
+    <div id="root" class="w-full h-full flex items-center justify-center p-4"></div>
 
-    <div class="container">
-        <header>
-            <div class="logo-container">
-                <img src="ImagenesPlataformas/img_logo_colgas.jpg" alt="Logo Colgas" onerror="this.style.display='none'">
-            </div>
-            <h1>Fondo Documental Comservicios</h1>
-            <h2>DOCUMENTOS OK PARA SUBIR A KAGUA</h2>
-        </header>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-        <div class="upload-section">
-            <label for="fileInput" class="custom-file-upload">
-                📥 Cargar Archivo (Excel o CSV)
-            </label>
-            <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" />
-            <div id="fileNameDisplay" class="file-name-display">Ningún archivo seleccionado</div>
-        </div>
+        const Icons = {
+            Lock: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+            Shield: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+            Eye: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>,
+            EyeOff: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>,
+            ArrowRight: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
+            Play: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+            X: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+            CreditCard: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        };
 
-        <div class="toolbar" id="toolbar">
-            <button class="btn" onclick="exportToExcel()">Descargar XLS</button>
-            <button class="btn" onclick="exportToPDF()">Descargar PDF</button>
-        </div>
+        const MOCK_USERS = [
+            { id: 18, email: 'juvamo78@gmail.com', password: '1511', name: 'Julian Valencia', plan: 'premium', verified: true, type: 'personal' },
+            { id: 2, email: 'comservicios@gmail.com', password: '8734', name: 'Carlos Profesional', plan: 'pro', verified: true, type: 'corporate' },
+            { id: 3, email: 'inse@gmail.com', password: '8734', name: 'Prof. Diana Plus', plan: 'plus', verified: true, type: 'corporate' },
+            { id: 4, email: 'corp@premium.com', password: '1234', name: 'CEO Roberto Premium', plan: 'premium', verified: true, type: 'personal' },
+            { id: 6, email: 'josetangarife14@gmail.com', password: '1204', name: 'Jose Tangarife', plan: 'premium', verified: true, type: 'personal' },
+            { id: 7, email: 'etanca2012@gmail.com', password: '1203', name: 'Usuario Etanca', plan: 'free', verified: true, type: 'academic' }
+        ];
 
-        <div class="table-container">
-            <table id="docTable">
-                <thead>
-                    <tr>
-                        <th>Sector</th>
-                        <th>Casa (CS)</th>
-                        <th>Nombre Original</th>
-                        <th>Carpeta</th>
-                        <th>Acción</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <tr>
-                        <td colspan="5" class="empty-state">
-                            Sube un archivo .xlsx o .csv para visualizar los datos.<br>
-                            <small>El archivo debe tener columnas como: "Nombre del Archivo", "URL del Archivo", "Carpeta Contenedora"</small>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+        const LoginApp = () => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [showPassword, setShowPassword] = useState(false);
+            const [error, setError] = useState('');
+            const [sessionMessage, setSessionMessage] = useState('');
+            const [isRedirecting, setIsRedirecting] = useState(false);
+            const [loginSuccess, setLoginSuccess] = useState(false);
+            const [showVideoModal, setShowVideoModal] = useState(false);
 
-    <script>
-        // Variable global para almacenar los datos procesados
-        let globalData = [];
+            useEffect(() => {
+                if (window.location.hash === '#expired') {
+                    setSessionMessage('Tu sesión ha expirado por inactividad (2h).');
+                    history.replaceState(null, null, ' ');
+                }
+                localStorage.removeItem('mockSessionUser');
+                localStorage.removeItem('lastActivity');
+            }, []);
 
-        // Referencias al DOM
-        const fileInput = document.getElementById('fileInput');
-        const fileNameDisplay = document.getElementById('fileNameDisplay');
-        const toolbar = document.getElementById('toolbar');
-        const tableBody = document.getElementById('tableBody');
+            const handleLogin = (e) => {
+                e.preventDefault();
+                setError('');
+                setSessionMessage('');
 
-        // Escuchar cambios en el input de archivo
-        fileInput.addEventListener('change', handleFileSelect, false);
+                const user = MOCK_USERS.find(u => u.email === email);
+                
+                if (!user) { setError('Usuario no encontrado.'); return; }
+                if (user.password !== password) { setError('Contraseña incorrecta.'); return; }
+                if (!user.verified) { setError('Cuenta no verificada.'); return; }
 
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+                setIsRedirecting(true);
+                setLoginSuccess(true);
+                
+                localStorage.setItem('mockSessionUser', JSON.stringify(user));
+                localStorage.setItem('lastActivity', Date.now().toString());
 
-            fileNameDisplay.textContent = "Procesando: " + file.name;
-
-            const reader = new FileReader();
-
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-
-                // Tomamos la primera hoja del excel
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-
-                // Convertimos a JSON crudo
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-
-                // Procesamos los datos con nuestra lógica de ingeniería
-                processAndRender(jsonData);
+                setTimeout(() => {
+                    try {
+                        const currentUrl = window.location.href;
+                        const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
+                        
+                        // --- LÓGICA DE REDIRECCIÓN ACTUALIZADA ---
+                        let targetPath = 'AppsPlataforma/catalogo.html'; // Ruta por defecto
+                        
+                        // Caso específico para Comservicios
+                        if (user.email === 'comservicios@gmail.com') {
+                            targetPath = '../comservicios/interfaz_colgas';
+                        }
+                        
+                        const targetUrl = baseUrl + targetPath;
+                        window.location.href = targetUrl;
+                        // -----------------------------------------
+                        
+                    } catch (err) {
+                        console.error("Error en la redirección:", err);
+                    }
+                }, 800); 
             };
 
-            reader.readAsArrayBuffer(file);
-        }
+            const handlePlaceholderClick = (e, featureName) => {
+                e.preventDefault();
+                alert(`Funcionalidad "${featureName}" pendiente de implementación.`);
+            };
 
-        function processAndRender(rawData) {
-            // Limpiamos datos anteriores
-            globalData = [];
+            return (
+                <>
+                    {/* --- MARCA DE AGUA GLOBAL (FONDO) --- */}
+                    <div className="fixed inset-0 z-0 flex items-center justify-center pointer-events-none">
+                        <img 
+                            src="ImagenesPlataformas/logo_entalpia.png" 
+                            alt="" 
+                            /* CAMBIO: w-[100vw] h-[100vh] ocupa toda la pantalla */
+                            className="w-[100vw] h-[100vh] object-contain opacity-0 animate-logo-entry"
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                            }}
+                        />
+                    </div>
 
-            // Mapeo inteligente de columnas (basado en tu CSV anterior)
-            // Buscamos claves que se parezcan a tus headers originales
-            rawData.forEach(row => {
-                // Intentar encontrar las columnas correctas sin importar mayúsculas/minúsculas
-                const keys = Object.keys(row);
-                
-                const nameKey = keys.find(k => k.toLowerCase().includes("nombre")) || keys[0]; // Fallback a la primera col
-                const urlKey = keys.find(k => k.toLowerCase().includes("url")) || keys[1];
-                const folderKey = keys.find(k => k.toLowerCase().includes("carpeta")) || keys[2];
+                    {/* --- TARJETA DE LOGIN --- */}
+                    <div className="max-w-md w-full streaming-panel rounded-lg shadow-2xl p-10 md:p-14 border border-transparent opacity-0 animate-card-entry relative z-10 overflow-hidden">
+                        
+                        <div className="relative z-10">
+                            <div className="text-center mb-8">
+                                <h1 className="text-3xl font-bold text-white tracking-tight mb-2 drop-shadow-md">Portal de Ingeniería</h1>
+                                <div className="h-1 w-20 bg-blue-600 mx-auto rounded-full shadow-[0_0_10px_rgba(37,99,235,0.8)]"></div>
+                            </div>
 
-                const nombreArchivo = row[nameKey] || "Sin Nombre";
-                const urlArchivo = row[urlKey] || "#";
-                const carpeta = row[folderKey] || "N/A";
+                            {!loginSuccess ? (
+                                <form onSubmit={handleLogin} className="space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="relative group">
+                                            <input 
+                                                type="email" 
+                                                required 
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                className="w-full px-5 py-4 bg-[#333] text-white rounded-md placeholder-gray-500 focus:outline-none focus:bg-[#454545] border-b-2 border-transparent focus:border-blue-500 input-transition"
+                                                placeholder="Email o número de teléfono"
+                                                disabled={isRedirecting}
+                                            />
+                                        </div>
 
-                // Lógica de Regex para extraer Sector y Casa
-                let sector = "N/A";
-                let casa = "N/A";
-                
-                const sectorMatch = String(nombreArchivo).match(/sector\s*(\d+)/i);
-                const casaMatch = String(nombreArchivo).match(/(?:CS|casa)\s*(\d+)/i);
+                                        <div className="relative group">
+                                            <input 
+                                                type={showPassword ? "text" : "password"} 
+                                                required 
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                className="w-full px-5 py-4 bg-[#333] text-white rounded-md placeholder-gray-500 focus:outline-none focus:bg-[#454545] border-b-2 border-transparent focus:border-blue-500 input-transition pr-12"
+                                                placeholder="Contraseña"
+                                                disabled={isRedirecting}
+                                            />
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-4 top-4 text-gray-400 hover:text-gray-200 transition-colors"
+                                            >
+                                                {showPassword ? <Icons.EyeOff className="w-5 h-5" /> : <Icons.Eye className="w-5 h-5" />}
+                                            </button>
+                                        </div>
+                                    </div>
 
-                if (sectorMatch) sector = sectorMatch[1];
-                if (casaMatch) casa = casaMatch[1];
+                                    {error && (
+                                        <div className="text-orange-400 text-sm flex items-center gap-2 animate-pulse font-medium">
+                                            <Icons.Lock className="w-4 h-4 shrink-0" />
+                                            <span>{error}</span>
+                                        </div>
+                                    )}
 
-                globalData.push({
-                    sector: sector,
-                    casa: casa,
-                    nombre: nombreArchivo,
-                    carpeta: carpeta,
-                    url: urlArchivo
-                });
-            });
+                                    <button 
+                                        type="submit" 
+                                        disabled={isRedirecting}
+                                        className={`w-full py-3.5 rounded-md font-bold text-white text-lg transition-all duration-300 transform shadow-lg ${
+                                            isRedirecting 
+                                            ? 'bg-blue-800 cursor-wait opacity-80' 
+                                            : 'bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-600 hover:to-blue-500 shadow-neon-blue hover:scale-[1.02]'
+                                        }`}
+                                    >
+                                        {isRedirecting ? 'Iniciando...' : 'Iniciar sesión'}
+                                    </button>
+                                    
+                                    <div className="flex justify-between items-center text-sm text-gray-400 pt-2">
+                                        <div className="flex items-center gap-1">
+                                            <input type="checkbox" id="remember" className="rounded bg-gray-700 border-none text-blue-600 focus:ring-0" />
+                                            <label htmlFor="remember" className="hover:text-gray-300 cursor-pointer">Recuérdame</label>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handlePlaceholderClick(e, 'Recuperar Contraseña')}
+                                            className="hover:underline hover:text-white"
+                                        >
+                                            ¿Necesitas ayuda?
+                                        </button>
+                                    </div>
 
-            renderTable();
-            // Activar botones de descarga
-            toolbar.classList.add('active');
-            fileNameDisplay.textContent += " (Cargado ✔️)";
-            fileNameDisplay.style.color = "var(--success-color)";
-        }
+                                    <div className="mt-8 text-gray-500 text-sm">
+                                        ¿Primera vez en Entalpía? <button onClick={(e) => handlePlaceholderClick(e, 'Crear Cuenta')} className="text-white hover:underline font-medium ml-1">Suscríbete ahora.</button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <div className="text-center animate-pulse space-y-6 py-4">
+                                    <div className="w-16 h-16 mx-auto rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/50">
+                                        <Icons.Shield className="w-8 h-8 text-green-400" />
+                                    </div>
+                                    <h2 className="text-2xl font-bold text-white">Bienvenido de nuevo</h2>
+                                    
+                                    <a 
+                                        href="./AppsPlataforma/catalogo.html"
+                                        className="inline-flex items-center gap-3 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold transition-all hover:scale-105 shadow-neon-blue"
+                                    >
+                                        Entrar al Panel <Icons.ArrowRight className="w-5 h-5" />
+                                    </a>
+                                </div>
+                            )}
 
-        function renderTable() {
-            tableBody.innerHTML = ''; // Limpiar tabla
+                            {sessionMessage && !loginSuccess && (
+                                <div className="mt-6 text-center">
+                                    <span className="inline-block px-4 py-2 bg-black/60 border border-red-700 rounded text-xs font-bold text-red-400 uppercase tracking-wide">
+                                        ⚠️ {sessionMessage}
+                                    </span>
+                                </div>
+                            )}
 
-            if (globalData.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No se encontraron datos válidos.</td></tr>';
-                return;
-            }
+                            {!loginSuccess && (
+                                <div className="mt-8 pt-6 border-t border-gray-700/50 grid grid-cols-2 gap-4">
+                                    <button 
+                                        onClick={() => setShowVideoModal(true)}
+                                        className="col-span-1 group flex flex-col items-center justify-center gap-2 py-3 rounded bg-transparent hover:bg-white/10 transition-all duration-300"
+                                    >
+                                        <Icons.Play className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors" />
+                                        <span className="text-xs font-semibold text-gray-400 group-hover:text-white uppercase tracking-wider">Saber más</span>
+                                    </button>
 
-            globalData.forEach(row => {
-                const tr = document.createElement('tr');
-                // Color sutil si falta info
-                if (row.sector === "N/A" && row.casa === "N/A") {
-                    tr.style.opacity = "0.7"; 
-                }
+                                    <a 
+                                        href="ModalPrecios.html"
+                                        className="col-span-1 group flex flex-col items-center justify-center gap-2 py-3 rounded bg-transparent hover:bg-white/10 transition-all duration-300"
+                                    >
+                                        <Icons.CreditCard className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors" />
+                                        <span className="text-xs font-semibold text-gray-400 group-hover:text-white uppercase tracking-wider">Ver Planes</span>
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
-                tr.innerHTML = `
-                    <td style="color: var(--accent-color); font-weight:bold;">${row.sector}</td>
-                    <td>${row.casa}</td>
-                    <td>${row.nombre}</td>
-                    <td>${row.carpeta}</td>
-                    <td>
-                        ${row.url && row.url !== '#' 
-                            ? `<a href="${row.url}" target="_blank" class="doc-link">ABRIR</a>` 
-                            : '<span style="color:#666; font-size:0.8rem">SIN URL</span>'}
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
-        }
+                    {showVideoModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md fade-in">
+                            <div className="relative w-full max-w-5xl bg-black rounded-lg shadow-2xl overflow-hidden modal-enter border border-gray-800">
+                                <button 
+                                    onClick={() => setShowVideoModal(false)}
+                                    className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
+                                >
+                                    <Icons.X className="w-8 h-8" />
+                                </button>
+                                
+                                <div className="aspect-video w-full bg-black flex items-center justify-center">
+                                    <video 
+                                        controls 
+                                        autoPlay 
+                                        className="w-full h-full object-contain"
+                                        src="./Videos Plataforma/Video_de_Bienvenida_IA_Sofia.mp4"
+                                    >
+                                        Tu navegador no soporta el elemento de video.
+                                    </video>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
+            );
+        };
 
-        // --- FUNCIONES DE EXPORTACIÓN (Iguales a la versión anterior) ---
-
-        function exportToExcel() {
-            if (globalData.length === 0) return alert("No hay datos para exportar");
-
-            const dataToExport = globalData.map(d => ({
-                Sector: d.sector,
-                Casa: d.casa,
-                "Nombre Archivo": d.nombre,
-                Carpeta: d.carpeta,
-                URL: d.url
-            }));
-
-            const ws = XLSX.utils.json_to_sheet(dataToExport);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Documentos_Kagua");
-            XLSX.writeFile(wb, "Reporte_Kagua.xlsx");
-        }
-
-        function exportToPDF() {
-            if (globalData.length === 0) return alert("No hay datos para exportar");
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            doc.setFillColor(30, 30, 30); // Fondo oscuro cabecera simulación
-            doc.rect(0, 0, 210, 297, "F"); // Fondo página (opcional, mejor dejar blanco para imprimir)
-            
-            // Reiniciar a blanco para impresión limpia
-            doc.setFillColor(255, 255, 255);
-            doc.rect(0, 0, 210, 297, "F");
-
-            doc.setFontSize(14);
-            doc.setTextColor(0, 0, 0);
-            doc.text("FONDO DOCUMENTAL COMSERVICIOS", 14, 15);
-            
-            doc.setFontSize(10);
-            doc.setTextColor(76, 175, 80); // Verde success
-            doc.text("Documentos OK para subir a Kagua", 14, 22);
-
-            const tableColumn = ["Sector", "Casa", "Nombre Archivo", "Carpeta"];
-            const tableRows = [];
-
-            globalData.forEach(d => {
-                tableRows.push([d.sector, d.casa, d.nombre, d.carpeta]);
-            });
-
-            doc.autoTable({
-                head: [tableColumn],
-                body: tableRows,
-                startY: 30,
-                theme: 'grid',
-                headStyles: { fillColor: [0, 188, 212], textColor: 255 }, // Azul accent
-                styles: { fontSize: 8 }
-            });
-
-            doc.save("Reporte_Kagua.pdf");
-        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<LoginApp />);
     </script>
 </body>
 </html>
