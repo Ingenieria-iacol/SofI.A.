@@ -3,18 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fondo Documental COLGAS - V1.1</title>
+    <title>I.A. Explorador V1| Entalpia</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         :root {
             --bg-color: #1e1e1e;
             --card-bg: #2d2d2d;
             --text-color: #e0e0e0;
-            --accent-color: #00bcd4; 
+            --accent-color: #00bcd4; /* Azul Cyan ingeniería */
             --border-color: #444;
             --success-color: #4caf50;
             --hover-color: #383838;
@@ -29,16 +30,19 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
         }
 
         .container {
             width: 95%;
             max-width: 1200px;
+            flex: 1; /* Para empujar el footer abajo */
         }
 
+        /* HEADER */
         header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             border-bottom: 2px solid var(--accent-color);
             padding-bottom: 20px;
         }
@@ -64,24 +68,16 @@
             font-weight: 400;
         }
 
-        /* AREA DE CONEXIÓN */
+        /* CONEXIÓN */
         .connection-section {
             background-color: var(--card-bg);
             border: 2px solid var(--border-color);
             border-radius: 8px;
-            padding: 20px;
+            padding: 15px;
             text-align: center;
             margin-bottom: 20px;
         }
 
-        .status-display {
-            margin-top: 15px;
-            font-style: italic;
-            color: #aaa;
-            min-height: 20px;
-        }
-
-        /* BOTONES */
         .btn-connect {
             background-color: var(--accent-color);
             color: #000;
@@ -92,7 +88,7 @@
             font-size: 1rem;
             cursor: pointer;
             text-transform: uppercase;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
         
         .btn-connect:hover {
@@ -100,12 +96,70 @@
             box-shadow: 0 0 10px var(--accent-color);
         }
 
+        .status-display {
+            margin-top: 10px;
+            font-style: italic;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        /* GRÁFICO */
+        .chart-wrapper {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            height: 300px;
+            position: relative;
+        }
+
+        /* BUSCADOR */
+        .search-box-container {
+            width: 100%;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 15px;
+            padding-left: 40px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-color);
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .search-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        /* TOOLBAR */
         .toolbar {
             display: flex;
             justify-content: flex-end;
             gap: 10px;
             margin-bottom: 15px;
-            opacity: 0.5; 
+            opacity: 0.5;
             pointer-events: none;
         }
 
@@ -131,7 +185,7 @@
             color: #000;
         }
 
-        /* TABLA */
+        /* TABLA Y FILTROS */
         .table-container {
             background-color: var(--card-bg);
             border-radius: 8px;
@@ -159,10 +213,30 @@
             font-weight: 600;
             position: sticky;
             top: 0;
+            vertical-align: top;
+            min-width: 120px;
         }
 
         tr:hover {
             background-color: var(--hover-color);
+        }
+
+        /* Filtros en encabezados */
+        .header-content {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-select {
+            background-color: #444;
+            color: #fff;
+            border: 1px solid #666;
+            border-radius: 3px;
+            padding: 4px;
+            font-size: 0.75rem;
+            width: 100%;
+            cursor: pointer;
         }
 
         a.doc-link {
@@ -186,7 +260,6 @@
             color: #666;
         }
         
-        /* Loading Spinner sutil */
         .loader {
             border: 4px solid #f3f3f3;
             border-top: 4px solid var(--accent-color);
@@ -197,10 +270,28 @@
             display: inline-block;
             vertical-align: middle;
             margin-right: 10px;
-            display: none; /* Oculto por defecto */
+            display: none;
         }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* FOOTER */
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #333;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #666;
+            width: 100%;
+        }
+
+        .entalpia-brand {
+            color: var(--accent-color);
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
     </style>
 </head>
 <body>
@@ -208,7 +299,7 @@
     <div class="container">
         <header>
             <div class="logo-container">
-                <img src="../ImagenesPlataformas/img_logo_colgas.jpg">
+                <img src="https://via.placeholder.com/150x80/000000/00bcd4?text=COLGAS" alt="Logo" onerror="this.style.display='none'">
             </div>
             <h1>I.A. Explorador</h1>
             <h2>FILTRO: REALIZADOS SUBIDOS A KAGUA</h2>
@@ -216,9 +307,25 @@
 
         <div class="connection-section">
             <button class="btn-connect" onclick="fetchGoogleSheet()">
-                <div class="loader" id="loader"></div> 🔄 Cargar Datos de Google Sheets
+                <div class="loader" id="loader"></div> 🔄 Iterar
             </button>
-            <div id="statusDisplay" class="status-display">Esperando conexión...</div>
+            <div id="statusDisplay" class="status-display">Sistema listo para conectar.</div>
+        </div>
+
+        <div class="chart-wrapper">
+            <canvas id="myChart"></canvas>
+        </div>
+
+        <div class="search-box-container">
+            <span class="search-icon">🔍</span>
+            <input 
+                type="text" 
+                id="searchInput" 
+                class="search-input" 
+                placeholder="Buscar por Sector, Casa, Nombre o Estado..." 
+                onkeyup="applyFilters()"
+                disabled
+            >
         </div>
 
         <div class="toolbar" id="toolbar">
@@ -230,17 +337,38 @@
             <table id="docTable">
                 <thead>
                     <tr>
-                        <th>Sector</th>
-                        <th>Casa (CS)</th>
+                        <th>
+                            <div class="header-content">
+                                <span>SECTOR</span>
+                                <select id="filterSector" class="filter-select" onchange="applyFilters()" disabled>
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="header-content">
+                                <span>CASA (CS)</span>
+                                <select id="filterCasa" class="filter-select" onchange="applyFilters()" disabled>
+                                    <option value="">Todas</option>
+                                </select>
+                            </div>
+                        </th>
                         <th>Nombre Archivo</th>
-                        <th>Estado (Filtro)</th>
+                        <th>
+                            <div class="header-content">
+                                <span>ESTADO</span>
+                                <select id="filterEstado" class="filter-select" onchange="applyFilters()" disabled>
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                        </th>
                         <th>Acción</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
                     <tr>
                         <td colspan="5" class="empty-state">
-                            Haz clic en "Cargar Datos" para conectar con la hoja "Extraidos".
+                            Haz clic en "Conectar" para cargar los datos desde la nube.
                         </td>
                     </tr>
                 </tbody>
@@ -248,32 +376,44 @@
         </div>
     </div>
 
+    <footer>
+        <p>Diseñado y Desarrollado por <span class="entalpia-brand">Entalpia</span> &copy; 2025</p>
+    </footer>
+
     <script>
         // ==========================================
-        // CONFIGURACIÓN (PEGA TU LINK AQUÍ ABAJO)
+        //  CONFIGURACIÓN - PEGA TU ENLACE ABAJO
         // ==========================================
         
-        // Reemplaza este link con el que copiaste de "Publicar en la web" -> formato CSV
-        const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vThuXIHlfI6bv9jzmTOVSr7Unf-vZLAprGcdXtV_wBu11SEhMfHBWTN4bAK0oYcznAF6A9L9Dh00W_F/pub?gid=0&single=true&output=csv"; 
+        // Pega aquí el enlace de "Publicar en la web" -> formato CSV
+        const GOOGLE_SHEET_URL = "TU_ENLACE_AQUI_DE_GOOGLE_SHEETS_CSV"; 
         
-        // Ejemplo de cómo se ve un link válido:
-        // const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQxxxxxx/pub?gid=0&single=true&output=csv";
+        // ==========================================
 
-        // ==========================================
-        
+        // Variables Globales
         let globalData = [];
+        let displayedData = [];
+        let myChart = null;
+
+        // Referencias DOM
         const statusDisplay = document.getElementById('statusDisplay');
+        const loader = document.getElementById('loader');
         const toolbar = document.getElementById('toolbar');
         const tableBody = document.getElementById('tableBody');
-        const loader = document.getElementById('loader');
+        const searchInput = document.getElementById('searchInput');
+        
+        // Referencias Filtros
+        const filterSector = document.getElementById('filterSector');
+        const filterCasa = document.getElementById('filterCasa');
+        const filterEstado = document.getElementById('filterEstado');
 
+        // --- 1. CONEXIÓN A GOOGLE SHEETS ---
         async function fetchGoogleSheet() {
             if (GOOGLE_SHEET_URL.includes("TU_ENLACE")) {
-                alert("¡Atención! No has configurado el enlace de Google Sheets en el código.\n\nEdita el archivo HTML y busca la variable GOOGLE_SHEET_URL.");
+                alert("⚠️ ERROR: No has configurado el enlace.\nEdita el código HTML y busca la variable 'GOOGLE_SHEET_URL'.");
                 return;
             }
 
-            // UI Updates
             loader.style.display = "inline-block";
             statusDisplay.textContent = "Conectando con Google Sheets...";
             statusDisplay.style.color = "var(--accent-color)";
@@ -285,10 +425,8 @@
                 const arrayBuffer = await response.arrayBuffer();
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                 
-                // Asumimos que es la primera hoja del CSV descargado
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-                
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
                 
                 processAndRender(jsonData);
@@ -301,36 +439,45 @@
             }
         }
 
+        // --- 2. PROCESAMIENTO INTELIGENTE DE DATOS ---
         function processAndRender(rawData) {
+            if (rawData.length === 0) {
+                alert("El archivo está vacío.");
+                loader.style.display = "none";
+                return;
+            }
+
+            const headers = Object.keys(rawData[0]);
+
+            // Detección automática de la columna 'Estado/Filtro'
+            const keyFiltro = headers.find(h => 
+                h.toLowerCase().includes("estado") || 
+                h.toLowerCase().includes("filtro") || 
+                h.toLowerCase().includes("kagua")
+            ) || headers[2]; // Fallback a la columna 3
+
+            if (!keyFiltro) {
+                alert("Error: No se encontró columna de Estado.");
+                loader.style.display = "none";
+                return;
+            }
+
             globalData = [];
-            let countFiltered = 0;
-
+            
             rawData.forEach(row => {
-                const keys = Object.keys(row);
-                
-                // Asumimos estructura basada en tu descripción:
-                // Col A (keys[0]) -> Nombre / Info
-                // Col B (keys[1]) -> URL o Carpeta
-                // Col C (keys[2]) -> ESTADO (FILTRO)
+                const valColFiltro = row[keyFiltro] || ""; 
+                const estadoLimpio = String(valColFiltro).trim().toUpperCase();
 
-                // 1. Obtener valores seguros
-                const valColA = row[keys[0]] || "";
-                const valColB = row[keys[1]] || "";
-                const valColC = row[keys[2]] || ""; // Esta es la columna del filtro
+                // FILTRO ESTRICTO PRINCIPAL
+                if (estadoLimpio !== "REALIZADOS SUBIDOS A KAGUA") return;
 
-                // 2. APLICAR EL FILTRO DE GOOGLE SHEETS
-                // Normalizamos a mayúsculas y quitamos espacios extra para asegurar coincidencia
-                const estadoLimpio = String(valColC).trim().toUpperCase();
+                const colNombre = headers[0];
+                const colUrl = headers[1];
                 
-                if (estadoLimpio !== "REALIZADOS SUBIDOS A KAGUA") {
-                    return; // Si no coincide, saltamos esta fila (no se agrega)
-                }
+                const nombreArchivo = row[colNombre] || "Sin Nombre";
+                const urlArchivo = row[colUrl] || "#";
 
-                // 3. Procesar datos si pasó el filtro
-                const nombreArchivo = valColA;
-                const urlArchivo = valColB; // Asumiendo que col B tiene la URL o Carpeta
-                
-                // Lógica Regex para Sector y Casa
+                // Regex para extraer Sector y Casa
                 let sector = "N/A";
                 let casa = "N/A";
                 
@@ -344,37 +491,98 @@
                     sector: sector,
                     casa: casa,
                     nombre: nombreArchivo,
-                    estado: valColC, // Guardamos el estado original
+                    estado: valColFiltro,
                     url: urlArchivo.startsWith("http") ? urlArchivo : "#"
                 });
-                
-                countFiltered++;
             });
 
-            renderTable();
-            
-            // UI Final
-            loader.style.display = "none";
+            // Inicializar visualización
+            displayedData = [...globalData];
+
+            // Habilitar controles
+            populateSelectOptions();
+            searchInput.disabled = false;
+            filterSector.disabled = false;
+            filterCasa.disabled = false;
+            filterEstado.disabled = false;
             toolbar.classList.add('active');
-            
+            loader.style.display = "none";
+
+            // Renderizar todo
+            renderTable();
+            updateChart();
+
             if (globalData.length > 0) {
-                statusDisplay.textContent = `Éxito: Se cargaron ${countFiltered} registros filtrados desde Google Sheets.`;
+                statusDisplay.innerHTML = `✅ <b>${globalData.length}</b> documentos listos (Filtrados por "${keyFiltro}").`;
                 statusDisplay.style.color = "var(--success-color)";
             } else {
-                statusDisplay.textContent = "Conexión exitosa, pero no se encontraron filas con el estado 'REALIZADOS SUBIDOS A KAGUA'.";
+                statusDisplay.textContent = "Conexión OK, pero 0 documentos cumplen el criterio 'REALIZADOS SUBIDOS A KAGUA'.";
                 statusDisplay.style.color = "orange";
             }
         }
 
+        // --- 3. GESTIÓN DE FILTROS Y DROPDOWNS ---
+        function populateSelectOptions() {
+            // Ordenamiento natural (1, 2, 10 en vez de 1, 10, 2)
+            const naturalSort = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+
+            const sectores = [...new Set(globalData.map(d => d.sector))].sort(naturalSort);
+            const casas = [...new Set(globalData.map(d => d.casa))].sort(naturalSort);
+            const estados = [...new Set(globalData.map(d => d.estado))].sort();
+
+            const fill = (selectElement, values) => {
+                const currentVal = selectElement.value;
+                selectElement.innerHTML = '<option value="">Todos</option>';
+                values.forEach(val => {
+                    if(!val) return;
+                    const option = document.createElement('option');
+                    option.value = val;
+                    option.textContent = val;
+                    selectElement.appendChild(option);
+                });
+                if(values.includes(currentVal)) selectElement.value = currentVal;
+            };
+
+            fill(filterSector, sectores);
+            fill(filterCasa, casas);
+            fill(filterEstado, estados);
+        }
+
+        function applyFilters() {
+            const textQuery = searchInput.value.toLowerCase();
+            const selSector = filterSector.value;
+            const selCasa = filterCasa.value;
+            const selEstado = filterEstado.value;
+
+            displayedData = globalData.filter(item => {
+                const matchesText = (
+                    String(item.sector).toLowerCase().includes(textQuery) ||
+                    String(item.casa).toLowerCase().includes(textQuery) ||
+                    String(item.nombre).toLowerCase().includes(textQuery) ||
+                    String(item.estado).toLowerCase().includes(textQuery)
+                );
+
+                const matchesSector = selSector === "" || String(item.sector) === selSector;
+                const matchesCasa = selCasa === "" || String(item.casa) === selCasa;
+                const matchesEstado = selEstado === "" || String(item.estado) === selEstado;
+
+                return matchesText && matchesSector && matchesCasa && matchesEstado;
+            });
+
+            renderTable();
+            updateChart(); // Actualizar gráfico al filtrar
+        }
+
+        // --- 4. RENDERIZADO DE TABLA ---
         function renderTable() {
             tableBody.innerHTML = '';
 
-            if (globalData.length === 0) {
+            if (displayedData.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay datos que coincidan con el filtro.</td></tr>';
                 return;
             }
 
-            globalData.forEach(row => {
+            displayedData.forEach(row => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td style="color: var(--accent-color); font-weight:bold;">${row.sector}</td>
@@ -391,11 +599,59 @@
             });
         }
 
-        // --- EXPORTACIÓN ---
+        // --- 5. GRÁFICO DINÁMICO (Chart.js) ---
+        function updateChart() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            
+            // Agrupar datos por Sector
+            const counts = {};
+            displayedData.forEach(item => {
+                const label = (item.sector && item.sector !== "N/A") ? "Sector " + item.sector : "Otros";
+                counts[label] = (counts[label] || 0) + 1;
+            });
 
+            // Ordenar etiquetas
+            const labels = Object.keys(counts).sort((a, b) => 
+                a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+            );
+            const dataValues = labels.map(l => counts[l]);
+
+            // Destruir anterior si existe
+            if (myChart) myChart.destroy();
+
+            // Crear nuevo gráfico
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Documentos Listos',
+                        data: dataValues,
+                        backgroundColor: 'rgba(0, 188, 212, 0.6)',
+                        borderColor: 'rgba(0, 188, 212, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#e0e0e0' } },
+                        title: { display: true, text: 'DISTRIBUCIÓN DE ARCHIVOS POR SECTOR', color: '#e0e0e0', font: { size: 14 } }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#aaa' }, grid: { color: '#444' } },
+                        x: { ticks: { color: '#aaa' }, grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // --- 6. EXPORTACIONES ---
         function exportToExcel() {
-            if (globalData.length === 0) return alert("No hay datos para exportar");
-            const dataToExport = globalData.map(d => ({
+            if (displayedData.length === 0) return alert("No hay datos visibles para exportar");
+            
+            const dataToExport = displayedData.map(d => ({
                 Sector: d.sector,
                 Casa: d.casa,
                 "Nombre Archivo": d.nombre,
@@ -405,16 +661,16 @@
 
             const ws = XLSX.utils.json_to_sheet(dataToExport);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Kagua_Filtrados");
-            XLSX.writeFile(wb, "Reporte_Kagua_Filtrado.xlsx");
+            XLSX.utils.book_append_sheet(wb, ws, "Busqueda_Kagua");
+            XLSX.writeFile(wb, "Reporte_Filtrado.xlsx");
         }
 
         function exportToPDF() {
-            if (globalData.length === 0) return alert("No hay datos para exportar");
+            if (displayedData.length === 0) return alert("No hay datos visibles para exportar");
+            
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            // Configuración visual del PDF
             doc.setFillColor(255, 255, 255);
             doc.rect(0, 0, 210, 297, "F");
 
@@ -426,21 +682,33 @@
             doc.setTextColor(76, 175, 80);
             doc.text("Filtrado: REALIZADOS SUBIDOS A KAGUA", 14, 22);
 
+            // Indicar si hay filtros activos
+            if(searchInput.value) {
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Búsqueda: "${searchInput.value}"`, 14, 28);
+            }
+
             const tableColumn = ["Sector", "Casa", "Nombre Archivo", "Estado"];
             const tableRows = [];
             
-            globalData.forEach(d => {
+            displayedData.forEach(d => {
                 tableRows.push([d.sector, d.casa, d.nombre, d.estado]);
             });
 
             doc.autoTable({
                 head: [tableColumn],
                 body: tableRows,
-                startY: 30,
+                startY: 35,
                 theme: 'grid',
                 headStyles: { fillColor: [0, 188, 212], textColor: 255 },
                 styles: { fontSize: 8 }
             });
+
+            // Footer PDF
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text("Generado por Entalpia 2025", 14, pageHeight - 10);
 
             doc.save("Reporte_Kagua_Filtrado.pdf");
         }
