@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fondo Documental Comservicios</title>
+    <title>Fondo Documental COLGAS - V1</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -14,7 +14,7 @@
             --bg-color: #1e1e1e;
             --card-bg: #2d2d2d;
             --text-color: #e0e0e0;
-            --accent-color: #00bcd4; /* Azul Cyan ingeniería */
+            --accent-color: #00bcd4; 
             --border-color: #444;
             --success-color: #4caf50;
             --hover-color: #383838;
@@ -36,7 +36,6 @@
             max-width: 1200px;
         }
 
-        /* HEADER & LOGO */
         header {
             text-align: center;
             margin-bottom: 30px;
@@ -65,51 +64,48 @@
             font-weight: 400;
         }
 
-        /* AREA DE CARGA DE ARCHIVO */
-        .upload-section {
+        /* AREA DE CONEXIÓN */
+        .connection-section {
             background-color: var(--card-bg);
-            border: 2px dashed var(--border-color);
+            border: 2px solid var(--border-color);
             border-radius: 8px;
             padding: 20px;
             text-align: center;
             margin-bottom: 20px;
-            transition: border-color 0.3s;
         }
 
-        .upload-section:hover {
-            border-color: var(--accent-color);
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        .custom-file-upload {
-            display: inline-block;
-            padding: 10px 20px;
-            cursor: pointer;
-            background-color: #333;
-            color: var(--accent-color);
-            border: 1px solid var(--accent-color);
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-        }
-
-        .file-name-display {
-            margin-top: 10px;
+        .status-display {
+            margin-top: 15px;
             font-style: italic;
             color: #aaa;
+            min-height: 20px;
         }
 
-        /* BARRA DE HERRAMIENTAS (BOTONES) */
+        /* BOTONES */
+        .btn-connect {
+            background-color: var(--accent-color);
+            color: #000;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: transform 0.2s;
+        }
+        
+        .btn-connect:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px var(--accent-color);
+        }
+
         .toolbar {
             display: flex;
             justify-content: flex-end;
             gap: 10px;
             margin-bottom: 15px;
-            opacity: 0.5; /* Deshabilitado visualmente hasta cargar */
+            opacity: 0.5; 
             pointer-events: none;
         }
 
@@ -141,7 +137,7 @@
             border-radius: 8px;
             overflow-x: auto;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            min-height: 200px; /* Altura mínima estética */
+            min-height: 200px;
         }
 
         table {
@@ -169,7 +165,6 @@
             background-color: var(--hover-color);
         }
 
-        /* LINKS Y ESTADOS */
         a.doc-link {
             color: var(--accent-color);
             text-decoration: none;
@@ -190,6 +185,22 @@
             text-align: center;
             color: #666;
         }
+        
+        /* Loading Spinner sutil */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10px;
+            display: none; /* Oculto por defecto */
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -197,18 +208,17 @@
     <div class="container">
         <header>
             <div class="logo-container">
-                <img src="ImagenesPlataformas/img_logo_colgas.jpg" alt="Logo Colgas" onerror="this.style.display='none'">
+                <img src="https://via.placeholder.com/150x80/000000/00bcd4?text=COLGAS" alt="Logo Colgas" onerror="this.style.display='none'">
             </div>
-            <h1>Fondo Documental Comservicios</h1>
-            <h2>DOCUMENTOS OK PARA SUBIR A KAGUA</h2>
+            <h1>I.A. Explorador</h1>
+            <h2>FILTRO: REALIZADOS SUBIDOS A KAGUA</h2>
         </header>
 
-        <div class="upload-section">
-            <label for="fileInput" class="custom-file-upload">
-                📥 Cargar Archivo (Excel o CSV)
-            </label>
-            <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" />
-            <div id="fileNameDisplay" class="file-name-display">Ningún archivo seleccionado</div>
+        <div class="connection-section">
+            <button class="btn-connect" onclick="fetchGoogleSheet()">
+                <div class="loader" id="loader"></div> 🔄 Cargar Datos de Google Sheets
+            </button>
+            <div id="statusDisplay" class="status-display">Esperando conexión...</div>
         </div>
 
         <div class="toolbar" id="toolbar">
@@ -222,16 +232,15 @@
                     <tr>
                         <th>Sector</th>
                         <th>Casa (CS)</th>
-                        <th>Nombre Original</th>
-                        <th>Carpeta</th>
+                        <th>Nombre Archivo</th>
+                        <th>Estado (Filtro)</th>
                         <th>Acción</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
                     <tr>
                         <td colspan="5" class="empty-state">
-                            Sube un archivo .xlsx o .csv para visualizar los datos.<br>
-                            <small>El archivo debe tener columnas como: "Nombre del Archivo", "URL del Archivo", "Carpeta Contenedora"</small>
+                            Haz clic en "Cargar Datos" para conectar con la hoja "Extraidos".
                         </td>
                     </tr>
                 </tbody>
@@ -240,63 +249,88 @@
     </div>
 
     <script>
-        // Variable global para almacenar los datos procesados
-        let globalData = [];
+        // ==========================================
+        // CONFIGURACIÓN (PEGA TU LINK AQUÍ ABAJO)
+        // ==========================================
+        
+        // Reemplaza este link con el que copiaste de "Publicar en la web" -> formato CSV
+        const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vThuXIHlfI6bv9jzmTOVSr7Unf-vZLAprGcdXtV_wBu11SEhMfHBWTN4bAK0oYcznAF6A9L9Dh00W_F/pub?gid=0&single=true&output=csv"; 
+        
+        // Ejemplo de cómo se ve un link válido:
+        // const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQxxxxxx/pub?gid=0&single=true&output=csv";
 
-        // Referencias al DOM
-        const fileInput = document.getElementById('fileInput');
-        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        // ==========================================
+        
+        let globalData = [];
+        const statusDisplay = document.getElementById('statusDisplay');
         const toolbar = document.getElementById('toolbar');
         const tableBody = document.getElementById('tableBody');
+        const loader = document.getElementById('loader');
 
-        // Escuchar cambios en el input de archivo
-        fileInput.addEventListener('change', handleFileSelect, false);
+        async function fetchGoogleSheet() {
+            if (GOOGLE_SHEET_URL.includes("TU_ENLACE")) {
+                alert("¡Atención! No has configurado el enlace de Google Sheets en el código.\n\nEdita el archivo HTML y busca la variable GOOGLE_SHEET_URL.");
+                return;
+            }
 
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            fileNameDisplay.textContent = "Procesando: " + file.name;
-
-            const reader = new FileReader();
-
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-
-                // Tomamos la primera hoja del excel
+            // UI Updates
+            loader.style.display = "inline-block";
+            statusDisplay.textContent = "Conectando con Google Sheets...";
+            statusDisplay.style.color = "var(--accent-color)";
+            
+            try {
+                const response = await fetch(GOOGLE_SHEET_URL);
+                if (!response.ok) throw new Error("Error en la red o enlace inválido");
+                
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                
+                // Asumimos que es la primera hoja del CSV descargado
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-
-                // Convertimos a JSON crudo
+                
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-
-                // Procesamos los datos con nuestra lógica de ingeniería
+                
                 processAndRender(jsonData);
-            };
 
-            reader.readAsArrayBuffer(file);
+            } catch (error) {
+                console.error(error);
+                statusDisplay.textContent = "Error: " + error.message;
+                statusDisplay.style.color = "red";
+                loader.style.display = "none";
+            }
         }
 
         function processAndRender(rawData) {
-            // Limpiamos datos anteriores
             globalData = [];
+            let countFiltered = 0;
 
-            // Mapeo inteligente de columnas (basado en tu CSV anterior)
-            // Buscamos claves que se parezcan a tus headers originales
             rawData.forEach(row => {
-                // Intentar encontrar las columnas correctas sin importar mayúsculas/minúsculas
                 const keys = Object.keys(row);
                 
-                const nameKey = keys.find(k => k.toLowerCase().includes("nombre")) || keys[0]; // Fallback a la primera col
-                const urlKey = keys.find(k => k.toLowerCase().includes("url")) || keys[1];
-                const folderKey = keys.find(k => k.toLowerCase().includes("carpeta")) || keys[2];
+                // Asumimos estructura basada en tu descripción:
+                // Col A (keys[0]) -> Nombre / Info
+                // Col B (keys[1]) -> URL o Carpeta
+                // Col C (keys[2]) -> ESTADO (FILTRO)
 
-                const nombreArchivo = row[nameKey] || "Sin Nombre";
-                const urlArchivo = row[urlKey] || "#";
-                const carpeta = row[folderKey] || "N/A";
+                // 1. Obtener valores seguros
+                const valColA = row[keys[0]] || "";
+                const valColB = row[keys[1]] || "";
+                const valColC = row[keys[2]] || ""; // Esta es la columna del filtro
 
-                // Lógica de Regex para extraer Sector y Casa
+                // 2. APLICAR EL FILTRO DE GOOGLE SHEETS
+                // Normalizamos a mayúsculas y quitamos espacios extra para asegurar coincidencia
+                const estadoLimpio = String(valColC).trim().toUpperCase();
+                
+                if (estadoLimpio !== "REALIZADOS SUBIDOS A KAGUA") {
+                    return; // Si no coincide, saltamos esta fila (no se agrega)
+                }
+
+                // 3. Procesar datos si pasó el filtro
+                const nombreArchivo = valColA;
+                const urlArchivo = valColB; // Asumiendo que col B tiene la URL o Carpeta
+                
+                // Lógica Regex para Sector y Casa
                 let sector = "N/A";
                 let casa = "N/A";
                 
@@ -310,38 +344,43 @@
                     sector: sector,
                     casa: casa,
                     nombre: nombreArchivo,
-                    carpeta: carpeta,
-                    url: urlArchivo
+                    estado: valColC, // Guardamos el estado original
+                    url: urlArchivo.startsWith("http") ? urlArchivo : "#"
                 });
+                
+                countFiltered++;
             });
 
             renderTable();
-            // Activar botones de descarga
+            
+            // UI Final
+            loader.style.display = "none";
             toolbar.classList.add('active');
-            fileNameDisplay.textContent += " (Cargado ✔️)";
-            fileNameDisplay.style.color = "var(--success-color)";
+            
+            if (globalData.length > 0) {
+                statusDisplay.textContent = `Éxito: Se cargaron ${countFiltered} registros filtrados desde Google Sheets.`;
+                statusDisplay.style.color = "var(--success-color)";
+            } else {
+                statusDisplay.textContent = "Conexión exitosa, pero no se encontraron filas con el estado 'REALIZADOS SUBIDOS A KAGUA'.";
+                statusDisplay.style.color = "orange";
+            }
         }
 
         function renderTable() {
-            tableBody.innerHTML = ''; // Limpiar tabla
+            tableBody.innerHTML = '';
 
             if (globalData.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No se encontraron datos válidos.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay datos que coincidan con el filtro.</td></tr>';
                 return;
             }
 
             globalData.forEach(row => {
                 const tr = document.createElement('tr');
-                // Color sutil si falta info
-                if (row.sector === "N/A" && row.casa === "N/A") {
-                    tr.style.opacity = "0.7"; 
-                }
-
                 tr.innerHTML = `
                     <td style="color: var(--accent-color); font-weight:bold;">${row.sector}</td>
                     <td>${row.casa}</td>
                     <td>${row.nombre}</td>
-                    <td>${row.carpeta}</td>
+                    <td style="color: var(--success-color); font-size:0.8rem;">${row.estado}</td>
                     <td>
                         ${row.url && row.url !== '#' 
                             ? `<a href="${row.url}" target="_blank" class="doc-link">ABRIR</a>` 
@@ -352,51 +391,46 @@
             });
         }
 
-        // --- FUNCIONES DE EXPORTACIÓN (Iguales a la versión anterior) ---
+        // --- EXPORTACIÓN ---
 
         function exportToExcel() {
             if (globalData.length === 0) return alert("No hay datos para exportar");
-
             const dataToExport = globalData.map(d => ({
                 Sector: d.sector,
                 Casa: d.casa,
                 "Nombre Archivo": d.nombre,
-                Carpeta: d.carpeta,
+                Estado: d.estado,
                 URL: d.url
             }));
 
             const ws = XLSX.utils.json_to_sheet(dataToExport);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Documentos_Kagua");
-            XLSX.writeFile(wb, "Reporte_Kagua.xlsx");
+            XLSX.utils.book_append_sheet(wb, ws, "Kagua_Filtrados");
+            XLSX.writeFile(wb, "Reporte_Kagua_Filtrado.xlsx");
         }
 
         function exportToPDF() {
             if (globalData.length === 0) return alert("No hay datos para exportar");
-
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            doc.setFillColor(30, 30, 30); // Fondo oscuro cabecera simulación
-            doc.rect(0, 0, 210, 297, "F"); // Fondo página (opcional, mejor dejar blanco para imprimir)
-            
-            // Reiniciar a blanco para impresión limpia
+            // Configuración visual del PDF
             doc.setFillColor(255, 255, 255);
             doc.rect(0, 0, 210, 297, "F");
 
             doc.setFontSize(14);
             doc.setTextColor(0, 0, 0);
-            doc.text("FONDO DOCUMENTAL COMSERVICIOS", 14, 15);
+            doc.text("REPORTE IA EXPLORADOR", 14, 15);
             
             doc.setFontSize(10);
-            doc.setTextColor(76, 175, 80); // Verde success
-            doc.text("Documentos OK para subir a Kagua", 14, 22);
+            doc.setTextColor(76, 175, 80);
+            doc.text("Filtrado: REALIZADOS SUBIDOS A KAGUA", 14, 22);
 
-            const tableColumn = ["Sector", "Casa", "Nombre Archivo", "Carpeta"];
+            const tableColumn = ["Sector", "Casa", "Nombre Archivo", "Estado"];
             const tableRows = [];
-
+            
             globalData.forEach(d => {
-                tableRows.push([d.sector, d.casa, d.nombre, d.carpeta]);
+                tableRows.push([d.sector, d.casa, d.nombre, d.estado]);
             });
 
             doc.autoTable({
@@ -404,11 +438,11 @@
                 body: tableRows,
                 startY: 30,
                 theme: 'grid',
-                headStyles: { fillColor: [0, 188, 212], textColor: 255 }, // Azul accent
+                headStyles: { fillColor: [0, 188, 212], textColor: 255 },
                 styles: { fontSize: 8 }
             });
 
-            doc.save("Reporte_Kagua.pdf");
+            doc.save("Reporte_Kagua_Filtrado.pdf");
         }
     </script>
 </body>
