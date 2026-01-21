@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>I.A. Explorador V2.2 | Entalpia</title>
+    <title>I.A. Explorador V2.3 | Entalpia</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -399,7 +399,7 @@
                 <li>El sistema filtrará automáticamente y te mostrará solo los documentos subidos desde esa fecha.</li>
                 <li>Luego pulsa <b>"📦 Descargar ZIP"</b> para bajar todo el lote nuevo de una sola vez.</li>
             </ul>
-            <p style="font-size:0.8rem; color:#888;">* Nota: La fecha se toma de la columna "Marca temporal" o "Fecha" de tu Excel.</p>
+            <p style="font-size:0.8rem; color:#888;">* Nota: La fecha se toma de la columna "Fecha de Creación" de tu Excel.</p>
             <button class="btn" onclick="document.getElementById('helpModal').style.display='none'" style="width:100%; justify-content:center;">Entendido</button>
         </div>
     </div>
@@ -492,7 +492,7 @@
     </div>
 
     <footer>
-        <p>Esta app pertenece a la filial del Hub de ingenieria <span class="entalpia-brand">Entalpia</span> &copy; 2025</p>
+        <p>Diseñado y Desarrollado por <span class="entalpia-brand">Entalpia</span> &copy; 2025</p>
     </footer>
 
     <script>
@@ -542,7 +542,7 @@
             }
         }
 
-        // --- PROCESAMIENTO ---
+        // --- PROCESAMIENTO INTELIGENTE DE COLUMNAS ---
         function processAndRender(rawData) {
             if (rawData.length === 0) {
                 alert("Archivo vacío."); return;
@@ -550,54 +550,69 @@
 
             const headers = Object.keys(rawData[0]);
             
-            // Detección de columnas clave
-            const keyFiltro = headers.find(h => h.match(/estado|filtro|kagua/i)) || headers[2];
+            // 1. Detección Dinámica de Columnas (Crucial para arreglar tu error)
+            // Busca la columna que contenga "fecha", "creación", "marca", etc.
+            const keyFecha = headers.find(h => /fecha|date|creación|marca|time/i.test(h));
             
-            // Prioridad para encontrar la fecha: "Marca temporal", "Timestamp", "Fecha", "Date"
-            const keyFecha = headers.find(h => h.match(/marca temporal|timestamp|fecha|date|time/i)); 
-            
+            // Busca la columna que contenga "nombre", "archivo"
+            // Fallback: Si no la encuentra por nombre, asume que es la columna 1 (B) si hay fecha, o la 0 (A) si no.
+            let keyNombre = headers.find(h => /nombre|name|archivo|file/i.test(h));
+            if (!keyNombre) keyNombre = headers[keyFecha ? 1 : 0];
+
+            // Busca la columna URL
+            // Fallback: Asume columna 2 (C)
+            let keyUrl = headers.find(h => /url|link|enlace/i.test(h));
+            if (!keyUrl) keyUrl = headers[keyFecha ? 2 : 1];
+
+            // Busca columna Estado (Si existe)
+            const keyFiltro = headers.find(h => /estado|filtro|kagua/i.test(h));
+
             globalData = [];
             
             rawData.forEach(row => {
-                const estado = String(row[keyFiltro] || "").trim().toUpperCase();
-                if (estado !== "REALIZADOS SUBIDOS A KAGUA") return;
+                // Validación de Estado (Si la columna existe)
+                // Si la columna "Estado" desapareció del script, asumimos que todos los archivos son válidos.
+                let estado = "OK";
+                if (keyFiltro) {
+                    estado = String(row[keyFiltro] || "").trim().toUpperCase();
+                    if (estado !== "REALIZADOS SUBIDOS A KAGUA") return;
+                } else {
+                    // Si no hay columna estado, le ponemos un texto genérico para visualización
+                    estado = "CARGADO";
+                }
 
-                const nombre = row[headers[0]] || "Sin Nombre";
-                const url = row[headers[1]] || "#";
+                const nombre = row[keyNombre] || "Sin Nombre";
+                const url = row[keyUrl] || "#";
                 
-                // LÓGICA DE FECHA ROBUSTA
+                // --- LÓGICA DE FECHA ---
                 let fechaObj = null;
-                let fechaStr = "---"; // Valor por defecto si no hay fecha
+                let fechaStr = "---"; 
                 
                 if (keyFecha && row[keyFecha]) {
                     const rawDate = row[keyFecha];
                     
                     if (typeof rawDate === 'number') {
-                        // Caso Excel Serial Date (ej: 45321)
-                        // Restamos 25569 para ajustar epoch unix, *86400 segundos *1000 ms
-                        // A veces hay que ajustar zona horaria, aquí usamos UTC básico
+                        // Fecha Excel serial
                         fechaObj = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
-                        // Ajuste manual por si JS resta horas por timezone local
                         fechaObj.setMinutes(fechaObj.getMinutes() + fechaObj.getTimezoneOffset());
                     } else {
-                        // Caso String (ej: "21/1/2026" o "2026-01-21")
-                        // Intentamos parsear directo
+                        // String fecha (ISO o Locale)
                         fechaObj = new Date(rawDate);
                         
-                        // Si falla (Invalid Date) y es formato DD/MM/YYYY común en español
+                        // Si falla JS nativo y es tipo "21/01/2026"
                         if (isNaN(fechaObj) && typeof rawDate === 'string' && rawDate.includes('/')) {
-                            const parts = rawDate.split(/[\/\s]/); // Separa por / o espacio
+                            const parts = rawDate.split(/[\/\s]/); 
                             if (parts.length >= 3) {
-                                // Asumimos DD/MM/YYYY
+                                // Intento: DD/MM/YYYY
                                 fechaObj = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
                             }
                         }
                     }
                     
                     if (!isNaN(fechaObj)) {
-                        fechaStr = fechaObj.toISOString().split('T')[0]; // Formato YYYY-MM-DD para visualización limpia
+                        fechaStr = fechaObj.toISOString().split('T')[0];
                     } else {
-                        fechaObj = null; // Fecha inválida
+                        fechaObj = null;
                     }
                 }
 
@@ -610,17 +625,17 @@
                     casa: csMatch ? csMatch[1] : "N/A",
                     nombre: nombre,
                     estado: estado,
-                    url: url.startsWith("http") ? url : "#",
+                    url: url.toString().startsWith("http") ? url : "#",
                     fechaStr: fechaStr,
-                    fechaObj: fechaObj // Objeto Date real para filtrar
+                    fechaObj: fechaObj 
                 });
             });
             
-            // Ordenar por fecha descendente (lo más nuevo primero) por defecto
+            // Ordenar por fecha descendente
             globalData.sort((a, b) => (b.fechaObj || 0) - (a.fechaObj || 0));
 
             enableControls();
-            applyFilters(); // Render inicial
+            applyFilters();
             
             const msgFecha = keyFecha ? `(Columna fecha detectada: "${keyFecha}")` : `⚠️ No encontré columna de fecha.`;
             statusDisplay.innerHTML = `✅ <b>${globalData.length}</b> documentos listos. ${msgFecha}`;
@@ -662,31 +677,25 @@
             const sectorVal = document.getElementById('filterSector').value;
             const casaVal = document.getElementById('filterCasa').value;
             
-            // Valores de fecha inputs (YYYY-MM-DD string)
             const startStr = dateStart.value; 
             const endStr = dateEnd.value;
 
-            // Convertir inputs a objetos Date a medianoche
             const start = startStr ? new Date(startStr + "T00:00:00") : null;
             const end = endStr ? new Date(endStr + "T23:59:59") : null;
 
             displayedData = globalData.filter(item => {
-                // Filtro Texto
                 const matchText = (
                     item.sector.toLowerCase().includes(query) ||
                     item.casa.toLowerCase().includes(query) ||
                     item.nombre.toLowerCase().includes(query)
                 );
 
-                // Filtro Selects
                 const matchSector = !sectorVal || item.sector === sectorVal;
                 const matchCasa = !casaVal || item.casa === casaVal;
 
-                // Filtro Fecha Estricto
                 let matchDate = true;
                 if (start || end) {
                     if (!item.fechaObj) {
-                        // Si hay filtro activo pero el item no tiene fecha, lo ocultamos para evitar errores
                         matchDate = false; 
                     } else {
                         if (start && item.fechaObj < start) matchDate = false;
@@ -788,7 +797,6 @@
                     const blob = await response.blob();
                     
                     let cleanName = doc.nombre.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                    // Añadir fecha al nombre del archivo para orden
                     if (doc.fechaStr !== "---") cleanName = `${doc.fechaStr}_${cleanName}`;
                     
                     if (!cleanName.endsWith(".pdf") && !cleanName.endsWith(".jpg")) {
