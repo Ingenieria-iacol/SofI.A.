@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>I.A. Explorador V1.1| Entalpia</title>
+    <title>I.A. Explorador V2.0 | Entalpia</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <style>
         :root {
@@ -18,6 +20,7 @@
             --accent-color: #00bcd4; /* Azul Cyan ingeniería */
             --border-color: #444;
             --success-color: #4caf50;
+            --warning-color: #ff9800;
             --hover-color: #383838;
         }
 
@@ -36,7 +39,7 @@
         .container {
             width: 95%;
             max-width: 1200px;
-            flex: 1; /* Para empujar el footer abajo */
+            flex: 1; 
         }
 
         /* HEADER */
@@ -76,6 +79,10 @@
             padding: 15px;
             text-align: center;
             margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
         }
 
         .btn-connect {
@@ -89,6 +96,9 @@
             cursor: pointer;
             text-transform: uppercase;
             transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
         .btn-connect:hover {
@@ -101,6 +111,53 @@
             font-style: italic;
             color: #aaa;
             font-size: 0.9rem;
+        }
+
+        /* SECCIÓN DE FILTROS AVANZADOS (FECHAS) */
+        .date-filters {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            background: #252525;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+
+        .date-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .date-group label {
+            font-size: 0.75rem;
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .date-input {
+            background-color: #444;
+            color: #fff;
+            border: 1px solid #666;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+
+        .help-btn {
+            background: none;
+            border: 1px solid var(--warning-color);
+            color: var(--warning-color);
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px;
         }
 
         /* GRÁFICO */
@@ -139,11 +196,6 @@
             border-color: var(--accent-color);
         }
 
-        .search-input:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
         .search-icon {
             position: absolute;
             left: 12px;
@@ -161,6 +213,7 @@
             margin-bottom: 15px;
             opacity: 0.5;
             pointer-events: none;
+            flex-wrap: wrap;
         }
 
         .toolbar.active {
@@ -178,11 +231,25 @@
             transition: all 0.3s ease;
             text-transform: uppercase;
             font-size: 0.8rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .btn:hover {
             background-color: var(--accent-color);
             color: #000;
+        }
+        
+        .btn-zip {
+            border-color: var(--success-color);
+            color: var(--success-color);
+        }
+        
+        .btn-zip:hover {
+            background-color: var(--success-color);
+            color: white;
         }
 
         /* TABLA Y FILTROS */
@@ -221,7 +288,6 @@
             background-color: var(--hover-color);
         }
 
-        /* Filtros en encabezados */
         .header-content {
             display: flex;
             flex-direction: column;
@@ -267,11 +333,29 @@
             width: 20px;
             height: 20px;
             animation: spin 1s linear infinite;
-            display: inline-block;
-            vertical-align: middle;
-            margin-right: 10px;
             display: none;
         }
+        
+        /* Modal Info */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 8px;
+            max-width: 500px;
+            border: 1px solid var(--accent-color);
+        }
+        .modal-content h3 { color: var(--accent-color); margin-top: 0; }
+        .modal-content ul { padding-left: 20px; color: #ccc; }
+        .modal-content li { margin-bottom: 8px; }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -296,6 +380,20 @@
 </head>
 <body>
 
+    <div id="helpModal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-content">
+            <h3>📂 Guía de Descarga Inteligente</h3>
+            <p>Para descargar documentos sin duplicados, sigue estos pasos:</p>
+            <ul>
+                <li>Usa los campos <b>Fecha Inicio</b> y <b>Fecha Fin</b>.</li>
+                <li>Si tu última descarga fue el <i>10 de Enero</i>, coloca en "Fecha Inicio" el <i>11 de Enero</i>.</li>
+                <li>La tabla se actualizará mostrando <b>solo los documentos nuevos</b> en ese rango.</li>
+                <li>Haz clic en <b>"DESCARGAR ZIP"</b> para bajar todos los archivos visibles en un solo paquete.</li>
+            </ul>
+            <button class="btn" onclick="document.getElementById('helpModal').style.display='none'" style="width:100%">Entendido</button>
+        </div>
+    </div>
+
     <div class="container">
         <header>
             <div class="logo-container">
@@ -307,9 +405,21 @@
 
         <div class="connection-section">
             <button class="btn-connect" onclick="fetchGoogleSheet()">
-                <div class="loader" id="loader"></div> 🔄 Iterar
+                <div class="loader" id="loader"></div> 🔄 CONECTAR & ITERAR DATOS
             </button>
-            <div id="statusDisplay" class="status-display">Sistema listo para conectar.</div>
+            <div id="statusDisplay" class="status-display">Esperando conexión...</div>
+        </div>
+
+        <div class="date-filters">
+            <div class="date-group">
+                <label>DESDE (Fecha Creación)</label>
+                <input type="date" id="dateStart" class="date-input" onchange="applyFilters()" disabled>
+            </div>
+            <div class="date-group">
+                <label>HASTA</label>
+                <input type="date" id="dateEnd" class="date-input" onchange="applyFilters()" disabled>
+            </div>
+            <button class="help-btn" onclick="openHelp()" title="¿Cómo evitar duplicados?">?</button>
         </div>
 
         <div class="chart-wrapper">
@@ -329,15 +439,16 @@
         </div>
 
         <div class="toolbar" id="toolbar">
-            <button class="btn" onclick="exportToExcel()">Descargar XLS</button>
-            <button class="btn" onclick="exportToPDF()">Descargar PDF</button>
+            <button class="btn" onclick="exportToExcel()">📄 Excel</button>
+            <button class="btn" onclick="exportToPDF()">📑 PDF</button>
+            <button class="btn btn-zip" onclick="downloadMassively()">📦 Descargar ZIP (Filtrados)</button>
         </div>
 
         <div class="table-container">
             <table id="docTable">
                 <thead>
                     <tr>
-                        <th>
+                        <th>FECHA</th> <th>
                             <div class="header-content">
                                 <span>SECTOR</span>
                                 <select id="filterSector" class="filter-select" onchange="applyFilters()" disabled>
@@ -347,28 +458,21 @@
                         </th>
                         <th>
                             <div class="header-content">
-                                <span>CASA (CS)</span>
+                                <span>CASA</span>
                                 <select id="filterCasa" class="filter-select" onchange="applyFilters()" disabled>
                                     <option value="">Todas</option>
                                 </select>
                             </div>
                         </th>
                         <th>Nombre Archivo</th>
-                        <th>
-                            <div class="header-content">
-                                <span>ESTADO</span>
-                                <select id="filterEstado" class="filter-select" onchange="applyFilters()" disabled>
-                                    <option value="">Todos</option>
-                                </select>
-                            </div>
-                        </th>
+                        <th>Estado</th>
                         <th>Acción</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
                     <tr>
-                        <td colspan="5" class="empty-state">
-                            Haz clic en "Conectar" para cargar los datos desde la nube.
+                        <td colspan="6" class="empty-state">
+                            Haz clic en "Conectar" para cargar los datos.
                         </td>
                     </tr>
                 </tbody>
@@ -382,51 +486,34 @@
 
     <script>
         // ==========================================
-        //  CONFIGURACIÓN - PEGA TU ENLACE ABAJO
+        //  CONFIGURACIÓN
         // ==========================================
-        
-        // Pega aquí el enlace de "Publicar en la web" -> formato CSV
         const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vThuXIHlfI6bv9jzmTOVSr7Unf-vZLAprGcdXtV_wBu11SEhMfHBWTN4bAK0oYcznAF6A9L9Dh00W_F/pub?output=csv"; 
-        
         // ==========================================
 
-        // Variables Globales
         let globalData = [];
         let displayedData = [];
         let myChart = null;
 
-        // Referencias DOM
+        // DOM Elements
         const statusDisplay = document.getElementById('statusDisplay');
         const loader = document.getElementById('loader');
-        const toolbar = document.getElementById('toolbar');
         const tableBody = document.getElementById('tableBody');
         const searchInput = document.getElementById('searchInput');
+        const dateStart = document.getElementById('dateStart');
+        const dateEnd = document.getElementById('dateEnd');
         
-        // Referencias Filtros
-        const filterSector = document.getElementById('filterSector');
-        const filterCasa = document.getElementById('filterCasa');
-        const filterEstado = document.getElementById('filterEstado');
-
-        // --- 1. CONEXIÓN A GOOGLE SHEETS ---
+        // --- CONEXIÓN ---
         async function fetchGoogleSheet() {
-            if (GOOGLE_SHEET_URL.includes("TU_ENLACE")) {
-                alert("⚠️ ERROR: No has configurado el enlace.\nEdita el código HTML y busca la variable 'GOOGLE_SHEET_URL'.");
-                return;
-            }
-
             loader.style.display = "inline-block";
-            statusDisplay.textContent = "Conectando con Google Sheets...";
-            statusDisplay.style.color = "var(--accent-color)";
+            statusDisplay.textContent = "Obteniendo datos de la nube...";
             
             try {
                 const response = await fetch(GOOGLE_SHEET_URL);
-                if (!response.ok) throw new Error("Error en la red o enlace inválido");
-                
+                if (!response.ok) throw new Error("Error de conexión");
                 const arrayBuffer = await response.arrayBuffer();
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
                 
                 processAndRender(jsonData);
@@ -439,279 +526,295 @@
             }
         }
 
-        // --- 2. PROCESAMIENTO INTELIGENTE DE DATOS ---
+        // --- PROCESAMIENTO ---
         function processAndRender(rawData) {
             if (rawData.length === 0) {
-                alert("El archivo está vacío.");
-                loader.style.display = "none";
-                return;
+                alert("Archivo vacío."); return;
             }
 
             const headers = Object.keys(rawData[0]);
-
-            // Detección automática de la columna 'Estado/Filtro'
-            const keyFiltro = headers.find(h => 
-                h.toLowerCase().includes("estado") || 
-                h.toLowerCase().includes("filtro") || 
-                h.toLowerCase().includes("kagua")
-            ) || headers[2]; // Fallback a la columna 3
-
-            if (!keyFiltro) {
-                alert("Error: No se encontró columna de Estado.");
-                loader.style.display = "none";
-                return;
-            }
-
+            
+            // Detección de columnas clave
+            const keyFiltro = headers.find(h => h.match(/estado|filtro|kagua/i)) || headers[2];
+            const keyFecha = headers.find(h => h.match(/fecha|date|marca|time/i)); // Busca columna de fecha
+            
             globalData = [];
             
             rawData.forEach(row => {
-                const valColFiltro = row[keyFiltro] || ""; 
-                const estadoLimpio = String(valColFiltro).trim().toUpperCase();
+                const estado = String(row[keyFiltro] || "").trim().toUpperCase();
+                if (estado !== "REALIZADOS SUBIDOS A KAGUA") return;
 
-                // FILTRO ESTRICTO PRINCIPAL
-                if (estadoLimpio !== "REALIZADOS SUBIDOS A KAGUA") return;
-
-                const colNombre = headers[0];
-                const colUrl = headers[1];
+                const nombre = row[headers[0]] || "Sin Nombre";
+                const url = row[headers[1]] || "#";
                 
-                const nombreArchivo = row[colNombre] || "Sin Nombre";
-                const urlArchivo = row[colUrl] || "#";
-
-                // Regex para extraer Sector y Casa
-                let sector = "N/A";
-                let casa = "N/A";
+                // Parseo de Fecha
+                let fechaObj = null;
+                let fechaStr = "N/A";
                 
-                const sectorMatch = String(nombreArchivo).match(/sector\s*(\d+)/i);
-                const casaMatch = String(nombreArchivo).match(/(?:CS|casa)\s*(\d+)/i);
+                if (keyFecha && row[keyFecha]) {
+                    // Intenta parsear fecha de Excel o String
+                    const rawDate = row[keyFecha];
+                    if (typeof rawDate === 'number') {
+                        // Fecha Excel serial
+                        fechaObj = new Date(Math.round((rawDate - 25569)*86400*1000));
+                    } else {
+                        // String fecha
+                        fechaObj = new Date(rawDate);
+                    }
+                    
+                    if (!isNaN(fechaObj)) {
+                        fechaStr = fechaObj.toISOString().split('T')[0]; // YYYY-MM-DD
+                    } else {
+                        fechaObj = null;
+                    }
+                }
 
-                if (sectorMatch) sector = sectorMatch[1];
-                if (casaMatch) casa = casaMatch[1];
+                // Regex Sector/Casa
+                const secMatch = String(nombre).match(/sector\s*(\d+)/i);
+                const csMatch = String(nombre).match(/(?:CS|casa)\s*(\d+)/i);
 
                 globalData.push({
-                    sector: sector,
-                    casa: casa,
-                    nombre: nombreArchivo,
-                    estado: valColFiltro,
-                    url: urlArchivo.startsWith("http") ? urlArchivo : "#"
+                    sector: secMatch ? secMatch[1] : "N/A",
+                    casa: csMatch ? csMatch[1] : "N/A",
+                    nombre: nombre,
+                    estado: estado,
+                    url: url.startsWith("http") ? url : "#",
+                    fecha: fechaStr,
+                    fechaObj: fechaObj // Objeto Date para comparar
                 });
             });
 
-            // Inicializar visualización
-            displayedData = [...globalData];
-
-            // Habilitar controles
-            populateSelectOptions();
-            searchInput.disabled = false;
-            filterSector.disabled = false;
-            filterCasa.disabled = false;
-            filterEstado.disabled = false;
-            toolbar.classList.add('active');
+            enableControls();
+            applyFilters(); // Render inicial
+            
+            statusDisplay.innerHTML = `✅ Datos cargados: <b>${globalData.length}</b> documentos encontrados.`;
+            statusDisplay.style.color = "var(--success-color)";
             loader.style.display = "none";
-
-            // Renderizar todo
-            renderTable();
-            updateChart();
-
-            if (globalData.length > 0) {
-                statusDisplay.innerHTML = `✅ <b>${globalData.length}</b> documentos listos (Filtrados por "${keyFiltro}").`;
-                statusDisplay.style.color = "var(--success-color)";
-            } else {
-                statusDisplay.textContent = "Conexión OK, pero 0 documentos cumplen el criterio 'REALIZADOS SUBIDOS A KAGUA'.";
-                statusDisplay.style.color = "orange";
-            }
         }
 
-        // --- 3. GESTIÓN DE FILTROS Y DROPDOWNS ---
-        function populateSelectOptions() {
-            // Ordenamiento natural (1, 2, 10 en vez de 1, 10, 2)
-            const naturalSort = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+        function enableControls() {
+            document.getElementById('toolbar').classList.add('active');
+            searchInput.disabled = false;
+            dateStart.disabled = false;
+            dateEnd.disabled = false;
+            document.getElementById('filterSector').disabled = false;
+            document.getElementById('filterCasa').disabled = false;
+            populateSelectOptions();
+        }
 
+        // --- FILTROS ---
+        function populateSelectOptions() {
+            const naturalSort = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+            
             const sectores = [...new Set(globalData.map(d => d.sector))].sort(naturalSort);
             const casas = [...new Set(globalData.map(d => d.casa))].sort(naturalSort);
-            const estados = [...new Set(globalData.map(d => d.estado))].sort();
 
-            const fill = (selectElement, values) => {
-                const currentVal = selectElement.value;
-                selectElement.innerHTML = '<option value="">Todos</option>';
-                values.forEach(val => {
-                    if(!val) return;
-                    const option = document.createElement('option');
-                    option.value = val;
-                    option.textContent = val;
-                    selectElement.appendChild(option);
+            const fill = (id, vals) => {
+                const sel = document.getElementById(id);
+                sel.innerHTML = '<option value="">Todos</option>';
+                vals.forEach(v => {
+                    if(v!=='N/A') sel.innerHTML += `<option value="${v}">${v}</option>`;
                 });
-                if(values.includes(currentVal)) selectElement.value = currentVal;
             };
-
-            fill(filterSector, sectores);
-            fill(filterCasa, casas);
-            fill(filterEstado, estados);
+            
+            fill('filterSector', sectores);
+            fill('filterCasa', casas);
         }
 
         function applyFilters() {
-            const textQuery = searchInput.value.toLowerCase();
-            const selSector = filterSector.value;
-            const selCasa = filterCasa.value;
-            const selEstado = filterEstado.value;
+            const query = searchInput.value.toLowerCase();
+            const sectorVal = document.getElementById('filterSector').value;
+            const casaVal = document.getElementById('filterCasa').value;
+            
+            // Valores de fecha
+            const start = dateStart.value ? new Date(dateStart.value) : null;
+            const end = dateEnd.value ? new Date(dateEnd.value) : null;
+            if (end) end.setHours(23, 59, 59); // Fin del día
 
             displayedData = globalData.filter(item => {
-                const matchesText = (
-                    String(item.sector).toLowerCase().includes(textQuery) ||
-                    String(item.casa).toLowerCase().includes(textQuery) ||
-                    String(item.nombre).toLowerCase().includes(textQuery) ||
-                    String(item.estado).toLowerCase().includes(textQuery)
+                // Filtro Texto
+                const matchText = (
+                    item.sector.toLowerCase().includes(query) ||
+                    item.casa.toLowerCase().includes(query) ||
+                    item.nombre.toLowerCase().includes(query)
                 );
 
-                const matchesSector = selSector === "" || String(item.sector) === selSector;
-                const matchesCasa = selCasa === "" || String(item.casa) === selCasa;
-                const matchesEstado = selEstado === "" || String(item.estado) === selEstado;
+                // Filtro Selects
+                const matchSector = !sectorVal || item.sector === sectorVal;
+                const matchCasa = !casaVal || item.casa === casaVal;
 
-                return matchesText && matchesSector && matchesCasa && matchesEstado;
+                // Filtro Fecha
+                let matchDate = true;
+                if (item.fechaObj) {
+                    if (start && item.fechaObj < start) matchDate = false;
+                    if (end && item.fechaObj > end) matchDate = false;
+                } else if (start || end) {
+                    // Si hay filtro de fecha activo pero el item no tiene fecha, ¿lo ocultamos?
+                    // Generalmente sí, para ser estrictos.
+                    matchDate = false; 
+                }
+
+                return matchText && matchSector && matchCasa && matchDate;
             });
 
             renderTable();
-            updateChart(); // Actualizar gráfico al filtrar
+            updateChart();
         }
 
-        // --- 4. RENDERIZADO DE TABLA ---
+        // --- RENDERIZADO ---
         function renderTable() {
             tableBody.innerHTML = '';
-
             if (displayedData.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay datos que coincidan con el filtro.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay coincidencias. Ajusta los filtros.</td></tr>';
                 return;
             }
 
             displayedData.forEach(row => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="color: var(--accent-color); font-weight:bold;">${row.sector}</td>
+                    <td style="color:#aaa; font-size:0.8rem">${row.fecha}</td>
+                    <td style="color:var(--accent-color); font-weight:bold">${row.sector}</td>
                     <td>${row.casa}</td>
                     <td>${row.nombre}</td>
-                    <td style="color: var(--success-color); font-size:0.8rem;">${row.estado}</td>
+                    <td style="font-size:0.8rem; color:var(--success-color)">${row.estado}</td>
                     <td>
-                        ${row.url && row.url !== '#' 
-                            ? `<a href="${row.url}" target="_blank" class="doc-link">ABRIR</a>` 
-                            : '<span style="color:#666; font-size:0.8rem">SIN URL</span>'}
+                        ${row.url !== '#' ? `<a href="${row.url}" target="_blank" class="doc-link">ABRIR</a>` : ''}
                     </td>
                 `;
                 tableBody.appendChild(tr);
             });
         }
 
-        // --- 5. GRÁFICO DINÁMICO (Chart.js) ---
+        // --- CHART ---
         function updateChart() {
             const ctx = document.getElementById('myChart').getContext('2d');
-            
-            // Agrupar datos por Sector
             const counts = {};
-            displayedData.forEach(item => {
-                const label = (item.sector && item.sector !== "N/A") ? "Sector " + item.sector : "Otros";
-                counts[label] = (counts[label] || 0) + 1;
+            displayedData.forEach(d => {
+                const k = d.sector === "N/A" ? "Otros" : "Sec " + d.sector;
+                counts[k] = (counts[k] || 0) + 1;
             });
 
-            // Ordenar etiquetas
-            const labels = Object.keys(counts).sort((a, b) => 
-                a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
-            );
-            const dataValues = labels.map(l => counts[l]);
-
-            // Destruir anterior si existe
-            if (myChart) myChart.destroy();
-
-            // Crear nuevo gráfico
+            const labels = Object.keys(counts).sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+            
+            if(myChart) myChart.destroy();
+            
             myChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Documentos Listos',
-                        data: dataValues,
+                        label: 'Documentos Filtrados',
+                        data: labels.map(l => counts[l]),
                         backgroundColor: 'rgba(0, 188, 212, 0.6)',
-                        borderColor: 'rgba(0, 188, 212, 1)',
+                        borderColor: '#00bcd4',
                         borderWidth: 1
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { labels: { color: '#e0e0e0' } },
-                        title: { display: true, text: 'DISTRIBUCIÓN DE ARCHIVOS POR SECTOR', color: '#e0e0e0', font: { size: 14 } }
-                    },
+                    plugins: { legend: { labels: { color: '#e0e0e0' } } },
                     scales: {
-                        y: { beginAtZero: true, ticks: { color: '#aaa' }, grid: { color: '#444' } },
+                        y: { ticks: { color: '#aaa' }, grid: { color: '#444' } },
                         x: { ticks: { color: '#aaa' }, grid: { display: false } }
                     }
                 }
             });
         }
 
-        // --- 6. EXPORTACIONES ---
-        function exportToExcel() {
-            if (displayedData.length === 0) return alert("No hay datos visibles para exportar");
+        // --- DESCARGA MASIVA (ZIP) ---
+        async function downloadMassively() {
+            // Filtrar solo los que tienen URL válida
+            const filesToDownload = displayedData.filter(d => d.url && d.url !== '#');
             
-            const dataToExport = displayedData.map(d => ({
-                Sector: d.sector,
-                Casa: d.casa,
-                "Nombre Archivo": d.nombre,
-                Estado: d.estado,
-                URL: d.url
-            }));
+            if (filesToDownload.length === 0) {
+                alert("No hay documentos con enlaces válidos en la selección actual.");
+                return;
+            }
 
-            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            if (!confirm(`Se van a procesar ${filesToDownload.length} documentos para crear el ZIP. ¿Continuar?`)) return;
+
+            const zip = new JSZip();
+            const folder = zip.folder("Documentos_Entalpia");
+            let count = 0;
+            let errors = 0;
+
+            statusDisplay.textContent = "⏳ Creando ZIP... Esto puede tardar unos segundos.";
+            statusDisplay.style.color = "var(--warning-color)";
+
+            // Promesas de descarga
+            const promises = filesToDownload.map(async (doc) => {
+                try {
+                    // NOTA: Para que fetch funcione, el servidor de archivos (donde están los PDFs)
+                    // debe permitir CORS (Access-Control-Allow-Origin: *).
+                    // Si son enlaces de Google Drive directos, a veces bloquean fetch.
+                    const response = await fetch(doc.url);
+                    if (!response.ok) throw new Error("Network Error");
+                    const blob = await response.blob();
+                    
+                    // Nombre archivo limpio
+                    let cleanName = doc.nombre.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    if (!cleanName.endsWith(".pdf") && !cleanName.endsWith(".jpg") && !cleanName.endsWith(".png")) {
+                        // Intentar adivinar extensión por tipo MIME
+                        if(blob.type === "application/pdf") cleanName += ".pdf";
+                        else if(blob.type === "image/jpeg") cleanName += ".jpg";
+                    }
+
+                    folder.file(cleanName, blob);
+                    count++;
+                } catch (e) {
+                    console.error("No se pudo descargar: " + doc.nombre, e);
+                    // Si falla el fetch (CORS), agregamos un archivo de texto con el link
+                    folder.file(`ERROR_${doc.nombre}.txt`, `No se pudo descargar automáticamente. Enlace: ${doc.url}`);
+                    errors++;
+                }
+            });
+
+            await Promise.all(promises);
+
+            zip.generateAsync({ type: "blob" }).then(function(content) {
+                saveAs(content, "Reporte_Colgas_Filtrado.zip");
+                statusDisplay.textContent = `✅ ZIP Generado. ${count} archivos exitosos, ${errors} enlaces manuales.`;
+                statusDisplay.style.color = "var(--success-color)";
+            });
+        }
+
+        // --- MODAL ---
+        function openHelp() { document.getElementById('helpModal').style.display = 'flex'; }
+        function closeModal(e) {
+            if (e.target.className === 'modal-overlay') e.target.style.display = 'none';
+        }
+
+        // --- EXPORTAR EXCEL/PDF ---
+        function exportToExcel() {
+            if (!displayedData.length) return alert("Sin datos");
+            const ws = XLSX.utils.json_to_sheet(displayedData.map(d => ({
+                Fecha: d.fecha, Sector: d.sector, Casa: d.casa, Archivo: d.nombre, Link: d.url
+            })));
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Busqueda_Kagua");
-            XLSX.writeFile(wb, "Reporte_Filtrado.xlsx");
+            XLSX.utils.book_append_sheet(wb, ws, "Datos");
+            XLSX.writeFile(wb, "Reporte_Entalpia.xlsx");
         }
 
         function exportToPDF() {
-            if (displayedData.length === 0) return alert("No hay datos visibles para exportar");
-            
+            if (!displayedData.length) return alert("Sin datos");
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-
-            doc.setFillColor(255, 255, 255);
-            doc.rect(0, 0, 210, 297, "F");
-
-            doc.setFontSize(14);
-            doc.setTextColor(0, 0, 0);
-            doc.text("REPORTE IA EXPLORADOR", 14, 15);
-            
+            doc.text("Reporte Filtrado - Entalpia", 14, 15);
             doc.setFontSize(10);
-            doc.setTextColor(76, 175, 80);
-            doc.text("Filtrado: REALIZADOS SUBIDOS A KAGUA", 14, 22);
-
-            // Indicar si hay filtros activos
-            if(searchInput.value) {
-                doc.setTextColor(100, 100, 100);
-                doc.text(`Búsqueda: "${searchInput.value}"`, 14, 28);
-            }
-
-            const tableColumn = ["Sector", "Casa", "Nombre Archivo", "Estado"];
-            const tableRows = [];
+            doc.text(`Rango Fecha: ${dateStart.value || 'Inicio'} a ${dateEnd.value || 'Fin'}`, 14, 22);
             
-            displayedData.forEach(d => {
-                tableRows.push([d.sector, d.casa, d.nombre, d.estado]);
-            });
-
+            const rows = displayedData.map(d => [d.fecha, d.sector, d.casa, d.nombre]);
             doc.autoTable({
-                head: [tableColumn],
-                body: tableRows,
-                startY: 35,
+                head: [['Fecha', 'Sector', 'Casa', 'Nombre']],
+                body: rows,
+                startY: 30,
                 theme: 'grid',
-                headStyles: { fillColor: [0, 188, 212], textColor: 255 },
-                styles: { fontSize: 8 }
+                headStyles: { fillColor: [0, 188, 212] }
             });
-
-            // Footer PDF
-            const pageHeight = doc.internal.pageSize.height;
-            doc.setFontSize(8);
-            doc.setTextColor(150);
-            doc.text("Generado por Entalpia 2025", 14, pageHeight - 10);
-
-            doc.save("Reporte_Kagua_Filtrado.pdf");
+            doc.save("Reporte.pdf");
         }
+
     </script>
 </body>
 </html>
