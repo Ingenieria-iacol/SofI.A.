@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>I.A. Explorador V2.0 | Entalpia</title>
+    <title>I.A. Explorador V2.1 | Entalpia</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -113,18 +113,19 @@
             font-size: 0.9rem;
         }
 
-        /* SECCIÓN DE FILTROS AVANZADOS (FECHAS) */
+        /* SECCIÓN DE FILTROS DE FECHA */
         .date-filters {
             display: flex;
             gap: 15px;
             justify-content: center;
             align-items: center;
             background: #252525;
-            padding: 10px;
+            padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
             border: 1px solid var(--border-color);
             flex-wrap: wrap;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
 
         .date-group {
@@ -137,6 +138,7 @@
             font-size: 0.75rem;
             color: var(--accent-color);
             font-weight: bold;
+            text-transform: uppercase;
         }
 
         .date-input {
@@ -147,18 +149,25 @@
             border-radius: 4px;
             font-family: inherit;
         }
+        
+        .date-input:focus {
+            border-color: var(--accent-color);
+            outline: none;
+        }
 
         .help-btn {
             background: none;
             border: 1px solid var(--warning-color);
             color: var(--warning-color);
             border-radius: 50%;
-            width: 25px;
-            height: 25px;
+            width: 30px;
+            height: 30px;
             cursor: pointer;
             font-weight: bold;
             margin-left: 10px;
+            transition: 0.3s;
         }
+        .help-btn:hover { background: var(--warning-color); color: #000; }
 
         /* GRÁFICO */
         .chart-wrapper {
@@ -352,10 +361,11 @@
             border-radius: 8px;
             max-width: 500px;
             border: 1px solid var(--accent-color);
+            box-shadow: 0 0 20px rgba(0, 188, 212, 0.2);
         }
-        .modal-content h3 { color: var(--accent-color); margin-top: 0; }
+        .modal-content h3 { color: var(--accent-color); margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px; }
         .modal-content ul { padding-left: 20px; color: #ccc; }
-        .modal-content li { margin-bottom: 8px; }
+        .modal-content li { margin-bottom: 10px; line-height: 1.4; }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -382,15 +392,15 @@
 
     <div id="helpModal" class="modal-overlay" onclick="closeModal(event)">
         <div class="modal-content">
-            <h3>📂 Guía de Descarga Inteligente</h3>
-            <p>Para descargar documentos sin duplicados, sigue estos pasos:</p>
+            <h3>📂 ¿Cómo evitar duplicados?</h3>
+            <p>Utiliza la columna <b>FECHA REGISTRO</b> para descargar solo lo nuevo:</p>
             <ul>
-                <li>Usa los campos <b>Fecha Inicio</b> y <b>Fecha Fin</b>.</li>
-                <li>Si tu última descarga fue el <i>10 de Enero</i>, coloca en "Fecha Inicio" el <i>11 de Enero</i>.</li>
-                <li>La tabla se actualizará mostrando <b>solo los documentos nuevos</b> en ese rango.</li>
-                <li>Haz clic en <b>"DESCARGAR ZIP"</b> para bajar todos los archivos visibles en un solo paquete.</li>
+                <li>Si descargaste archivos ayer, hoy configura la <b>Fecha Inicio</b> con la fecha de hoy.</li>
+                <li>El sistema filtrará automáticamente y te mostrará solo los documentos subidos desde esa fecha.</li>
+                <li>Luego pulsa <b>"📦 Descargar ZIP"</b> para bajar todo el lote nuevo de una sola vez.</li>
             </ul>
-            <button class="btn" onclick="document.getElementById('helpModal').style.display='none'" style="width:100%">Entendido</button>
+            <p style="font-size:0.8rem; color:#888;">* Nota: La fecha se toma de la columna "Marca temporal" o "Fecha" de tu Excel.</p>
+            <button class="btn" onclick="document.getElementById('helpModal').style.display='none'" style="width:100%; justify-content:center;">Entendido</button>
         </div>
     </div>
 
@@ -405,21 +415,21 @@
 
         <div class="connection-section">
             <button class="btn-connect" onclick="fetchGoogleSheet()">
-                <div class="loader" id="loader"></div> 🔄 CONECTAR & ITERAR DATOS
+                <div class="loader" id="loader"></div> 🔄 CONECTAR & ACTUALIZAR
             </button>
             <div id="statusDisplay" class="status-display">Esperando conexión...</div>
         </div>
 
         <div class="date-filters">
             <div class="date-group">
-                <label>DESDE (Fecha Creación)</label>
+                <label>📅 Fecha Inicio</label>
                 <input type="date" id="dateStart" class="date-input" onchange="applyFilters()" disabled>
             </div>
             <div class="date-group">
-                <label>HASTA</label>
+                <label>📅 Fecha Fin</label>
                 <input type="date" id="dateEnd" class="date-input" onchange="applyFilters()" disabled>
             </div>
-            <button class="help-btn" onclick="openHelp()" title="¿Cómo evitar duplicados?">?</button>
+            <button class="help-btn" onclick="openHelp()" title="Ayuda para descargar lotes">?</button>
         </div>
 
         <div class="chart-wrapper">
@@ -448,7 +458,8 @@
             <table id="docTable">
                 <thead>
                     <tr>
-                        <th>FECHA</th> <th>
+                        <th style="min-width: 100px;">FECHA REGISTRO</th>
+                        <th>
                             <div class="header-content">
                                 <span>SECTOR</span>
                                 <select id="filterSector" class="filter-select" onchange="applyFilters()" disabled>
@@ -505,6 +516,11 @@
         
         // --- CONEXIÓN ---
         async function fetchGoogleSheet() {
+            if (GOOGLE_SHEET_URL.includes("TU_ENLACE")) {
+                alert("⚠️ Configura la URL del CSV en el código.");
+                return;
+            }
+
             loader.style.display = "inline-block";
             statusDisplay.textContent = "Obteniendo datos de la nube...";
             
@@ -536,7 +552,9 @@
             
             // Detección de columnas clave
             const keyFiltro = headers.find(h => h.match(/estado|filtro|kagua/i)) || headers[2];
-            const keyFecha = headers.find(h => h.match(/fecha|date|marca|time/i)); // Busca columna de fecha
+            
+            // Prioridad para encontrar la fecha: "Marca temporal", "Timestamp", "Fecha", "Date"
+            const keyFecha = headers.find(h => h.match(/marca temporal|timestamp|fecha|date|time/i)); 
             
             globalData = [];
             
@@ -547,25 +565,39 @@
                 const nombre = row[headers[0]] || "Sin Nombre";
                 const url = row[headers[1]] || "#";
                 
-                // Parseo de Fecha
+                // LÓGICA DE FECHA ROBUSTA
                 let fechaObj = null;
-                let fechaStr = "N/A";
+                let fechaStr = "---"; // Valor por defecto si no hay fecha
                 
                 if (keyFecha && row[keyFecha]) {
-                    // Intenta parsear fecha de Excel o String
                     const rawDate = row[keyFecha];
+                    
                     if (typeof rawDate === 'number') {
-                        // Fecha Excel serial
-                        fechaObj = new Date(Math.round((rawDate - 25569)*86400*1000));
+                        // Caso Excel Serial Date (ej: 45321)
+                        // Restamos 25569 para ajustar epoch unix, *86400 segundos *1000 ms
+                        // A veces hay que ajustar zona horaria, aquí usamos UTC básico
+                        fechaObj = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
+                        // Ajuste manual por si JS resta horas por timezone local
+                        fechaObj.setMinutes(fechaObj.getMinutes() + fechaObj.getTimezoneOffset());
                     } else {
-                        // String fecha
+                        // Caso String (ej: "21/1/2026" o "2026-01-21")
+                        // Intentamos parsear directo
                         fechaObj = new Date(rawDate);
+                        
+                        // Si falla (Invalid Date) y es formato DD/MM/YYYY común en español
+                        if (isNaN(fechaObj) && typeof rawDate === 'string' && rawDate.includes('/')) {
+                            const parts = rawDate.split(/[\/\s]/); // Separa por / o espacio
+                            if (parts.length >= 3) {
+                                // Asumimos DD/MM/YYYY
+                                fechaObj = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                            }
+                        }
                     }
                     
                     if (!isNaN(fechaObj)) {
-                        fechaStr = fechaObj.toISOString().split('T')[0]; // YYYY-MM-DD
+                        fechaStr = fechaObj.toISOString().split('T')[0]; // Formato YYYY-MM-DD para visualización limpia
                     } else {
-                        fechaObj = null;
+                        fechaObj = null; // Fecha inválida
                     }
                 }
 
@@ -579,16 +611,20 @@
                     nombre: nombre,
                     estado: estado,
                     url: url.startsWith("http") ? url : "#",
-                    fecha: fechaStr,
-                    fechaObj: fechaObj // Objeto Date para comparar
+                    fechaStr: fechaStr,
+                    fechaObj: fechaObj // Objeto Date real para filtrar
                 });
             });
+            
+            // Ordenar por fecha descendente (lo más nuevo primero) por defecto
+            globalData.sort((a, b) => (b.fechaObj || 0) - (a.fechaObj || 0));
 
             enableControls();
             applyFilters(); // Render inicial
             
-            statusDisplay.innerHTML = `✅ Datos cargados: <b>${globalData.length}</b> documentos encontrados.`;
-            statusDisplay.style.color = "var(--success-color)";
+            const msgFecha = keyFecha ? `(Columna fecha detectada: "${keyFecha}")` : `⚠️ No encontré columna de fecha.`;
+            statusDisplay.innerHTML = `✅ <b>${globalData.length}</b> documentos listos. ${msgFecha}`;
+            statusDisplay.style.color = keyFecha ? "var(--success-color)" : "orange";
             loader.style.display = "none";
         }
 
@@ -626,10 +662,13 @@
             const sectorVal = document.getElementById('filterSector').value;
             const casaVal = document.getElementById('filterCasa').value;
             
-            // Valores de fecha
-            const start = dateStart.value ? new Date(dateStart.value) : null;
-            const end = dateEnd.value ? new Date(dateEnd.value) : null;
-            if (end) end.setHours(23, 59, 59); // Fin del día
+            // Valores de fecha inputs (YYYY-MM-DD string)
+            const startStr = dateStart.value; 
+            const endStr = dateEnd.value;
+
+            // Convertir inputs a objetos Date a medianoche
+            const start = startStr ? new Date(startStr + "T00:00:00") : null;
+            const end = endStr ? new Date(endStr + "T23:59:59") : null;
 
             displayedData = globalData.filter(item => {
                 // Filtro Texto
@@ -643,15 +682,16 @@
                 const matchSector = !sectorVal || item.sector === sectorVal;
                 const matchCasa = !casaVal || item.casa === casaVal;
 
-                // Filtro Fecha
+                // Filtro Fecha Estricto
                 let matchDate = true;
-                if (item.fechaObj) {
-                    if (start && item.fechaObj < start) matchDate = false;
-                    if (end && item.fechaObj > end) matchDate = false;
-                } else if (start || end) {
-                    // Si hay filtro de fecha activo pero el item no tiene fecha, ¿lo ocultamos?
-                    // Generalmente sí, para ser estrictos.
-                    matchDate = false; 
+                if (start || end) {
+                    if (!item.fechaObj) {
+                        // Si hay filtro activo pero el item no tiene fecha, lo ocultamos para evitar errores
+                        matchDate = false; 
+                    } else {
+                        if (start && item.fechaObj < start) matchDate = false;
+                        if (end && item.fechaObj > end) matchDate = false;
+                    }
                 }
 
                 return matchText && matchSector && matchCasa && matchDate;
@@ -672,8 +712,8 @@
             displayedData.forEach(row => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="color:#aaa; font-size:0.8rem">${row.fecha}</td>
-                    <td style="color:var(--accent-color); font-weight:bold">${row.sector}</td>
+                    <td style="color:var(--accent-color); font-weight:bold; font-family:monospace;">${row.fechaStr}</td>
+                    <td style="font-weight:bold">${row.sector}</td>
                     <td>${row.casa}</td>
                     <td>${row.nombre}</td>
                     <td style="font-size:0.8rem; color:var(--success-color)">${row.estado}</td>
@@ -724,7 +764,6 @@
 
         // --- DESCARGA MASIVA (ZIP) ---
         async function downloadMassively() {
-            // Filtrar solo los que tienen URL válida
             const filesToDownload = displayedData.filter(d => d.url && d.url !== '#');
             
             if (filesToDownload.length === 0) {
@@ -732,40 +771,36 @@
                 return;
             }
 
-            if (!confirm(`Se van a procesar ${filesToDownload.length} documentos para crear el ZIP. ¿Continuar?`)) return;
+            if (!confirm(`Se van a empaquetar ${filesToDownload.length} documentos. ¿Continuar?`)) return;
 
             const zip = new JSZip();
             const folder = zip.folder("Documentos_Entalpia");
             let count = 0;
             let errors = 0;
 
-            statusDisplay.textContent = "⏳ Creando ZIP... Esto puede tardar unos segundos.";
+            statusDisplay.textContent = "⏳ Descargando y comprimiendo... (No cierres la pestaña)";
             statusDisplay.style.color = "var(--warning-color)";
 
-            // Promesas de descarga
             const promises = filesToDownload.map(async (doc) => {
                 try {
-                    // NOTA: Para que fetch funcione, el servidor de archivos (donde están los PDFs)
-                    // debe permitir CORS (Access-Control-Allow-Origin: *).
-                    // Si son enlaces de Google Drive directos, a veces bloquean fetch.
                     const response = await fetch(doc.url);
-                    if (!response.ok) throw new Error("Network Error");
+                    if (!response.ok) throw new Error("Error Red");
                     const blob = await response.blob();
                     
-                    // Nombre archivo limpio
                     let cleanName = doc.nombre.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                    if (!cleanName.endsWith(".pdf") && !cleanName.endsWith(".jpg") && !cleanName.endsWith(".png")) {
-                        // Intentar adivinar extensión por tipo MIME
-                        if(blob.type === "application/pdf") cleanName += ".pdf";
-                        else if(blob.type === "image/jpeg") cleanName += ".jpg";
+                    // Añadir fecha al nombre del archivo para orden
+                    if (doc.fechaStr !== "---") cleanName = `${doc.fechaStr}_${cleanName}`;
+                    
+                    if (!cleanName.endsWith(".pdf") && !cleanName.endsWith(".jpg")) {
+                        if(blob.type.includes("pdf")) cleanName += ".pdf";
+                        else if(blob.type.includes("image")) cleanName += ".jpg";
                     }
 
                     folder.file(cleanName, blob);
                     count++;
                 } catch (e) {
-                    console.error("No se pudo descargar: " + doc.nombre, e);
-                    // Si falla el fetch (CORS), agregamos un archivo de texto con el link
-                    folder.file(`ERROR_${doc.nombre}.txt`, `No se pudo descargar automáticamente. Enlace: ${doc.url}`);
+                    console.error("Error descarga: " + doc.nombre);
+                    folder.file(`ERROR_LINK_${doc.nombre}.txt`, doc.url);
                     errors++;
                 }
             });
@@ -773,8 +808,8 @@
             await Promise.all(promises);
 
             zip.generateAsync({ type: "blob" }).then(function(content) {
-                saveAs(content, "Reporte_Colgas_Filtrado.zip");
-                statusDisplay.textContent = `✅ ZIP Generado. ${count} archivos exitosos, ${errors} enlaces manuales.`;
+                saveAs(content, "Reporte_Filtrado_Entalpia.zip");
+                statusDisplay.textContent = `✅ ZIP Listo. ${count} descargados.`;
                 statusDisplay.style.color = "var(--success-color)";
             });
         }
@@ -785,11 +820,11 @@
             if (e.target.className === 'modal-overlay') e.target.style.display = 'none';
         }
 
-        // --- EXPORTAR EXCEL/PDF ---
+        // --- EXPORTAR ---
         function exportToExcel() {
             if (!displayedData.length) return alert("Sin datos");
             const ws = XLSX.utils.json_to_sheet(displayedData.map(d => ({
-                Fecha: d.fecha, Sector: d.sector, Casa: d.casa, Archivo: d.nombre, Link: d.url
+                Fecha: d.fechaStr, Sector: d.sector, Casa: d.casa, Archivo: d.nombre, Link: d.url
             })));
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Datos");
@@ -802,13 +837,12 @@
             const doc = new jsPDF();
             doc.text("Reporte Filtrado - Entalpia", 14, 15);
             doc.setFontSize(10);
-            doc.text(`Rango Fecha: ${dateStart.value || 'Inicio'} a ${dateEnd.value || 'Fin'}`, 14, 22);
             
-            const rows = displayedData.map(d => [d.fecha, d.sector, d.casa, d.nombre]);
+            const rows = displayedData.map(d => [d.fechaStr, d.sector, d.casa, d.nombre]);
             doc.autoTable({
                 head: [['Fecha', 'Sector', 'Casa', 'Nombre']],
                 body: rows,
-                startY: 30,
+                startY: 25,
                 theme: 'grid',
                 headStyles: { fillColor: [0, 188, 212] }
             });
