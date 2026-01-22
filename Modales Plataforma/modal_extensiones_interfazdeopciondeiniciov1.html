@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control - Colgas v3</title>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        netflix: {
+                            base: '#141414',      /* Fondo casi negro */
+                            card: '#1f1f1f',      /* Tarjetas gris oscuro */
+                            light: '#e5e5e5',     /* Texto claro */
+                            blue: '#0071eb',      /* Azul principal */
+                            metal: '#2b313d',     /* Gris azulado metalico */
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilos extra para scrollbar y efectos */
+        body { background-color: #141414; color: #e5e5e5; }
+        .metal-gradient { background: linear-gradient(145deg, #0071eb, #004fb3); }
+        .glass-panel { background: rgba(31, 31, 31, 0.95); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- ICONOS SVG (Para no depender de librerías externas en un solo archivo) ---
+        const IconClock = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+        const IconCalc = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="8" y2="6"/><line x1="16" y1="6" x2="16" y2="6"/><line x1="12" y1="6" x2="12" y2="6"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="12" y1="18" x2="12" y2="18"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="16" y1="18" x2="16" y2="18"/></svg>;
+        const IconNote = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
+        const IconCheck = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
+        const IconTrash = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
+        const IconPlus = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+        const IconSearch = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
+        const IconLink = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>;
+
+        // --- SONIDOS ---
+        const playSound = (type) => {
+            const sounds = {
+                click: "https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3",
+                success: "https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3", 
+                delete: "https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3"
+            };
+            const audio = new Audio(sounds[type]);
+            audio.volume = 0.3;
+            audio.play().catch(e => console.log("Audio play prevented")); 
+        };
+
+        // --- COMPONENTES ---
+
+        const Card = ({ children, className = "" }) => (
+            <div className={`glass-panel rounded-xl shadow-lg border border-gray-800 p-6 ${className}`}>
+                {children}
+            </div>
+        );
+
+        // 1. RELOJ
+        const TimeWidget = () => {
+            const [time, setTime] = useState(new Date());
+            useEffect(() => {
+                const timer = setInterval(() => setTime(new Date()), 1000);
+                return () => clearInterval(timer);
+            }, []);
+            return (
+                <Card className="flex flex-col items-center justify-center metal-gradient text-white border-none shadow-blue-900/50 shadow-lg">
+                    <div className="mb-2 opacity-80"><IconClock /></div>
+                    <h3 className="text-4xl font-bold font-mono tracking-widest">
+                        {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </h3>
+                    <p className="text-sm opacity-90 mt-1 uppercase tracking-wide">
+                        {time.toLocaleDateString('es-ES', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    </p>
+                </Card>
+            );
+        };
+
+        // 2. CALCULADORA
+        const CalculatorWidget = () => {
+            const [input, setInput] = useState("");
+            const handleCalc = (val) => {
+                playSound('click');
+                if (val === 'C') setInput("");
+                else if (val === '=') {
+                    try { setInput(String(eval(input))); } catch { setInput("Error"); }
+                } else setInput(input + val);
+            };
+            return (
+                <Card>
+                    <div className="flex items-center gap-2 mb-4 text-blue-400">
+                        <IconCalc /><span className="font-bold tracking-wide">CALCULADORA</span>
+                    </div>
+                    <div className="bg-black/50 border border-gray-700 p-3 rounded mb-3 text-right font-mono text-xl h-12 overflow-hidden text-white shadow-inner">
+                        {input || "0"}
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                        {['7','8','9','/', '4','5','6','*', '1','2','3','-', 'C','0','=','+'].map((btn) => (
+                            <button key={btn} onClick={() => handleCalc(btn)} 
+                                className={`h-10 w-full rounded font-bold transition-all shadow-md active:scale-95 ${
+                                    btn === '=' ? 'metal-gradient text-white hover:brightness-110' : 
+                                    btn === 'C' ? 'bg-red-900/40 text-red-200 hover:bg-red-900/60 border border-red-900' :
+                                    'bg-netflix-metal hover:bg-gray-600 border border-gray-700'
+                                }`}>
+                                {btn}
+                            </button>
+                        ))}
+                    </div>
+                </Card>
+            );
+        };
+
+        // 3. BLOC DE NOTAS
+        const NotesWidget = () => {
+            const [note, setNote] = useState(() => localStorage.getItem('colgas_note') || "");
+            const handleChange = (e) => {
+                setNote(e.target.value);
+                localStorage.setItem('colgas_note', e.target.value);
+            };
+            return (
+                <Card className="flex flex-col h-full">
+                    <div className="flex items-center gap-2 mb-2 text-yellow-500">
+                        <IconNote /><span className="font-bold tracking-wide">NOTAS RÁPIDAS</span>
+                    </div>
+                    <textarea
+                        className="w-full h-full min-h-[150px] bg-black/30 border border-gray-700 text-gray-300 p-3 rounded focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                        placeholder="Escribe recordatorios aquí..."
+                        value={note}
+                        onChange={handleChange}
+                    />
+                </Card>
+            );
+        };
+
+        // 4. LISTA DE TAREAS (TODO)
+        const TodoWidget = () => {
+            const [tasks, setTasks] = useState(() => {
+                const saved = localStorage.getItem('colgas_todos');
+                return saved ? JSON.parse(saved) : [{ id: 1, text: "Revisar certificaciones", completed: false }];
+            });
+            const [input, setInput] = useState("");
+
+            useEffect(() => localStorage.setItem('colgas_todos', JSON.stringify(tasks)), [tasks]);
+
+            const addTask = () => {
+                if (!input.trim()) return;
+                playSound('click');
+                setTasks([...tasks, { id: Date.now(), text: input, completed: false }]);
+                setInput("");
+            };
+
+            const toggleTask = (id) => {
+                setTasks(tasks.map(t => {
+                    if (t.id === id) {
+                        !t.completed ? playSound('success') : playSound('click');
+                        return { ...t, completed: !t.completed };
+                    }
+                    return t;
+                }));
+            };
+
+            const deleteTask = (id) => {
+                playSound('delete');
+                setTasks(tasks.filter(t => t.id !== id));
+            };
+
+            return (
+                <Card className="h-full flex flex-col">
+                    <div className="flex items-center gap-2 mb-4 text-emerald-500">
+                        <IconCheck /><span className="font-bold tracking-wide">TAREAS PENDIENTES</span>
+                    </div>
+                    <div className="flex gap-2 mb-4">
+                        <input
+                            type="text" value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && addTask()}
+                            placeholder="Nueva tarea..."
+                            className="flex-1 bg-black/30 border border-gray-700 text-white rounded px-3 py-2 text-sm focus:ring-1 focus:ring-emerald-500 outline-none"
+                        />
+                        <button onClick={addTask} className="bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded transition-colors shadow-lg">
+                            <IconPlus />
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto space-y-2 max-h-[200px] pr-1">
+                        {tasks.map((task) => (
+                            <div key={task.id} className="group flex items-center justify-between p-2 rounded hover:bg-white/5 transition-colors border border-transparent hover:border-gray-700">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <button onClick={() => toggleTask(task.id)} className={`flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-all ${task.completed ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-gray-500 hover:border-emerald-500'}`}>
+                                        {task.completed && <IconCheck />}
+                                    </button>
+                                    <span className={`text-sm truncate transition-all ${task.completed ? 'text-gray-500 line-through' : 'text-gray-300'}`}>
+                                        {task.text}
+                                    </span>
+                                </div>
+                                <button onClick={() => deleteTask(task.id)} className="text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                                    <IconTrash />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            );
+        };
+
+        // --- APP PRINCIPAL ---
+        const App = () => {
+            const shortcuts = [
+                { name: "Google Drive", url: "https://drive.google.com", color: "text-blue-400 border-blue-900" },
+                { name: "Correo INSE", url: "https://gmail.com", color: "text-red-400 border-red-900" },
+                { name: "SGC V3", url: "#", color: "text-green-400 border-green-900" }, // Placeholder
+                { name: "Github Repo", url: "https://github.com", color: "text-white border-gray-700" },
+            ];
+
+            return (
+                <div className="min-h-screen p-6 font-sans">
+                    <header className="max-w-6xl mx-auto flex justify-between items-center mb-8 border-b border-gray-800 pb-6">
+                        <div>
+                            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-blue-200 uppercase tracking-tighter">
+                                COLGAS <span className="text-gray-600 font-light">Dashboard</span>
+                            </h1>
+                            <p className="text-gray-500 text-sm mt-1">Herramientas de Gestión e Ingeniería - INSE</p>
+                        </div>
+                    </header>
+
+                    <main className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Columna 1: Info */}
+                        <div className="space-y-6">
+                            <TimeWidget />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-blue-900/20 border border-blue-900/50 rounded-xl p-4 text-blue-200 flex flex-col items-center justify-center shadow-lg">
+                                    <span className="text-2xl font-bold">400</span>
+                                    <span className="text-xs opacity-70 uppercase">Meta Predios</span>
+                                </div>
+                                <div className="bg-purple-900/20 border border-purple-900/50 rounded-xl p-4 text-purple-200 flex flex-col items-center justify-center shadow-lg">
+                                    <span className="text-2xl font-bold">Activo</span>
+                                    <span className="text-xs opacity-70 uppercase">Estado</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Columna 2 y 3: Apps */}
+                        <div className="md:col-span-2 space-y-8">
+                            
+                            {/* Accesos */}
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-400 mb-4 border-l-4 border-blue-600 pl-3 uppercase">Accesos Rápidos</h2>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    {shortcuts.map((link) => (
+                                        <a key={link.name} href={link.url} target="_blank" className={`group flex flex-col items-center justify-center p-4 bg-netflix-card rounded-xl hover:bg-gray-800 transition-all border ${link.color} border-opacity-30 hover:border-opacity-100 hover:shadow-[0_0_15px_rgba(0,113,235,0.2)]`}>
+                                            <div className="mb-2 p-2 bg-gray-800 rounded-full group-hover:scale-110 transition-transform">
+                                                <IconLink />
+                                            </div>
+                                            <span className="font-medium text-xs uppercase tracking-wider">{link.name}</span>
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Widgets Interactivos */}
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-400 mb-4 border-l-4 border-blue-600 pl-3 uppercase">Herramientas</h2>
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <CalculatorWidget />
+                                    <NotesWidget />
+                                    <TodoWidget />
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                    
+                    <footer className="max-w-6xl mx-auto mt-12 text-center text-gray-600 text-xs border-t border-gray-800 pt-6">
+                        <p>Desarrollado para Ingeniería y Seguridad (INSE) - 2026</p>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
