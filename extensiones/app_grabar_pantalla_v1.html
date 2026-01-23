@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grabador de Pantalla Simple</title>
+    <!-- Usamos Tailwind CSS para estilos rápidos y bonitos sin escribir CSS manual -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Animación suave para el indicador de grabación */
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .recording-pulse {
+            animation: pulse-red 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+
+    <!-- Tarjeta Principal -->
+    <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-4xl text-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">🎥 Grabador de Pantalla</h1>
+        <p class="text-gray-500 mb-6">Graba tu pantalla, ventana o pestaña del navegador fácilmente.</p>
+
+        <!-- Área de Previsualización del Video -->
+        <div class="relative w-full aspect-video bg-black rounded-lg overflow-hidden mb-6 shadow-inner border border-gray-300">
+            <video id="videoPreview" autoplay muted playsinline class="w-full h-full object-contain bg-black"></video>
+            
+            <!-- Indicador "GRABANDO" (oculto por defecto) -->
+            <div id="recordingIndicator" class="hidden absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold items-center gap-2 recording-pulse">
+                <span class="w-2 h-2 bg-white rounded-full block"></span>
+                REC
+            </div>
+            
+            <!-- Mensaje de estado inicial -->
+            <div id="placeholderText" class="absolute inset-0 flex items-center justify-center text-gray-400 p-4">
+                <p>La vista previa aparecerá aquí al iniciar</p>
+            </div>
+        </div>
+
+        <!-- Botones de Control -->
+        <div class="flex flex-wrap justify-center gap-4">
+            <button id="btnStart" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all flex items-center gap-2 shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                Iniciar Grabación
+            </button>
+
+            <button id="btnStop" disabled class="bg-gray-400 cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all flex items-center gap-2 shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect></svg>
+                Detener
+            </button>
+
+            <a id="btnDownload" class="hidden bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-all flex items-center gap-2 shadow-md cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Descargar Video
+            </a>
+        </div>
+
+        <div id="statusMsgContainer" class="mt-4 min-h-[20px] p-2 rounded-lg">
+             <p id="statusMsg" class="text-sm text-gray-500"></p>
+        </div>
+    </div>
+
+    <!-- Script de Funcionalidad -->
+    <script>
+        // 1. Selección de elementos del DOM
+        const videoPreview = document.getElementById('videoPreview');
+        const btnStart = document.getElementById('btnStart');
+        const btnStop = document.getElementById('btnStop');
+        const btnDownload = document.getElementById('btnDownload');
+        const statusMsg = document.getElementById('statusMsg');
+        const statusContainer = document.getElementById('statusMsgContainer');
+        const indicator = document.getElementById('recordingIndicator');
+        const placeholder = document.getElementById('placeholderText');
+
+        // Variables globales para manejar la grabación
+        let mediaRecorder;
+        let recordedChunks = [];
+        let stream = null;
+
+        // Función para mostrar mensajes de estado/error
+        function showMessage(msg, type = 'normal') {
+            statusMsg.innerHTML = msg;
+            statusContainer.className = "mt-4 min-h-[20px] p-2 rounded-lg transition-all duration-300 ";
+            
+            if (type === 'error') {
+                statusContainer.classList.add('bg-red-50', 'border', 'border-red-200');
+                statusMsg.className = "text-sm text-red-600 font-medium";
+            } else if (type === 'success') {
+                statusContainer.classList.add('bg-green-50', 'border', 'border-green-200');
+                statusMsg.className = "text-sm text-green-600 font-medium";
+            } else {
+                statusMsg.className = "text-sm text-gray-500";
+            }
+        }
+
+        // 2. Función para iniciar la grabación
+        btnStart.addEventListener('click', async () => {
+            // Resetear mensajes
+            showMessage("Solicitando permisos...");
+
+            // Verificar soporte del navegador
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                showMessage("Tu navegador no soporta la grabación de pantalla o estás en un dispositivo móvil.", 'error');
+                return;
+            }
+
+            try {
+                // Pedir permiso al usuario para grabar la pantalla
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { cursor: "always" },
+                    audio: true 
+                });
+
+                // Configurar vista previa
+                videoPreview.srcObject = stream;
+                placeholder.style.display = 'none'; 
+                
+                // Determinar formato
+                const mimeType = MediaRecorder.isTypeSupported("video/webm; codecs=vp9") 
+                               ? "video/webm; codecs=vp9" 
+                               : "video/webm";
+
+                mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) recordedChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: mimeType });
+                    recordedChunks = [];
+                    const url = URL.createObjectURL(blob);
+                    btnDownload.href = url;
+                    
+                    const fecha = new Date().toISOString().slice(0,19).replace(/:/g,"-");
+                    btnDownload.download = `grabacion-${fecha}.mp4`; 
+
+                    btnDownload.classList.remove('hidden');
+                    btnDownload.classList.add('flex');
+                    
+                    stopCaptureEffects();
+                    showMessage("Grabación finalizada. ¡Listo para descargar!", 'success');
+                };
+
+                mediaRecorder.start();
+                
+                // Actualizar UI
+                btnStart.classList.add('hidden');
+                btnStop.disabled = false;
+                btnStop.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                btnStop.classList.add('bg-red-600', 'hover:bg-red-700');
+                btnDownload.classList.add('hidden');
+                indicator.classList.remove('hidden');
+                indicator.classList.add('flex');
+                showMessage("Grabando... (No cierres esta pestaña)", 'normal');
+
+                // Si el usuario deja de compartir usando la UI del navegador
+                stream.getVideoTracks()[0].onended = () => {
+                    if (mediaRecorder.state !== 'inactive') stopRecording();
+                };
+
+            } catch (err) {
+                console.error("Error al iniciar grabación:", err);
+                
+                // MANEJO DE ERRORES ESPECÍFICO
+                if (err.name === 'NotAllowedError') {
+                    if (err.message.includes('permissions policy')) {
+                        // Error específico del iframe/entorno
+                        showMessage(`
+                            ⚠️ <strong>Restricción del entorno detectada</strong><br>
+                            El navegador bloqueó la grabación porque estás dentro de una vista previa.<br><br>
+                            <strong>Solución:</strong> Abre este archivo en una pestaña nueva o descárgalo a tu PC.
+                        `, 'error');
+                    } else {
+                        // El usuario canceló
+                        showMessage("Permiso de grabación denegado o cancelado por el usuario.", 'error');
+                    }
+                } else {
+                    showMessage("Error desconocido: " + err.message, 'error');
+                }
+            }
+        });
+
+        // 3. Función para detener la grabación
+        btnStop.addEventListener('click', stopRecording);
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        // 4. Limpiar efectos visuales
+        function stopCaptureEffects() {
+            btnStop.disabled = true;
+            btnStop.classList.add('bg-gray-400', 'cursor-not-allowed');
+            btnStop.classList.remove('bg-red-600', 'hover:bg-red-700');
+            
+            btnStart.classList.remove('hidden');
+            indicator.classList.remove('flex');
+            indicator.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
