@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Plataforma Entalpía</title>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js'></script>
+    <style>
+        /* --- ESTILOS GENERALES (TIPO NETFLIX) --- */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #141414;
+            color: #e5e5e5;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* --- MARCA DE AGUA DE FONDO --- */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            /* Ruta de tu imagen */
+            background-image: url('../ImagenesPlataformas/logo_entalpia.png');
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: 75%;
+            opacity: 0.15;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-top: 2rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        p { color: #b3b3b3; margin-bottom: 2rem; }
+
+        /* --- CONTENEDOR PRINCIPAL --- */
+        .glass-panel {
+            background: rgba(0, 0, 0, 0.75);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            width: 90%;
+            max-width: 700px;
+            text-align: center;
+            border: 1px solid #333;
+        }
+
+        /* --- INPUT Y VISTA PREVIA --- */
+        input[type="file"] { margin-bottom: 15px; color: #fff; }
+
+        img#preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            margin-top: 10px;
+            display: none; /* Oculto al inicio */
+            border: 1px solid #333;
+        }
+
+        /* --- ÁREA DE TEXTO --- */
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            resize: vertical;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea:focus { outline: 2px solid #0071eb; }
+
+        /* --- BOTONES --- */
+        button {
+            padding: 12px 24px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            margin: 10px 5px;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        /* Botón Principal (Azul) */
+        #btnProcesar {
+            background-color: #0071eb;
+            color: white;
+            width: 100%;
+            margin: 20px 0;
+        }
+        #btnProcesar:hover { background-color: #005bb5; }
+        #btnProcesar:disabled { background-color: #555; cursor: not-allowed; opacity: 0.7; }
+
+        /* Botones de Descarga (Gris Oscuro) */
+        .download-btn {
+            background-color: #222;
+            color: #fff;
+            border: 1px solid #555;
+            display: none;
+        }
+        .download-btn:hover { background-color: #fff; color: #000; }
+
+        /* NUEVO: Botón Reiniciar (Estilo Borde/Ghost) */
+        #btnReiniciar {
+            background-color: transparent;
+            border: 2px solid #666;
+            color: #ccc;
+            margin-top: 20px;
+            display: inline-block;
+        }
+        #btnReiniciar:hover {
+            border-color: #e50914; /* Rojo tipo alerta al pasar el mouse */
+            color: #e50914;
+        }
+
+        #status { font-weight: bold; color: #0071eb; margin-top: 10px; min-height: 20px; }
+        
+        /* Contenedor de acciones finales */
+        .actions-container {
+            margin-top: 15px;
+            border-top: 1px solid #333;
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>OCR Entalpía</h1>
+    <p>Transforma imágenes a documentos editables.</p>
+
+    <div class="glass-panel">
+        <input type="file" id="uploader" accept="image/*" onchange="mostrarImagen()">
+        
+        <div id="image-container">
+            <img id="preview" alt="Vista previa">
+        </div>
+
+        <button onclick="reconocerTexto()" id="btnProcesar">▶ ANALIZAR IMAGEN</button>
+        <div id="status"></div>
+
+        <textarea id="resultado" placeholder="El resultado de la transcripción aparecerá aquí..."></textarea>
+        
+        <div class="actions-container">
+            <button onclick="descargarWord()" class="download-btn" id="btnWord">Descargar .DOC</button>
+            <button onclick="descargarExcel()" class="download-btn" id="btnExcel">Descargar .XLS</button>
+            
+            <br>
+            <button onclick="reiniciarApp()" id="btnReiniciar">↺ REINICIAR TODO</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. MOSTRAR IMAGEN ---
+        function mostrarImagen() {
+            const archivo = document.getElementById('uploader').files[0];
+            const preview = document.getElementById('preview');
+            
+            if (archivo) {
+                preview.src = URL.createObjectURL(archivo);
+                preview.style.display = 'inline-block';
+                // Limpiamos resultados anteriores para evitar confusión
+                document.getElementById('resultado').value = '';
+                document.getElementById('status').innerText = '';
+                ocultarBotonesDescarga();
+            }
+        }
+
+        // --- 2. PROCESAR IMAGEN (OCR) ---
+        function reconocerTexto() {
+            const archivo = document.getElementById('uploader').files[0];
+            const status = document.getElementById('status');
+            const resultado = document.getElementById('resultado');
+            const btnProcesar = document.getElementById('btnProcesar');
+
+            if (!archivo) {
+                status.innerText = "⚠ Selecciona una imagen primero.";
+                return;
+            }
+
+            status.innerText = "Procesando imagen...";
+            btnProcesar.disabled = true;
+            btnProcesar.innerText = "Analizando...";
+
+            Tesseract.recognize(
+                archivo,
+                'eng+spa',
+                { logger: m => console.log(m) }
+            ).then(({ data: { text } }) => {
+                resultado.value = text;
+                status.innerText = "¡Transcripción Completada!";
+                btnProcesar.disabled = false;
+                btnProcesar.innerText = "▶ ANALIZAR OTRA VEZ";
+                
+                // Mostrar botones
+                document.getElementById('btnWord').style.display = 'inline-block';
+                document.getElementById('btnExcel').style.display = 'inline-block';
+            }).catch(err => {
+                console.error(err);
+                status.innerText = "Error al procesar la imagen.";
+                btnProcesar.disabled = false;
+                btnProcesar.innerText = "▶ REINTENTAR";
+            });
+        }
+
+        // --- 3. NUEVA FUNCIÓN: REINICIAR APLICATIVO ---
+        function reiniciarApp() {
+            // 1. Limpiar el input de archivo
+            document.getElementById('uploader').value = ''; 
+            
+            // 2. Ocultar y limpiar imagen
+            const preview = document.getElementById('preview');
+            preview.src = '';
+            preview.style.display = 'none';
+
+            // 3. Limpiar texto y estatus
+            document.getElementById('resultado').value = '';
+            document.getElementById('status').innerText = '';
+
+            // 4. Restaurar botón principal
+            const btnProcesar = document.getElementById('btnProcesar');
+            btnProcesar.innerText = "▶ ANALIZAR IMAGEN";
+            btnProcesar.disabled = false;
+
+            // 5. Ocultar descargas
+            ocultarBotonesDescarga();
+        }
+
+        // --- FUNCIONES AUXILIARES ---
+
+        function ocultarBotonesDescarga() {
+            document.getElementById('btnWord').style.display = 'none';
+            document.getElementById('btnExcel').style.display = 'none';
+        }
+
+        function descargarWord() {
+            const texto = document.getElementById('resultado').value;
+            if(!texto) return; // Evitar descarga vacía
+            const contenido = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><meta charset='utf-8'><title>Documento Entalpía</title></head>
+                <body>${texto.replace(/\n/g, "<br>")}</body>
+                </html>`;
+            crearEnlaceDescarga(new Blob([contenido], { type: 'application/msword' }), 'transcripcion_entalpia.doc');
+        }
+
+        function descargarExcel() {
+            const texto = document.getElementById('resultado').value;
+            if(!texto) return;
+            const contenido = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head><meta charset="UTF-8"></head>
+                <body><table><tr><td>${texto.replace(/\n/g, "</td></tr><tr><td>")}</td></tr></table></body>
+                </html>`;
+            crearEnlaceDescarga(new Blob([contenido], { type: 'application/vnd.ms-excel' }), 'transcripcion_entalpia.xls');
+        }
+
+        function crearEnlaceDescarga(blob, nombreArchivo) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = nombreArchivo;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
