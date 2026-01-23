@@ -127,10 +127,10 @@
 
         // 3. BLOC DE NOTAS
         const NotesWidget = () => {
-            const [note, setNote] = useState(() => localStorage.getItem('colgas_note') || "");
+            const [note, setNote] = useState(() => localStorage.getItem('ENTALPIA_note') || "");
             const handleChange = (e) => {
                 setNote(e.target.value);
-                localStorage.setItem('colgas_note', e.target.value);
+                localStorage.setItem('ENTALPIA_note', e.target.value);
             };
             return (
                 <Card className="flex flex-col h-full">
@@ -150,12 +150,12 @@
         // 4. LISTA DE TAREAS (TODO)
         const TodoWidget = () => {
             const [tasks, setTasks] = useState(() => {
-                const saved = localStorage.getItem('colgas_todos');
+                const saved = localStorage.getItem('ENTALPIA_todos');
                 return saved ? JSON.parse(saved) : [{ id: 1, text: "Revisar certificaciones", completed: false }];
             });
             const [input, setInput] = useState("");
 
-            useEffect(() => localStorage.setItem('colgas_todos', JSON.stringify(tasks)), [tasks]);
+            useEffect(() => localStorage.setItem('ENTALPIA_todos', JSON.stringify(tasks)), [tasks]);
 
             const addTask = () => {
                 if (!input.trim()) return;
@@ -231,7 +231,7 @@
                     <header className="max-w-6xl mx-auto flex justify-between items-center mb-8 border-b border-gray-800 pb-6">
                         <div>
                             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-blue-200 uppercase tracking-tighter">
-                                COLGAS <span className="text-gray-600 font-light">Dashboard</span>
+                                ENTALPIA <span className="text-gray-600 font-light">Dashboard</span>
                             </h1>
                             <p className="text-gray-500 text-sm mt-1">Herramientas de Gestión e Ingeniería - INSE</p>
                         </div>
