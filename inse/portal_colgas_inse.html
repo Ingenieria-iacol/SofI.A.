@@ -12,29 +12,31 @@
             margin: 0;
             padding: 0;
             color: #333;
-            /* Necesario para posicionar la marca de agua relativa al cuerpo */
             position: relative; 
             min-height: 100vh;
         }
 
-        /* --- AQUÍ ESTÁ LA MAGIA DE LA MARCA DE AGUA --- */
+        /* --- MARCA DE AGUA (FONDO) --- */
         body::before {
             content: "";
-            position: fixed; /* Se queda fijo aunque hagas scroll */
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             /* Ruta de la imagen de fondo */
             background-image: url('../ImagenesPlataformas/Logo_Inse.png');
-            background-position: center center; /* Centrado perfecto */
+            background-position: center center;
             background-repeat: no-repeat;
-            background-size: 75%; /* Ocupa el 75% de la pantalla como pediste */
-            opacity: 0.08; /* Transparencia muy baja (8%) para que sea sutil */
-            z-index: -1; /* Se asegura de quedarse DETRÁS de todo */
-            pointer-events: none; /* Permite dar clics a través de la imagen */
+            background-size: 75%; 
+            
+            /* --- AQUÍ HICE EL CAMBIO --- */
+            opacity: 0.15; /* Subido al 15% (antes era 0.08) */
+            /* --------------------------- */
+            
+            z-index: -1;
+            pointer-events: none; 
         }
-        /* --------------------------------------------- */
 
         /* ENCABEZADO */
         header {
@@ -43,11 +45,11 @@
             text-align: center;
             border-bottom: 4px solid #004481;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            position: relative; /* Para que quede por encima de la marca de agua */
+            position: relative;
             z-index: 1;
         }
 
-        /* ESTILO DEL LOGO SUPERIOR */
+        /* LOGO SUPERIOR */
         .logo-empresa {
             max-width: 250px;
             height: auto;
@@ -74,7 +76,7 @@
             margin: 40px auto;
             padding: 0 20px;
             position: relative;
-            z-index: 1; /* El contenido va encima de la marca de agua */
+            z-index: 1;
         }
 
         h2 {
@@ -94,9 +96,8 @@
 
         /* TARJETAS / BOTONES */
         .boton-acceso {
-            /* Un poco de transparencia en el blanco para dejar ver sutilmente el fondo,
-               o déjalo en 'white' sólido para mejor lectura. Aquí puse un blanco sólido. */
-            background-color: rgba(255, 255, 255, 0.95); 
+            /* Fondo blanco un poco transparente para que contraste con la marca de agua */
+            background-color: rgba(255, 255, 255, 0.90); 
             width: 220px;
             height: 160px;
             display: flex;
@@ -127,7 +128,7 @@
         .boton-acceso:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-            background-color: #fff; /* Blanco puro al pasar el mouse */
+            background-color: #fff; 
         }
 
         .boton-acceso:hover::before {
