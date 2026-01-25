@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control - COLGAS</title>
+    <title>Panel de Control - COLTEGAS</title>
     <style>
         /* ESTILOS GENERALES */
         body {
@@ -12,7 +12,29 @@
             margin: 0;
             padding: 0;
             color: #333;
+            /* Necesario para posicionar la marca de agua relativa al cuerpo */
+            position: relative; 
+            min-height: 100vh;
         }
+
+        /* --- AQUÍ ESTÁ LA MAGIA DE LA MARCA DE AGUA --- */
+        body::before {
+            content: "";
+            position: fixed; /* Se queda fijo aunque hagas scroll */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Ruta de la imagen de fondo */
+            background-image: url('../ImagenesPlataformas/Logo_Inse.png');
+            background-position: center center; /* Centrado perfecto */
+            background-repeat: no-repeat;
+            background-size: 75%; /* Ocupa el 75% de la pantalla como pediste */
+            opacity: 0.08; /* Transparencia muy baja (8%) para que sea sutil */
+            z-index: -1; /* Se asegura de quedarse DETRÁS de todo */
+            pointer-events: none; /* Permite dar clics a través de la imagen */
+        }
+        /* --------------------------------------------- */
 
         /* ENCABEZADO */
         header {
@@ -21,14 +43,16 @@
             text-align: center;
             border-bottom: 4px solid #004481;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative; /* Para que quede por encima de la marca de agua */
+            z-index: 1;
         }
 
-        /* ESTILO DEL LOGO */
+        /* ESTILO DEL LOGO SUPERIOR */
         .logo-empresa {
-            max-width: 250px; /* Tamaño máximo */
+            max-width: 250px;
             height: auto;
             display: block;
-            margin: 0 auto 10px auto; /* Centrado */
+            margin: 0 auto 10px auto;
         }
 
         header h1 {
@@ -49,6 +73,8 @@
             max-width: 1000px;
             margin: 40px auto;
             padding: 0 20px;
+            position: relative;
+            z-index: 1; /* El contenido va encima de la marca de agua */
         }
 
         h2 {
@@ -68,7 +94,9 @@
 
         /* TARJETAS / BOTONES */
         .boton-acceso {
-            background-color: white;
+            /* Un poco de transparencia en el blanco para dejar ver sutilmente el fondo,
+               o déjalo en 'white' sólido para mejor lectura. Aquí puse un blanco sólido. */
+            background-color: rgba(255, 255, 255, 0.95); 
             width: 220px;
             height: 160px;
             display: flex;
@@ -99,6 +127,7 @@
         .boton-acceso:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+            background-color: #fff; /* Blanco puro al pasar el mouse */
         }
 
         .boton-acceso:hover::before {
@@ -123,13 +152,15 @@
             color: #999;
             border-top: 1px solid #ddd;
             margin-top: 50px;
+            position: relative;
+            z-index: 1;
         }
     </style>
 </head>
 <body>
 
     <header>
-        <img src="../ImagenesPlataformas/img_logo_colgas.jpg" alt="Logo COLGAS" class="logo-empresa">
+        <img src="../ImagenesPlataformas/img_logo_colgas.jpg" alt="Logo COLTEGAS" class="logo-empresa">
         
         <h1>Portal de Aplicaciones</h1>
         <p>Seleccione un servicio para ingresar</p>
@@ -172,7 +203,7 @@
     </div>
 
     <footer>
-        <p>&copy; 2026 COLGAS - Uso exclusivo para personal autorizado.</p>
+        <p>&copy; 2026 COLTEGAS - Uso exclusivo para personal autorizado.</p>
     </footer>
 
 </body>
