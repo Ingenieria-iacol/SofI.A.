@@ -3,128 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control Interventoria - Tocota</title>
+    <title>Panel de Control - COLGAS</title>
     <style>
-        /* ESTILOS (El diseño visual) */
-        
+        /* ESTILOS GENERALES */
         body {
-            font-family: Arial, Helvetica, sans-serif;
-            background-color: #f0f2f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
             margin: 0;
             padding: 0;
             color: #333;
         }
 
-        /* Encabezado azul */
+        /* ENCABEZADO */
         header {
-            background-color: #004481; /* Azul oscuro corporativo */
-            color: white;
-            padding: 20px;
+            background-color: #ffffff;
+            padding: 15px 20px;
             text-align: center;
-            border-bottom: 5px solid #002a50;
+            border-bottom: 4px solid #004481;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* ESTILO DEL LOGO */
+        .logo-empresa {
+            max-width: 250px; /* Tamaño máximo */
+            height: auto;
+            display: block;
+            margin: 0 auto 10px auto; /* Centrado */
         }
 
         header h1 {
             margin: 0;
-            font-size: 28px;
+            font-size: 22px;
+            color: #004481;
             text-transform: uppercase;
-            letter-spacing: 2px;
         }
 
         header p {
             margin: 5px 0 0 0;
             font-size: 14px;
-            opacity: 0.8;
+            color: #666;
         }
 
-        /* Contenedor principal */
+        /* CONTENEDOR PRINCIPAL */
         .contenedor {
             max-width: 1000px;
-            margin: 30px auto; /* Centrado */
-            padding: 0 15px;
+            margin: 40px auto;
+            padding: 0 20px;
         }
 
-        /* Título de sección */
         h2 {
             text-align: center;
-            color: #555;
+            color: #444;
             margin-bottom: 30px;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 10px;
+            font-weight: normal;
         }
 
-        /* La rejilla de botones */
+        /* REJILLA DE BOTONES */
         .panel-botones {
             display: flex;
-            flex-wrap: wrap; /* Permite que bajen si no caben */
-            justify-content: center; /* Centra los botones */
-            gap: 20px; /* Espacio entre botones */
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 25px;
         }
 
-        /* Diseño de cada botón */
+        /* TARJETAS / BOTONES */
         .boton-acceso {
             background-color: white;
-            width: 200px;
-            height: 180px;
+            width: 220px;
+            height: 160px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            text-decoration: none; /* Quitar subrayado azul */
-            color: #333;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Sombra suave */
-            transition: all 0.2s ease; /* Suavizar animación */
+            text-decoration: none;
+            color: #444;
+            border-radius: 8px;
+            border: 1px solid #e1e1e1;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
 
-        /* Efecto al poner el mouse encima */
+        .boton-acceso::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 5px;
+            background-color: #004481;
+            transition: width 0.3s;
+        }
+
         .boton-acceso:hover {
-            background-color: #e6f0ff; /* Fondo azul muy claro */
-            transform: scale(1.05); /* Crece un poquito */
-            border-color: #004481;
-            cursor: pointer;
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
         }
 
-        /* Tamaño del icono (Emoji) */
+        .boton-acceso:hover::before {
+            width: 10px;
+        }
+
         .icono {
-            font-size: 50px;
-            margin-bottom: 15px;
+            font-size: 40px;
+            margin-bottom: 10px;
         }
 
-        /* Texto del botón */
         .titulo-boton {
             font-weight: bold;
-            font-size: 18px;
-            text-align: center;
+            font-size: 16px;
         }
 
-        /* Pie de página */
+        /* PIE DE PÁGINA */
         footer {
             text-align: center;
-            padding: 20px;
-            font-size: 12px;
-            color: #888;
+            padding: 30px;
+            font-size: 13px;
+            color: #999;
+            border-top: 1px solid #ddd;
             margin-top: 50px;
         }
-
     </style>
 </head>
 <body>
 
     <header>
-        <h1>INSE - COLGAS</h1>
-        <p>Sistema Centralizado de Aplicaciones</p>
+        <img src="../ImagenesPlataformas/img_logo_colgas.jpg" alt="Logo COLGAS" class="logo-empresa">
+        
+        <h1>Portal de Aplicaciones</h1>
+        <p>Seleccione un servicio para ingresar</p>
     </header>
 
     <div class="contenedor">
-        <h2>Seleccione una aplicación</h2>
-
         <div class="panel-botones">
             
             <a href="https://outlook.office.com" class="boton-acceso" target="_blank">
                 <span class="icono">📧</span>
-                <span class="titulo-boton">Correo Web</span>
+                <span class="titulo-boton">Correo Corporativo</span>
             </a>
 
             <a href="#" class="boton-acceso">
@@ -134,29 +150,29 @@
 
             <a href="#" class="boton-acceso">
                 <span class="icono">📊</span>
-                <span class="titulo-boton">Contabilidad</span>
+                <span class="titulo-boton">Gestión Financiera</span>
             </a>
 
             <a href="#" class="boton-acceso">
-                <span class="icono">📦</span>
-                <span class="titulo-boton">Inventario</span>
+                <span class="icono">🚚</span>
+                <span class="titulo-boton">Logística</span>
             </a>
 
             <a href="#" class="boton-acceso">
-                <span class="icono">💰</span>
-                <span class="titulo-boton">Facturación</span>
+                <span class="icono">🖨️</span>
+                <span class="titulo-boton">Solicitudes TI</span>
             </a>
 
-            <a href="#" class="boton-acceso">
-                <span class="icono">🛠️</span>
-                <span class="titulo-boton">Soporte Técnico</span>
+             <a href="#" class="boton-acceso">
+                <span class="icono">🌐</span>
+                <span class="titulo-boton">Sitio Web</span>
             </a>
 
         </div>
     </div>
 
     <footer>
-        <p>COLGAS S.A. &copy; Uso exclusivo interno.</p>
+        <p>&copy; 2026 COLGAS - Uso exclusivo para personal autorizado.</p>
     </footer>
 
 </body>
