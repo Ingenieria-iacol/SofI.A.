@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control Interventoria - Tocota</title>
+    <style>
+        /* ESTILOS (El diseño visual) */
+        
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        /* Encabezado azul */
+        header {
+            background-color: #004481; /* Azul oscuro corporativo */
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 5px solid #002a50;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 28px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* Contenedor principal */
+        .contenedor {
+            max-width: 1000px;
+            margin: 30px auto; /* Centrado */
+            padding: 0 15px;
+        }
+
+        /* Título de sección */
+        h2 {
+            text-align: center;
+            color: #555;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+
+        /* La rejilla de botones */
+        .panel-botones {
+            display: flex;
+            flex-wrap: wrap; /* Permite que bajen si no caben */
+            justify-content: center; /* Centra los botones */
+            gap: 20px; /* Espacio entre botones */
+        }
+
+        /* Diseño de cada botón */
+        .boton-acceso {
+            background-color: white;
+            width: 200px;
+            height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none; /* Quitar subrayado azul */
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Sombra suave */
+            transition: all 0.2s ease; /* Suavizar animación */
+        }
+
+        /* Efecto al poner el mouse encima */
+        .boton-acceso:hover {
+            background-color: #e6f0ff; /* Fondo azul muy claro */
+            transform: scale(1.05); /* Crece un poquito */
+            border-color: #004481;
+            cursor: pointer;
+        }
+
+        /* Tamaño del icono (Emoji) */
+        .icono {
+            font-size: 50px;
+            margin-bottom: 15px;
+        }
+
+        /* Texto del botón */
+        .titulo-boton {
+            font-weight: bold;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        /* Pie de página */
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #888;
+            margin-top: 50px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>INSE - COLGAS</h1>
+        <p>Sistema Centralizado de Aplicaciones</p>
+    </header>
+
+    <div class="contenedor">
+        <h2>Seleccione una aplicación</h2>
+
+        <div class="panel-botones">
+            
+            <a href="https://outlook.office.com" class="boton-acceso" target="_blank">
+                <span class="icono">📧</span>
+                <span class="titulo-boton">Correo Web</span>
+            </a>
+
+            <a href="#" class="boton-acceso">
+                <span class="icono">👥</span>
+                <span class="titulo-boton">Recursos Humanos</span>
+            </a>
+
+            <a href="#" class="boton-acceso">
+                <span class="icono">📊</span>
+                <span class="titulo-boton">Contabilidad</span>
+            </a>
+
+            <a href="#" class="boton-acceso">
+                <span class="icono">📦</span>
+                <span class="titulo-boton">Inventario</span>
+            </a>
+
+            <a href="#" class="boton-acceso">
+                <span class="icono">💰</span>
+                <span class="titulo-boton">Facturación</span>
+            </a>
+
+            <a href="#" class="boton-acceso">
+                <span class="icono">🛠️</span>
+                <span class="titulo-boton">Soporte Técnico</span>
+            </a>
+
+        </div>
+    </div>
+
+    <footer>
+        <p>COLGAS S.A. &copy; Uso exclusivo interno.</p>
+    </footer>
+
+</body>
+</html>
