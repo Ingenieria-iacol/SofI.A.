@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Generador de Cuentas de Cobro - Entalpía</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.min.js"></script>
+    <style>
+        #preview {
+            width: 210mm; /* Tamaño A4 aproximado */
+            min-height: 297mm;
+            padding: 20px;
+            margin: auto;
+            border: 1px solid #ccc;
+            position: relative;
+            background-color: white;
+        }
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 75%;
+            opacity: 0.1; /* Tenue */
+            z-index: 0;
+            pointer-events: none;
+        }
+        .content { position: relative; z-index: 1; }
+        footer { position: absolute; bottom: 20px; width: 100%; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <h2>Configuración de Cuenta de Cobro</h2>
+    <label>Cargar Logo Personalizado:</label>
+    <input type="file" id="logoInput" accept="image/*"><br><br>
+
+    <label>Deudor:</label>
+    <select id="deudorSelect">
+        <option value="">Cargando deudores...</option>
+    </select>
+    o ingreso manual: <input type="text" id="manualNombre">
+    
+    <br><br>
+    <label>NIT/Cédula:</label>
+    <input type="text" id="identificacion">
+
+    <hr>
+
+    <div id="preview">
+        <img id="watermarkImg" src="../ImagenesPlataformas/logo_entalpia.png" class="watermark">
+        <div class="content">
+            <h1>CUENTA DE COBRO</h1>
+            <p>Deudor: <span id="valDeudor"></span></p>
+            <p>NIT: <span id="valNit"></span></p>
+        </div>
+        <footer>Hub de ingeniería ENTALPIA - 2025</footer>
+    </div>
+
+    <button onclick="generarPDF()">Descargar PDF</button>
+
+    <script>
+        const logoInput = document.getElementById('logoInput');
+        const watermarkImg = document.getElementById('watermarkImg');
+
+        // Lógica para cambiar la marca de agua si el usuario sube un logo
+        logoInput.addEventListener('change', function(e) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                watermarkImg.src = reader.result;
+            }
+            if(e.target.files[0]) {
+                reader.readAsDataURL(e.target.files[0]);
+            } else {
+                watermarkImg.src = "../ImagenesPlataformas/logo_entalpia.png";
+            }
+        });
+
+        // Función para generar PDF (Requiere configuración de jsPDF)
+        function generarPDF() {
+            alert("Iniciando descarga...");
+            // Aquí implementaremos la lógica de jsPDF una vez definas los campos
+        }
+    </script>
+</body>
+</html>
