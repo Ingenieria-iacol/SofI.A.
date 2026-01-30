@@ -2,150 +2,129 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entalpia | Hub de Ingeniería</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* Estabilización del fondo y colores de Entalpia */
         body { 
             background: #0f2027; 
             background: linear-gradient(to bottom, #2c5364, #203a43, #0f2027); 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            font-family: 'Segoe UI', sans-serif; 
-            margin: 0; 
-            overflow: hidden;
-            position: relative;
+            display: flex; align-items: center; justify-content: center; 
+            height: 100vh; margin: 0; overflow: hidden; position: relative;
         }
 
-        /* Marca de agua sutil de INSE al 75% */
+        /* Marca de agua INSE */
         .marca-agua {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 75vw; /* 75% del ancho de la pantalla */
-            opacity: 0.05; /* Casi imperceptible para no ensuciar el fondo */
-            z-index: 1;
-            pointer-events: none;
-            user-select: none;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 75vw; opacity: 0.05; z-index: 1; pointer-events: none;
         }
 
         .login-card { 
-            background: white; 
-            width: 90%; 
-            max-width: 400px; 
-            padding: 40px; 
-            border-radius: 25px; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5); 
-            text-align: center; 
-            z-index: 10; 
-            position: relative;
+            background: white; width: 90%; max-width: 400px; padding: 40px; 
+            border-radius: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); 
+            text-align: center; z-index: 10; position: relative;
         }
 
         .logo-text { font-weight: 900; color: #1a2a6c; letter-spacing: 4px; font-size: 1.8rem; margin-bottom: 0; }
-        .accent-line { width: 50px; height: 4px; background: #00d2ff; margin: 10px auto 25px; border-radius: 2px; }
-        
-        /* Inputs y Botón de verificación */
-        .form-control { border-radius: 10px; padding: 12px; margin-bottom: 15px; background: #f8f9fa; border: 1px solid #eee; }
-        .btn-verify { background: #1a2a6c; color: white; border: none; padding: 14px; font-weight: 600; width: 100%; border-radius: 10px; transition: 0.3s; }
-        .btn-verify:hover { background: #2c5364; transform: scale(1.02); }
+        .accent-line { width: 40px; height: 3px; background: #00d2ff; margin: 10px auto 25px; }
 
-        /* Estilo para el botón de acceso final (se inyectará por JS) */
-        .btn-acceso-final {
-            display: block;
-            background: #28a745;
-            color: white !important;
-            text-decoration: none;
-            padding: 18px;
-            border-radius: 12px;
-            font-weight: bold;
-            font-size: 1.2rem;
-            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
-            margin-top: 20px;
-            animation: fadeIn 0.5s ease-in;
+        .form-control { border-radius: 10px; padding: 12px; margin-bottom: 15px; background: #f8f9fa; border: 1px solid #eee; }
+        
+        .btn-verify { 
+            background: #1a2a6c; color: white; border: none; padding: 14px; 
+            width: 100%; border-radius: 10px; font-weight: 600; transition: 0.3s;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+        /* Estilo del botón dinámico de Drive */
+        .btn-success-entalpia {
+            display: block; background: #28a745; color: white !important; 
+            padding: 18px; border-radius: 12px; font-weight: bold; text-decoration: none;
+            margin-top: 20px; box-shadow: 0 4px 15px rgba(40,167,69,0.4);
+            animation: slideUp 0.4s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .loader { display: none; margin: 15px auto; }
+        .loader-container { display: none; margin: 20px 0; }
     </style>
 </head>
 <body>
 
-    <img src="../ImagenesPlataformas/Logo_Inse.png" class="marca-agua" alt="">
+    <img src="../ImagenesPlataformas/Logo_Inse.png" class="marca-agua">
 
     <div class="login-card">
         <div class="logo-text">ENTALPIA</div>
         <div class="accent-line"></div>
         <p class="text-muted small mb-4">SISTEMA DE GESTIÓN DOCUMENTAL</p>
         
-        <div id="contenedorPrincipal">
-            <div id="panelForm">
+        <div id="contenedorDinamico">
+            <div id="panelLogin">
                 <input type="email" id="email" class="form-control" placeholder="Usuario / Email">
                 <input type="password" id="pass" class="form-control" placeholder="Contraseña">
                 <button onclick="validar()" id="btnCheck" class="btn-verify">VERIFICAR ACCESO</button>
             </div>
-            
-            <div class="spinner-border text-primary loader" id="loading" role="status"></div>
-            <p id="mensaje" class="small mt-3"></p>
         </div>
+
+        <div id="loaderArea" class="loader-container">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="small mt-2 text-primary">Auditando acceso...</p>
+        </div>
+        
+        <div id="mensaje" class="mt-3 small"></div>
     </div>
 
 <script>
-    // URL DE TU PROYECTO DE GOOGLE APPS SCRIPT
-    const URL_GOOGLE = "https://script.google.com/macros/s/AKfycbzc739SAK04FgF2nrXDqMOIk7KhttmPVCFU3etE-fGbOX3V0xl6VBGno9IhNMBzTb3R/exec";
+    const URL_GOOGLE = "https://script.google.com/macros/s/AKfycbzp7WMfaGWAKyUTbPvPX_BhIoN5jNjHlr97W0p4F3AklyaADjo1AWM8nIOTZaIOk8g/exec";
 
     function validar() {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('pass').value;
-        const loader = document.getElementById('loading');
-        const btnCheck = document.getElementById('btnCheck');
         const mensaje = document.getElementById('mensaje');
-        
+        const loader = document.getElementById('loaderArea');
+        const panel = document.getElementById('panelLogin');
+
         if(!email || !pass) {
-            mensaje.className = "text-danger small";
-            mensaje.innerText = "Campos obligatorios vacíos.";
+            mensaje.innerHTML = "<span class='text-danger'>Complete todos los campos</span>";
             return;
         }
 
-        mensaje.innerText = "Consultando base de datos...";
-        loader.style.display = "block";
-        btnCheck.disabled = true;
-
+        mensaje.innerHTML = "";
+        panel.style.display = "none"; // Ocultamos el login inmediatamente
+        loader.style.display = "block"; // Mostramos el cargando
+        
         const script = document.createElement('script');
         script.src = `${URL_GOOGLE}?email=${encodeURIComponent(email)}&pass=${encodeURIComponent(pass)}&callback=callback`;
         document.body.appendChild(script);
     }
 
     function callback(res) {
-        const contenedor = document.getElementById('contenedorPrincipal');
-        const loader = document.getElementById('loading');
+        const contenedor = document.getElementById('contenedorDinamico');
+        const loader = document.getElementById('loaderArea');
         const mensaje = document.getElementById('mensaje');
 
         loader.style.display = "none";
 
         if (res.exito) {
-            // Eliminamos el formulario y el botón de verificación por completo
-            contenedor.innerHTML = `
-                <p class="text-success fw-bold">¡Bienvenido Ingeniero!</p>
-                <div class="small text-muted mb-3">Se ha registrado su ingreso en la auditoría.</div>
-                <a href="${res.url}" target="_blank" class="btn-acceso-final">
-                    INGRESAR AL DRIVE
-                </a>
-            `;
+            // Vaciamos el contenedor por seguridad
+            contenedor.innerHTML = ""; 
+            
+            // Creamos el botón "desde el aire"
+            const botonDrive = document.createElement('a');
+            botonDrive.href = res.url;
+            botonDrive.target = "_blank";
+            botonDrive.className = "btn-success-entalpia";
+            botonDrive.innerText = "INGRESAR AL DRIVE";
+            
+            mensaje.innerHTML = "<b class='text-success'>✓ Identidad confirmada</b>";
+            contenedor.appendChild(botonDrive);
         } else {
-            document.getElementById('btnCheck').disabled = false;
-            mensaje.className = "text-danger small";
-            mensaje.innerText = "Credenciales incorrectas. Intente de nuevo.";
+            // Si falla, volvemos a mostrar el formulario
+            document.getElementById('panelLogin').style.display = "block";
+            mensaje.innerHTML = "<span class='text-danger'>Acceso denegado: Credenciales incorrectas</span>";
         }
     }
 </script>
-
 </body>
 </html>
