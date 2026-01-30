@@ -6,41 +6,94 @@
     <title>Entalpia | Hub de Ingeniería</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #0f2027; background: linear-gradient(to bottom, #2c5364, #203a43, #0f2027); display: flex; align-items: center; justify-content: center; height: 100vh; font-family: 'Segoe UI', sans-serif; margin: 0; }
-        .login-card { background: white; width: 90%; max-width: 400px; padding: 40px; border-radius: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); text-align: center; }
+        /* Fondo con degradado original */
+        body { 
+            background: #0f2027; 
+            background: linear-gradient(to bottom, #2c5364, #203a43, #0f2027); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; 
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Marca de agua sutil */
+        .marca-agua {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 75%; /* Ocupa el 75% de la pantalla */
+            height: auto;
+            opacity: 0.05; /* Opacidad muy sutil para no alterar el fondo */
+            z-index: 0;
+            pointer-events: none; /* No interfiere con los clics */
+        }
+
+        .login-card { 
+            background: white; 
+            width: 90%; 
+            max-width: 400px; 
+            padding: 40px; 
+            border-radius: 25px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4); 
+            text-align: center; 
+            z-index: 10; /* Asegura que esté sobre la marca de agua */
+            position: relative;
+        }
+
         .logo-text { font-weight: 900; color: #1a2a6c; letter-spacing: 4px; font-size: 1.8rem; margin-bottom: 0; }
         .accent-line { width: 50px; height: 4px; background: #00d2ff; margin: 10px auto 25px; border-radius: 2px; }
         .form-control { border-radius: 10px; padding: 12px; margin-bottom: 15px; background: #f8f9fa; border: 1px solid #eee; }
         .btn-verify { background: #1a2a6c; color: white; border: none; padding: 14px; font-weight: 600; width: 100%; border-radius: 10px; transition: 0.3s; }
         .btn-verify:hover { background: #2c5364; transform: translateY(-2px); }
-        #btnIngresar { display: none; background: #28a745; color: white; text-decoration: none; padding: 16px; border-radius: 10px; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); }
+        
+        /* Botón de éxito oculto inicialmente */
+        #btnIngresar { 
+            display: none; 
+            background: #28a745; 
+            color: white; 
+            text-decoration: none; 
+            padding: 16px; 
+            border-radius: 10px; 
+            font-weight: bold; 
+            font-size: 1.1rem; 
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); 
+            margin-top: 15px;
+        }
+
         .loader { display: none; margin: 15px auto; }
     </style>
 </head>
 <body>
 
-<div class="login-card">
-    <div class="logo-text">ENTALPIA</div>
-    <div class="accent-line"></div>
-    <p class="text-muted small mb-4">FONDO DOCUMENTAL DE INGENIERÍA</p>
-    
-    <div id="panelForm">
-        <input type="email" id="email" class="form-control" placeholder="Correo electrónico">
-        <input type="password" id="pass" class="form-control" placeholder="Contraseña">
-        <button onclick="validar()" id="btnCheck" class="btn-verify">VERIFICAR CREDENCIALES</button>
-    </div>
+    <img src="../ImagenesPlataformas/Logo_Inse.png" class="marca-agua" alt="Fondo Inse">
 
-    <div class="spinner-border text-primary loader" id="loading" role="status"></div>
+    <div class="login-card">
+        <div class="logo-text">ENTALPIA</div>
+        <div class="accent-line"></div>
+        <p class="text-muted small mb-4">FONDO DOCUMENTAL DE INGENIERÍA</p>
+        
+        <div id="panelForm">
+            <input type="email" id="email" class="form-control" placeholder="Correo electrónico">
+            <input type="password" id="pass" class="form-control" placeholder="Contraseña">
+            <button onclick="validar()" id="btnCheck" class="btn-verify">VERIFICAR CREDENCIALES</button>
+        </div>
 
-    <div id="resultado" class="mt-2">
-        <p id="mensaje" class="small mb-3"></p>
-        <a id="btnIngresar" href="#" target="_blank" class="d-block w-100">ABRIR CARPETA DRIVE</a>
+        <div class="spinner-border text-primary loader" id="loading" role="status"></div>
+
+        <div id="resultado">
+            <p id="mensaje" class="small mt-2"></p>
+            <a id="btnIngresar" href="#" target="_blank" class="d-block w-100">ABRIR CARPETA DRIVE</a>
+        </div>
     </div>
-</div>
 
 <script>
-    // REEMPLAZA CON LA URL DE TU IMPLEMENTACIÓN DE GOOGLE
-    const URL_GOOGLE = "https://script.google.com/macros/s/AKfycbyeH7QVwATU_ppJJKXXzvU0DqwLFGYetmeyin5o81dXXX5Jh_nRjsKY9g0RW6JCGdfG/exec";
+    // REEMPLAZA CON TU URL DE APPS SCRIPT
+    const URL_GOOGLE = "https://script.google.com/macros/s/AKfycbzc739SAK04FgF2nrXDqMOIk7KhttmPVCFU3etE-fGbOX3V0xl6VBGno9IhNMBzTb3R/exec";
 
     function validar() {
         const email = document.getElementById('email').value;
@@ -59,7 +112,6 @@
         loader.style.display = "block";
         btnCheck.disabled = true;
 
-        // JSONP Call
         const script = document.createElement('script');
         script.src = `${URL_GOOGLE}?email=${encodeURIComponent(email)}&pass=${encodeURIComponent(pass)}&callback=callback`;
         document.body.appendChild(script);
@@ -82,7 +134,7 @@
         } else {
             document.getElementById('btnCheck').disabled = false;
             mensaje.className = "text-danger small";
-            mensaje.innerText = "Correo o contraseña incorrectos.";
+            mensaje.innerText = "Credenciales incorrectas.";
         }
     }
 </script>
