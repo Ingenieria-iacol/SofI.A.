@@ -1,39 +1,63 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Entalpia | Hub de Ingeniería</title>
+    <title>Entalpia Login</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        :root { --primary: #00d2ff; --bg: #0f2027; }
-        body { background: var(--bg); background: linear-gradient(135deg, #2c5364, #0f2027); height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', sans-serif; }
-        .login-box { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); padding: 40px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); width: 100%; max-width: 380px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .logo { font-weight: 800; letter-spacing: 3px; color: var(--primary); margin-bottom: 5px; }
-        .form-control { background: rgba(255,255,255,0.1); border: none; color: white; margin-bottom: 15px; padding: 12px; }
-        .form-control:focus { background: rgba(255,255,255,0.2); color: white; box-shadow: 0 0 10px var(--primary); }
-        .btn-submit { background: var(--primary); border: none; font-weight: bold; padding: 12px; transition: 0.3s; width: 100%; border-radius: 5px; }
-        .btn-submit:hover { background: #3a7bd5; transform: scale(1.02); }
-        .footer-text { font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 20px; }
+        body { background: #f0f2f5; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .card { width: 350px; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        #btnIngresar { display: none; } /* Oculto por defecto */
     </style>
 </head>
 <body>
 
-    <div class="login-box text-center">
-        <h1 class="logo">ENTALPIA</h1>
-        <p class="text-white-50 small mb-4">FONDO DOCUMENTAL COMPARTIDO</p>
-        
-        <form action="https://script.google.com/macros/s/AKfycbw9KzaWMLRGOiOtXUyPPfN4NM_AJ0wtExqwp4pNYjkuYEehcKxo1Oc9ui3wbVy-iT_D/exec" method="get">
-            <input type="email" name="email" class="form-control" placeholder="Correo electrónico" required>
-            <input type="password" name="pass" class="form-control" placeholder="Contraseña" required>
-            <button type="submit" class="btn-submit">ENTRAR AL SISTEMA</button>
-        </form>
-
-        <div class="footer-text">
-            &copy; 2026 Entalpia Hub Engineering Solution<br>
-            Acceso restringido a personal autorizado
-        </div>
+<div class="card text-center">
+    <h4 class="mb-4">Entalpia Hub</h4>
+    
+    <div id="formulario">
+        <input type="email" id="email" class="form-control mb-2" placeholder="Correo">
+        <input type="password" id="pass" class="form-control mb-3" placeholder="Contraseña">
+        <button onclick="validar()" class="btn btn-primary w-100">Verificar</button>
     </div>
+
+    <div id="resultado" class="mt-3">
+        <p id="mensaje" class="small text-danger"></p>
+        <a id="btnIngresar" href="#" target="_blank" class="btn btn-success w-100">¡INGRESAR A MI CARPETA!</a>
+    </div>
+</div>
+
+<script>
+    // 1. REEMPLAZA CON TU URL DE GOOGLE
+    const URL_GOOGLE = "https://script.google.com/macros/s/AKfycby1CIk315RdzZVDETFnYSNez42Tl5XHHV5BBjEoPwV82GW3Lw1Ql139SygtXkX-gTyN/exec";
+
+    function validar() {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('pass').value;
+        const mensaje = document.getElementById('mensaje');
+        
+        // Llamada especial para saltar bloqueos de seguridad
+        const script = document.createElement('script');
+        script.src = `${URL_GOOGLE}?email=${email}&pass=${pass}&callback=callback`;
+        document.body.appendChild(script);
+    }
+
+    // 2. Esta función recibe la respuesta de Google
+    function callback(res) {
+        const btn = document.getElementById('btnIngresar');
+        const mensaje = document.getElementById('mensaje');
+        
+        if (res.exito) {
+            mensaje.className = "small text-success";
+            mensaje.innerText = "Credenciales correctas.";
+            btn.href = res.url;
+            btn.style.display = "block"; // Mostrar el botón de ingreso
+            document.getElementById('formulario').style.display = "none"; // Ocultar login
+        } else {
+            mensaje.innerText = "Error: Usuario o clave incorrectos.";
+        }
+    }
+</script>
 
 </body>
 </html>
