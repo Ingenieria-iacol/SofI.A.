@@ -2,84 +2,180 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Generador de Cuentas de Cobro - Entalpía</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.min.js"></script>
+    <title>Engineering Hub - Cta Cobro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        #preview {
-            width: 210mm; /* Tamaño A4 aproximado */
-            min-height: 297mm;
-            padding: 20px;
-            margin: auto;
-            border: 1px solid #ccc;
-            position: relative;
-            background-color: white;
+        :root { --net-red: #E50914; --dark: #141414; --card: #181818; --text: #E5E5E5; }
+        
+        body { background: var(--dark); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
+        
+        .container { max-width: 1000px; margin: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        
+        .panel { background: var(--card); padding: 25px; border-radius: 8px; border-top: 3px solid var(--net-red); }
+        
+        h2 { color: var(--net-red); text-transform: uppercase; letter-spacing: 2px; }
+        
+        input, select { 
+            width: 100%; padding: 12px; margin: 10px 0; border-radius: 4px; 
+            border: none; background: #333; color: white; box-sizing: border-box;
         }
-        .watermark {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 75%;
-            opacity: 0.1; /* Tenue */
-            z-index: 0;
-            pointer-events: none;
+
+        .btn-gen { 
+            background: var(--net-red); color: white; border: none; padding: 15px; 
+            width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; transition: 0.3s;
         }
-        .content { position: relative; z-index: 1; }
-        footer { position: absolute; bottom: 20px; width: 100%; text-align: center; }
+        .btn-gen:hover { transform: scale(1.02); filter: brightness(1.2); }
+
+        /* Estilos del Documento PDF */
+        #doc-pdf { 
+            width: 210mm; min-height: 297mm; background: white; color: black; 
+            padding: 20mm; margin: auto; position: relative; box-sizing: border-box;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); font-size: 12pt;
+        }
+        .watermark { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 75%; opacity: 0.1; z-index: 0; pointer-events: none;
+        }
+        .footer { position: absolute; bottom: 15mm; left: 0; width: 100%; text-align: center; border-top: 1px solid #ccc; padding-top: 5px; font-size: 10pt; }
+
+        /* Modal Login */
+        #modalLogin { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.95); z-index: 100; backdrop-filter: blur(8px);
+        }
+        .modal-box { background: var(--card); width: 320px; margin: 15% auto; padding: 30px; border-radius: 10px; text-align: center; }
     </style>
 </head>
 <body>
 
-    <h2>Configuración de Cuenta de Cobro</h2>
-    <label>Cargar Logo Personalizado:</label>
-    <input type="file" id="logoInput" accept="image/*"><br><br>
+<div class="container">
+    <div class="panel">
+        <h2>🛠 Configuración</h2>
+        <label>Usuario Operador:</label>
+        <input type="text" id="operador" placeholder="Tu nombre">
+        
+        <label>Cargar Logo (Opcional):</label>
+        <input type="file" id="userLogo" accept="image/*">
 
-    <label>Deudor:</label>
-    <select id="deudorSelect">
-        <option value="">Cargando deudores...</option>
-    </select>
-    o ingreso manual: <input type="text" id="manualNombre">
-    
-    <br><br>
-    <label>NIT/Cédula:</label>
-    <input type="text" id="identificacion">
+        <label>Deudores del Hub:</label>
+        <select id="selectDeudor" onchange="verificarAcceso(this.value)">
+            <option value="">Cargando base de datos...</option>
+        </select>
 
-    <hr>
+        <label>Nombre deudor (Manual):</label>
+        <input type="text" id="finalNombre" oninput="sincronizar()">
+        <label>Identificación:</label>
+        <input type="text" id="finalNit" oninput="sincronizar()">
 
-    <div id="preview">
-        <img id="watermarkImg" src="../ImagenesPlataformas/logo_entalpia.png" class="watermark">
-        <div class="content">
-            <h1>CUENTA DE COBRO</h1>
-            <p>Deudor: <span id="valDeudor"></span></p>
-            <p>NIT: <span id="valNit"></span></p>
-        </div>
-        <footer>Hub de ingeniería ENTALPIA - 2025</footer>
+        <button class="btn-gen" onclick="generarDocumento()">DESCARGAR CUENTA DE COBRO</button>
     </div>
 
-    <button onclick="generarPDF()">Descargar PDF</button>
+    <div style="overflow: auto; height: 80vh; border: 1px solid #333;">
+        <div id="doc-pdf">
+            <img id="marcaAgua" src="../ImagenesPlataformas/logo_entalpia.png" class="watermark">
+            <div style="position: relative; z-index: 1;">
+                <h1 style="text-align: right; color: #444;">CUENTA DE COBRO</h1>
+                <p style="text-align: right;">Fecha: <span id="p-fecha"></span></p>
+                <br><br>
+                <p><strong>EL SUSCRITO DEBE A:</strong> ENTALPIA HUB</p>
+                <p><strong>POR CONCEPTO DE:</strong> Servicios Técnicos de Ingeniería.</p>
+                <div style="margin: 40px 0; padding: 20px; border: 1px dashed #999;">
+                    <p>Deudor: <strong id="p-nombre">__________</strong></p>
+                    <p>C.C / NIT: <strong id="p-nit">__________</strong></p>
+                </div>
+            </div>
+            <div class="footer">Hub de ingeniería ENTALPIA - 2025</div>
+        </div>
+    </div>
+</div>
 
-    <script>
-        const logoInput = document.getElementById('logoInput');
-        const watermarkImg = document.getElementById('watermarkImg');
+<div id="modalLogin">
+    <div class="modal-box">
+        <h3 style="color: var(--net-red);">ACCESO REQUERIDO</h3>
+        <p id="targetDeudor" style="font-size: 0.8em;"></p>
+        <input type="password" id="passAuth" placeholder="PIN DE ACCESO">
+        <button class="btn-gen" onclick="validarPIN()">ENTRAR</button>
+        <button onclick="cerrarModal()" style="background:none; border:none; color:gray; cursor:pointer; margin-top:10px;">Cancelar</button>
+    </div>
+</div>
 
-        // Lógica para cambiar la marca de agua si el usuario sube un logo
-        logoInput.addEventListener('change', function(e) {
-            const reader = new FileReader();
-            reader.onload = function() {
-                watermarkImg.src = reader.result;
-            }
-            if(e.target.files[0]) {
-                reader.readAsDataURL(e.target.files[0]);
-            } else {
-                watermarkImg.src = "../ImagenesPlataformas/logo_entalpia.png";
-            }
+<script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzkpRUum-IOZqgpGHwlMpqI10MLKl1bzsSw8rrJ2Venvyi_-Yc7e8jqyvQHOo650YQR/exec';
+    let dbDeudores = [];
+    let temporalDeudor = null;
+
+    // Cargar Datos
+    async function init() {
+        document.getElementById('p-fecha').innerText = new Date().toLocaleDateString();
+        try {
+            const res = await fetch(API_URL);
+            dbDeudores = await res.json();
+            const select = document.getElementById('selectDeudor');
+            select.innerHTML = '<option value="">-- Seleccionar Perfil --</option>';
+            dbDeudores.forEach(d => {
+                let opt = document.createElement('option');
+                opt.value = d.nombre; opt.innerText = d.nombre;
+                select.appendChild(opt);
+            });
+        } catch (e) { console.error("Error API", e); }
+    }
+
+    // Lógica Login
+    function verificarAcceso(nombre) {
+        if(!nombre) return;
+        temporalDeudor = dbDeudores.find(d => d.nombre === nombre);
+        document.getElementById('targetDeudor').innerText = "Deudor: " + nombre;
+        document.getElementById('modalLogin').style.display = 'block';
+    }
+
+    function validarPIN() {
+        const pin = document.getElementById('passAuth').value;
+        if(pin === temporalDeudor.password) {
+            document.getElementById('finalNombre').value = temporalDeudor.nombre;
+            document.getElementById('finalNit').value = temporalDeudor.nit;
+            sincronizar();
+            cerrarModal();
+        } else { alert("PIN Incorrecto"); }
+    }
+
+    function sincronizar() {
+        document.getElementById('p-nombre').innerText = document.getElementById('finalNombre').value;
+        document.getElementById('p-nit').innerText = document.getElementById('finalNit').value;
+    }
+
+    function cerrarModal() { 
+        document.getElementById('modalLogin').style.display = 'none'; 
+        document.getElementById('passAuth').value = "";
+    }
+
+    // Logo & PDF
+    document.getElementById('userLogo').addEventListener('change', function(e) {
+        const reader = new FileReader();
+        reader.onload = () => document.getElementById('marcaAgua').src = reader.result;
+        reader.readAsDataURL(e.target.files[0]);
+    });
+
+    async function generarDocumento() {
+        const deudor = document.getElementById('finalNombre').value;
+        const op = document.getElementById('operador').value;
+        if(!op) { alert("Ingresa el operador"); return; }
+
+        // Auditoría
+        fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ usuario: op, deudor: deudor, accion: "Descarga PDF" })
         });
 
-        // Función para generar PDF (Requiere configuración de jsPDF)
-        function generarPDF() {
-            alert("Iniciando descarga...");
-            // Aquí implementaremos la lógica de jsPDF una vez definas los campos
-        }
-    </script>
+        const element = document.getElementById('doc-pdf');
+        html2pdf().from(element).set({
+            margin: 0,
+            filename: `Cta_Entalpia_${deudor}.pdf`,
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }).save();
+    }
+
+    init();
+</script>
 </body>
 </html>
