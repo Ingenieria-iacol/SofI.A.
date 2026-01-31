@@ -2,118 +2,96 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Entalpía Hub - Ingeniería</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Generador de Cuentas | Hub de Ingeniería</title>
     <style>
-        :root { --blue: #002855; --cyan: #00a8e8; }
-        body { background: #f4f6f9; font-family: 'Segoe UI', sans-serif; }
-        .nav-ent { background: var(--blue); color: white; padding: 15px; border-bottom: 5px solid var(--cyan); }
-        .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .btn-ent { background: var(--blue); color: white; border: none; }
-        .btn-ent:hover { background: var(--cyan); }
+        :root {
+            --bg: #0d1117;
+            --card: #161b22;
+            --accent: #58a6ff;
+            --text: #c9d1d9;
+            --input: #0d1117;
+        }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma; display: flex; justify-content: center; padding: 20px; }
+        .hub-card { background: var(--card); border: 1px solid #30363d; border-radius: 10px; padding: 30px; width: 100%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h2 { color: var(--accent); border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.9em; margin-bottom: 5px; color: #8b949e; }
+        input, textarea { width: 100%; background: var(--input); border: 1px solid #30363d; color: white; padding: 10px; border-radius: 6px; box-sizing: border-box; }
+        input:focus { border-color: var(--accent); outline: none; }
+        button { background: var(--accent); color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        button:hover { opacity: 0.9; }
+        .footer-brand { text-align: center; font-size: 0.8em; margin-top: 20px; color: #484f58; }
     </style>
 </head>
 <body>
-
-<div class="nav-ent text-center">
-    <h2>ENTALPÍA HUB</h2>
-</div>
-
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card p-4">
-                <h4>Nueva Cuenta de Cobro</h4>
-                <div class="row g-3 mt-2">
-                    <div class="col-md-6">
-                        <label>Deudor</label>
-                        <input type="text" id="nombreDeudor" class="form-control" list="listaDeudores" oninput="completarNit(this.value)">
-                        <datalist id="listaDeudores"></datalist>
-                    </div>
-                    <div class="col-md-6">
-                        <label>NIT</label>
-                        <input type="text" id="nitDeudor" class="form-control">
-                    </div>
-                </div>
-
-                <div id="items" class="mt-4">
-                    <div class="row g-2 mb-2 item-row">
-                        <div class="col-8"><input type="text" class="form-control desc" placeholder="Concepto"></div>
-                        <div class="col-4"><input type="number" class="form-control valor" placeholder="Monto"></div>
-                    </div>
-                </div>
-                <button class="btn btn-sm btn-outline-secondary" onclick="addFila()">+ Concepto</button>
-                <button class="btn btn-ent w-100 mt-4 p-3" onclick="enviar()">GENERAR PDF</button>
-                <div id="status" class="mt-3 text-center"></div>
-            </div>
+    <div class="hub-card">
+        <h2>Hub de Ingeniería</h2>
+        <div class="form-group">
+            <label>Logo de la empresa</label>
+            <input type="file" id="logo" accept="image/*">
         </div>
-
-        <div class="col-md-4">
-            <div class="card p-4">
-                <h4>Mis Ingresos</h4>
-                <div id="audit-list" class="small">Cargando auditoría...</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    const API = "https://script.google.com/macros/s/AKfycbxhLX0dyhOMUm1HT_U7SS7ApXzHV1MVeKnZKFR17fk5pRBHYBzhPwqJJKxW4QoXVygC/exec";
-    let deudores = [];
-
-    window.onload = () => {
-        fetch(API).then(r => r.json()).then(d => {
-            deudores = d;
-            const dl = document.getElementById('listaDeudores');
-            d.forEach(x => { let o = document.createElement('option'); o.value = x.nombre; dl.appendChild(o); });
-        });
-        cargarAuditoria();
-    };
-
-    function completarNit(v) {
-        const found = deudores.find(d => d.nombre === v);
-        if(found) document.getElementById('nitDeudor').value = found.nit;
-    }
-
-    function addFila() {
-        const row = document.createElement('div');
-        row.className = "row g-2 mb-2 item-row";
-        row.innerHTML = `<div class="col-8"><input type="text" class="form-control desc"></div>
-                         <div class="col-4"><input type="number" class="form-control valor"></div>`;
-        document.getElementById('items').appendChild(row);
-    }
-
-    function cargarAuditoria() {
-        fetch(API + "?action=auditoria").then(r => r.json()).then(data => {
-            let html = '<table class="table table-sm"><tr><th>Cliente</th><th>Total</th></tr>';
-            data.forEach(a => { html += `<tr><td>${a.cliente}</td><td>$${a.total.toLocaleString()}</td></tr>`; });
-            document.getElementById('audit-list').innerHTML = html + '</table>';
-        });
-    }
-
-    async function enviar() {
-        const s = document.getElementById('status');
-        s.innerText = "⏳ Generando... por favor espera.";
+        <input type="text" id="deudor" placeholder="Nombre del deudor" class="form-group">
+        <input type="text" id="nit" placeholder="NIT / Cédula" class="form-group">
+        <input type="number" id="monto" placeholder="Monto en números" class="form-group">
+        <input type="email" id="email" placeholder="Email para envío automático" class="form-group">
+        <input type="text" id="beneficiario" placeholder="Nombre del beneficiario" class="form-group">
+        <textarea id="conceptos" rows="3" placeholder="Conceptos del cobro..."></textarea>
+        <textarea id="novedades" rows="2" placeholder="Novedades o notas adicionales..."></textarea>
         
-        const payload = {
-            nombreDeudor: document.getElementById('nombreDeudor').value,
-            nitDeudor: document.getElementById('nitDeudor').value,
-            conceptos: Array.from(document.querySelectorAll('.item-row')).map(r => ({
-                descripcion: r.querySelector('.desc').value,
-                monto: parseFloat(r.querySelector('.valor').value) || 0
-            })),
-            total: Array.from(document.querySelectorAll('.valor')).reduce((a, b) => a + (parseFloat(b.value) || 0), 0)
+        <button id="btnGenerar">GENERAR Y REGISTRAR</button>
+        
+        <div class="footer-brand">ENTALPIA 2025</div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxSykT2LXs9fox-5knM-l4QXe_q4M7Qcgl8SKHIEy63O6dWB5lgerMu3lQLntpQs9yP/exec';
+
+        document.getElementById('btnGenerar').onclick = async function() {
+            this.innerText = 'PROCESANDO...';
+            this.disabled = true;
+
+            const logoFile = document.getElementById('logo').files[0];
+            const logoBase64 = logoFile ? await toBase64(logoFile) : "";
+
+            const payload = {
+                deudor: document.getElementById('deudor').value,
+                nit: document.getElementById('nit').value,
+                monto: document.getElementById('monto').value,
+                email: document.getElementById('email').value,
+                beneficiario: document.getElementById('beneficiario').value,
+                conceptos: document.getElementById('conceptos').value,
+                novedades: document.getElementById('novedades').value,
+                logo: logoBase64
+            };
+
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                if(result.status === 'success') {
+                    const link = document.createElement('a');
+                    link.href = 'data:application/pdf;base64,' + result.pdf;
+                    link.download = `Cuenta_${payload.deudor}.pdf`;
+                    link.click();
+                    alert('¡Cuenta generada, registrada y enviada!');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error en la conexión con el Hub.');
+            }
+            this.innerText = 'GENERAR Y REGISTRAR';
+            this.disabled = false;
         };
 
-        try {
-            const resp = await fetch(API, { method: 'POST', body: JSON.stringify(payload) });
-            const res = await resp.json();
-            if(res.url) {
-                s.innerHTML = `<a href="${res.url}" target="_blank" class="btn btn-success">✅ Descargar PDF</a>`;
-                cargarAuditoria();
-            }
-        } catch(e) { s.innerText = "Error: Asegúrate de estar logueado en Google."; }
-    }
-</script>
+        const toBase64 = file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+    </script>
 </body>
 </html>
