@@ -2,72 +2,107 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Entalpía Hub - Generador de Cuentas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entalpía Hub - Ingeniería</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        :root { --blue: #002855; --cyan: #00a8e8; }
-        body { background: #f0f2f5; font-family: sans-serif; }
-        .header-entalpia { background: var(--blue); color: white; padding: 20px; border-bottom: 4px solid var(--cyan); }
-        .card { border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 12px; }
-        .btn-primary { background: var(--blue); border: none; }
-        .btn-primary:hover { background: var(--cyan); }
+        :root { --entalpia-blue: #002855; --entalpia-cyan: #00a8e8; }
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+        .navbar-entalpia { background: var(--entalpia-blue); color: white; padding: 1rem; border-bottom: 4px solid var(--entalpia-cyan); }
+        .card-container { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 30px; margin-top: -30px; }
+        .btn-entalpia { background: var(--entalpia-blue); color: white; border: none; font-weight: bold; }
+        .btn-entalpia:hover { background: var(--entalpia-cyan); color: white; }
+        .concepto-row { background: #fdfdfd; border: 1px solid #eee; border-radius: 8px; margin-bottom: 10px; padding: 15px; }
     </style>
 </head>
 <body>
 
-<div class="header-entalpia text-center mb-5">
-    <h1>ENTALPÍA HUB</h1>
-    <p>Ingeniería y Gestión de Proyectos</p>
+<div class="navbar-entalpia text-center">
+    <h2>ENTALPÍA HUB</h2>
+    <p>Generador de Cuentas de Cobro de Ingeniería</p>
 </div>
 
 <div class="container mb-5">
     <div class="row justify-content-center">
-        <div class="col-md-7">
-            <div class="card p-4">
-                <h3 class="text-center mb-4">Nueva Cuenta de Cobro</h3>
-                
-                <div class="mb-3">
-                    <label>Nombre del Deudor</label>
-                    <input type="text" id="nombreDeudor" class="form-control" placeholder="Ej: Universidad Nacional">
+        <div class="col-md-8 card-container">
+            <h4 class="mb-4">Información del Cliente</h4>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Nombre / Empresa</label>
+                    <input type="text" id="nombreDeudor" class="form-control" list="listaDeudores" oninput="autocompletarNit(this.value)">
+                    <datalist id="listaDeudores"></datalist>
                 </div>
-                <div class="mb-3">
-                    <label>NIT / CC</label>
-                    <input type="text" id="nitDeudor" class="form-control" placeholder="000.000.000-0">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">NIT o CC</label>
+                    <input type="text" id="nitDeudor" class="form-control">
                 </div>
-
-                <h5>Conceptos</h5>
-                <div id="lista-conceptos">
-                    <div class="row g-2 mb-2 item-cobro">
-                        <div class="col-8"><input type="text" class="form-control desc" placeholder="Descripción"></div>
-                        <div class="col-4"><input type="number" class="form-control monto" placeholder="Valor"></div>
-                    </div>
-                </div>
-                <button class="btn btn-sm btn-outline-info mt-2" onclick="addFila()">+ Agregar Fila</button>
-
-                <hr class="my-4">
-                <button class="btn btn-primary w-100 p-3" onclick="enviar()">GENERAR DOCUMENTO Y AUDITAR</button>
-                
-                <div id="respuesta" class="mt-3 text-center"></div>
             </div>
+
+            <h4 class="mt-4 mb-3">Conceptos de Cobro</h4>
+            <div id="contenedor-conceptos">
+                <div class="row g-2 concepto-row">
+                    <div class="col-8">
+                        <input type="text" class="form-control desc" placeholder="Descripción del servicio">
+                    </div>
+                    <div class="col-3">
+                        <input type="number" class="form-control monto" placeholder="Valor">
+                    </div>
+                    <div class="col-1"></div>
+                </div>
+            </div>
+            
+            <button class="btn btn-outline-secondary btn-sm mb-4" onclick="agregarFila()">+ Añadir Concepto</button>
+            
+            <hr>
+            <button class="btn btn-entalpia w-100 p-3" onclick="generarCuenta()">GENERAR Y REGISTRAR EN HUB</button>
+            
+            <div id="loader" class="text-center mt-3" style="display:none;">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p>Procesando con servidores de Google...</p>
+            </div>
+            <div id="resultado" class="mt-3 text-center"></div>
         </div>
     </div>
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbymMFR1V2Ewfz6OG9GAd1ISFXvMm6ZxsTQGP1PynwtQOyYhlJ3k-PkU2wEHny_ZJ5hJ/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyafoPJS91GuuxOqEHiyBbLQpDEvQXmh9_FEjfE91XCgUNGK6HUuripXsVuNphFB-J6/exec";
+    let dbDeudores = [];
 
-    function addFila() {
-        const row = document.createElement('div');
-        row.className = "row g-2 mb-2 item-cobro";
-        row.innerHTML = `<div class="col-8"><input type="text" class="form-control desc" placeholder="Descripción"></div>
-                         <div class="col-4"><input type="number" class="form-control monto" placeholder="Valor"></div>`;
-        document.getElementById('lista-conceptos').appendChild(row);
+    // Al cargar: Pedir deudores privados a Google
+    window.onload = async () => {
+        try {
+            const res = await fetch(SCRIPT_URL);
+            dbDeudores = await res.json();
+            const list = document.getElementById('listaDeudores');
+            dbDeudores.forEach(d => {
+                let opt = document.createElement('option');
+                opt.value = d.nombre;
+                list.appendChild(opt);
+            });
+        } catch(e) { console.error("Error cargando deudores", e); }
+    };
+
+    function autocompletarNit(nombre) {
+        const encontrado = dbDeudores.find(d => d.nombre === nombre);
+        if(encontrado) document.getElementById('nitDeudor').value = encontrado.nit;
     }
 
-    async function enviar() {
-        const respDiv = document.getElementById('respuesta');
-        respDiv.innerHTML = "⌛ Conectando con el servidor de Entalpía...";
-        
+    function agregarFila() {
+        const div = document.createElement('div');
+        div.className = "row g-2 concepto-row";
+        div.innerHTML = `
+            <div class="col-8"><input type="text" class="form-control desc"></div>
+            <div class="col-3"><input type="number" class="form-control monto"></div>
+            <div class="col-1"><button class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">X</button></div>`;
+        document.getElementById('contenedor-conceptos').appendChild(div);
+    }
+
+    async function generarCuenta() {
+        const btn = document.querySelector('.btn-entalpia');
+        const loader = document.getElementById('loader');
+        btn.disabled = true; loader.style.display = 'block';
+
         const data = {
             nombreDeudor: document.getElementById('nombreDeudor').value,
             nitDeudor: document.getElementById('nitDeudor').value,
@@ -75,19 +110,20 @@
             total: 0
         };
 
-        document.querySelectorAll('.item-cobro').forEach(el => {
-            const d = el.querySelector('.desc').value;
-            const m = parseFloat(el.querySelector('.monto').value) || 0;
+        document.querySelectorAll('.concepto-row').forEach(row => {
+            const d = row.querySelector('.desc').value;
+            const m = parseFloat(row.querySelector('.monto').value) || 0;
             if(d) { data.conceptos.push({descripcion: d, monto: m}); data.total += m; }
         });
 
-        const response = await fetch(API_URL, {
+        const response = await fetch(SCRIPT_URL, {
             method: 'POST',
             body: JSON.stringify(data)
         });
         
-        const res = await response.json();
-        respDiv.innerHTML = `<a href="${res.url}" target="_blank" class="btn btn-success">✅ Descargar PDF</a>`;
+        const result = await response.json();
+        loader.style.display = 'none';
+        document.getElementById('resultado').innerHTML = `<a href="${result.url}" target="_blank" class="btn btn-success btn-lg">📥 Descargar Cuenta de Cobro</a>`;
     }
 </script>
 </body>
