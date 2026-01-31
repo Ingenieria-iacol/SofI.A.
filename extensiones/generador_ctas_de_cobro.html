@@ -2,96 +2,95 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Generador de Cuentas | Hub de Ingeniería</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hub de Ingeniería | Generador</title>
     <style>
-        :root {
-            --bg: #0d1117;
-            --card: #161b22;
-            --accent: #58a6ff;
-            --text: #c9d1d9;
-            --input: #0d1117;
-        }
-        body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma; display: flex; justify-content: center; padding: 20px; }
-        .hub-card { background: var(--card); border: 1px solid #30363d; border-radius: 10px; padding: 30px; width: 100%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        h2 { color: var(--accent); border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-top: 0; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-size: 0.9em; margin-bottom: 5px; color: #8b949e; }
-        input, textarea { width: 100%; background: var(--input); border: 1px solid #30363d; color: white; padding: 10px; border-radius: 6px; box-sizing: border-box; }
-        input:focus { border-color: var(--accent); outline: none; }
-        button { background: var(--accent); color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        button:hover { opacity: 0.9; }
-        .footer-brand { text-align: center; font-size: 0.8em; margin-top: 20px; color: #484f58; }
+        :root { --bg: #0a0c10; --card: #12151c; --accent: #00d4ff; --text: #d1d5db; --border: #232834; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { background: var(--card); border: 1px solid var(--border); padding: 2rem; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        h2 { color: var(--accent); margin-top: 0; font-weight: 300; letter-spacing: 1px; text-transform: uppercase; font-size: 1.2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+        label { display: block; font-size: 0.75rem; color: #6b7280; margin: 10px 0 5px 0; text-transform: uppercase; }
+        input, textarea { width: 100%; background: #0a0c10; border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: white; box-sizing: border-box; transition: 0.3s; }
+        input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 5px rgba(0,212,255,0.2); }
+        button { width: 100%; background: var(--accent); color: #0a0c10; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: 0.3s; }
+        button:hover { filter: brightness(1.2); transform: translateY(-1px); }
+        button:disabled { background: #333; cursor: not-allowed; }
+        .footer { text-align: center; margin-top: 1.5rem; font-size: 0.7rem; color: #4b5563; border-top: 1px solid var(--border); padding-top: 1rem; }
     </style>
 </head>
 <body>
-    <div class="hub-card">
+    <div class="container">
         <h2>Hub de Ingeniería</h2>
-        <div class="form-group">
-            <label>Logo de la empresa</label>
-            <input type="file" id="logo" accept="image/*">
-        </div>
-        <input type="text" id="deudor" placeholder="Nombre del deudor" class="form-group">
-        <input type="text" id="nit" placeholder="NIT / Cédula" class="form-group">
-        <input type="number" id="monto" placeholder="Monto en números" class="form-group">
-        <input type="email" id="email" placeholder="Email para envío automático" class="form-group">
-        <input type="text" id="beneficiario" placeholder="Nombre del beneficiario" class="form-group">
-        <textarea id="conceptos" rows="3" placeholder="Conceptos del cobro..."></textarea>
-        <textarea id="novedades" rows="2" placeholder="Novedades o notas adicionales..."></textarea>
         
-        <button id="btnGenerar">GENERAR Y REGISTRAR</button>
-        
-        <div class="footer-brand">ENTALPIA 2025</div>
+        <label>Logo de Empresa</label>
+        <input type="file" id="logo" accept="image/*">
+
+        <label>Información del Deudor</label>
+        <input type="text" id="deudor" placeholder="Nombre completo">
+        <input type="text" id="nit" placeholder="NIT o Cédula" style="margin-top:5px">
+
+        <label>Detalles del Pago</label>
+        <input type="number" id="monto" placeholder="Monto en números">
+        <input type="text" id="beneficiario" placeholder="Nombre del beneficiario">
+
+        <label>Descripción</label>
+        <textarea id="conceptos" rows="3" placeholder="Conceptos..."></textarea>
+        <textarea id="novedades" rows="2" placeholder="Novedades..." style="margin-top:5px"></textarea>
+
+        <button id="btnAction">GENERAR DOCUMENTO</button>
+
+        <div class="footer">Hub de Ingeniería - ENTALPIA 2025</div>
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxSykT2LXs9fox-5knM-l4QXe_q4M7Qcgl8SKHIEy63O6dWB5lgerMu3lQLntpQs9yP/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXWwQazGTMi_YQeu1rXiYrXtNss1RB6X7LLey8Lrze8kXQlZwTRTaIF3m633dp5-2-/exec';
 
-        document.getElementById('btnGenerar').onclick = async function() {
-            this.innerText = 'PROCESANDO...';
-            this.disabled = true;
-
-            const logoFile = document.getElementById('logo').files[0];
-            const logoBase64 = logoFile ? await toBase64(logoFile) : "";
-
-            const payload = {
-                deudor: document.getElementById('deudor').value,
-                nit: document.getElementById('nit').value,
-                monto: document.getElementById('monto').value,
-                email: document.getElementById('email').value,
-                beneficiario: document.getElementById('beneficiario').value,
-                conceptos: document.getElementById('conceptos').value,
-                novedades: document.getElementById('novedades').value,
-                logo: logoBase64
-            };
+        document.getElementById('btnAction').onclick = async function() {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerText = 'PROCESANDO EN HUB...';
 
             try {
-                const response = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(payload)
-                });
-                const result = await response.json();
-                
-                if(result.status === 'success') {
-                    const link = document.createElement('a');
-                    link.href = 'data:application/pdf;base64,' + result.pdf;
-                    link.download = `Cuenta_${payload.deudor}.pdf`;
-                    link.click();
-                    alert('¡Cuenta generada, registrada y enviada!');
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Error en la conexión con el Hub.');
-            }
-            this.innerText = 'GENERAR Y REGISTRAR';
-            this.disabled = false;
-        };
+                const logoFile = document.getElementById('logo').files[0];
+                if(!logoFile) throw new Error("Por favor carga un logo.");
 
-        const toBase64 = file => new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
-        });
+                const reader = new FileReader();
+                reader.readAsDataURL(logoFile);
+                reader.onload = async () => {
+                    const payload = {
+                        deudor: document.getElementById('deudor').value,
+                        nit: document.getElementById('nit').value,
+                        monto: document.getElementById('monto').value,
+                        beneficiario: document.getElementById('beneficiario').value,
+                        conceptos: document.getElementById('conceptos').value,
+                        novedades: document.getElementById('novedades').value,
+                        logo: reader.result
+                    };
+
+                    const response = await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    });
+
+                    const res = await response.json();
+                    if(res.status === 'success') {
+                        const link = document.createElement('a');
+                        link.href = 'data:application/pdf;base64,' + res.pdf;
+                        link.download = res.nombre;
+                        link.click();
+                        alert("Cuenta generada y registrada con éxito.");
+                    } else {
+                        throw new Error(res.message);
+                    }
+                    btn.disabled = false;
+                    btn.innerText = 'GENERAR DOCUMENTO';
+                };
+            } catch (err) {
+                alert("Error: " + err.message);
+                btn.disabled = false;
+                btn.innerText = 'GENERAR DOCUMENTO';
+            }
+        };
     </script>
 </body>
 </html>
